@@ -11,7 +11,6 @@ import {
   hiddenFields,
   isLockedField,
   shownFields,
-  t,
   tidyFields,
   viewFieldLabel,
   withFieldShown
@@ -29,9 +28,9 @@ export interface FieldsPopoverProps {
 }
 
 const tabs = (): { id: ViewMode; label: string }[] => [
-  { id: 'table', label: t('header.fieldsTable') },
-  { id: 'kanban', label: t('header.fieldsBoard') },
-  { id: 'gantt', label: t('header.fieldsTimeline') }
+  { id: 'table', label: 'Table columns' },
+  { id: 'kanban', label: 'Board card' },
+  { id: 'gantt', label: 'Timeline label' }
 ]
 
 /**
@@ -83,11 +82,11 @@ export function renderFieldsPanel(parent: HTMLElement, props: FieldsPopoverProps
         label: label(id),
         hidden: false,
         locked: isLockedField(mode, id),
-        detail: isTable ? String(columnWidth(fields, id) ?? t('header.widthFill')) : undefined
+        detail: isTable ? String(columnWidth(fields, id) ?? 'fill') : undefined
       })),
-      showLabel: t('header.showField'),
-      hideLabel: t('header.hideField'),
-      lockedLabel: t('header.lockedField'),
+      showLabel: 'Show field',
+      hideLabel: 'Hide field',
+      lockedLabel: 'Always shown',
       onToggle: toggle,
       onReorder: (ids) => {
         list().visible = ids
@@ -103,11 +102,11 @@ export function renderFieldsPanel(parent: HTMLElement, props: FieldsPopoverProps
     })
 
     if (hidden.length) {
-      renderPopHead(body, { title: t('header.hiddenFields'), section: true })
+      renderPopHead(body, { title: 'Hidden', section: true })
       renderVisibilityList(body, {
         rows: hidden.map((id) => ({ id, label: label(id), hidden: true })),
-        showLabel: t('header.showField'),
-        hideLabel: t('header.hideField'),
+        showLabel: 'Show field',
+        hideLabel: 'Hide field',
         onToggle: toggle
       })
     }
@@ -116,7 +115,7 @@ export function renderFieldsPanel(parent: HTMLElement, props: FieldsPopoverProps
     if (isTable) {
       new ChipButton(foot)
         .setVariant('flat')
-        .setLabel(t('header.resetWidths'))
+        .setLabel('Reset widths')
         .setDisabled(!fields.table?.widths)
         .onClick(() => {
           delete list().widths
@@ -125,7 +124,7 @@ export function renderFieldsPanel(parent: HTMLElement, props: FieldsPopoverProps
     }
     new ChipButton(foot)
       .setVariant('flat')
-      .setLabel(t('header.hideAll'))
+      .setLabel('Hide all')
       .setDisabled(shown.every((id) => isLockedField(mode, id)))
       .onClick(() => {
         list().visible = []

@@ -7,8 +7,7 @@ import {
   formatDateShort,
   getPriorityConfig,
   getStatusConfig,
-  parsePlainDate,
-  t
+  parsePlainDate
 } from '@dotpm/core'
 import { cardCustomValues } from '../views/boardCards'
 import { svgEl } from '#dom'
@@ -139,7 +138,7 @@ export function drawTaskBar(
   let asideX = x + width + 6
   if (task.recurrence) {
     const icon = svgEl('text', { x: x + width + 4, y: y + height / 2 + 5, class: 'pm-gantt-bar-icon' })
-    icon.textContent = t('chip.recurring')
+    icon.textContent = 'R'
     barGroup.appendChild(icon)
     asideX += 20
   }
@@ -161,11 +160,11 @@ export function drawTaskBar(
   const lines = [
     task.title,
     `${statusConfig?.label ?? task.status} · ${task.priority}`,
-    `${t('gantt.tooltipStart', { date: task.start || '—' })}  ${t('gantt.tooltipDue', { date: task.due || '—' })}`,
-    t('gantt.tooltipProgress', { percent: task.progress })
+    `${`Start: ${task.start || '—'}`}  ${`Due: ${task.due || '—'}`}`,
+    `Progress: ${task.progress}%`
   ]
   if (task.assignees.length) {
-    lines.push(t('gantt.tooltipAssignees', { names: task.assignees.map(displayName).join(', ') }))
+    lines.push(`Assignees: ${task.assignees.map(displayName).join(', ')}`)
   }
   tooltip.textContent = lines.join('\n')
   rect.appendChild(tooltip)
@@ -194,7 +193,7 @@ export function drawMilestoneDiamond(
   })
   g.appendChild(diamond)
   const tooltip = svgEl('title', {})
-  tooltip.textContent = `${t('gantt.milestoneTitle', { title: task.title })}\n${t('gantt.tooltipDate', { date: task.due || task.start || '—' })}`
+  tooltip.textContent = `${`${task.title} (milestone)`}\n${`Date: ${task.due || task.start || '—'}`}`
   diamond.appendChild(tooltip)
   return diamond
 }

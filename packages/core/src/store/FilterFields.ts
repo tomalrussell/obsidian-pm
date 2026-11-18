@@ -1,5 +1,4 @@
 import type { CustomFieldDef, FilterOp, StatusConfig, Task } from '../types'
-import { t } from '../i18n'
 import { displayName, stringifyCustomValue } from '../utils'
 
 /** How a field's values compare, which decides the operators it offers. */
@@ -88,23 +87,23 @@ export function filterFieldLabel(field: string, customFields: CustomFieldDef[]):
   if (custom) return custom.name
   switch (field) {
     case 'status':
-      return t('taskForm.status')
+      return 'Status'
     case 'priority':
-      return t('taskForm.priority')
+      return 'Priority'
     case 'assignee':
-      return t('filter.assignee')
+      return 'Assignee'
     case 'tag':
-      return t('filter.tag')
+      return 'Tag'
     case 'due':
-      return t('filter.dueDate')
+      return 'Due date'
     case 'start':
-      return t('filter.startDate')
+      return 'Start date'
     case 'type':
-      return t('filter.type')
+      return 'Type'
     case 'project':
-      return t('common.project')
+      return 'Project'
     case 'title':
-      return t('filter.title')
+      return 'Title'
     default:
       return field
   }

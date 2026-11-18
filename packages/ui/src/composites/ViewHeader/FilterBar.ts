@@ -1,7 +1,7 @@
 import { ChipButton } from '#primitives/ChipButton'
 import { FilterChip } from '#primitives/FilterChip'
 import { IconButton } from '#primitives/IconButton'
-import { filterFieldIcon, filterFieldLabel, t, tn } from '@dotpm/core'
+import { filterFieldIcon, filterFieldLabel } from '@dotpm/core'
 import { renderAddButton } from '../addButton'
 import { describeCondition, openFilterPopover, type FilterSetup } from './filterPopover'
 
@@ -40,22 +40,22 @@ export class FilterBar {
     this.listBtn.el.addClass('pm-filter-bar-list')
     this.chipsEl = this.el.createDiv('pm-filter-bar-chips')
     this.archivedChip = new FilterChip(this.chipsEl)
-      .setField(t('common.archived'), 'archive')
+      .setField('Archived', 'archive')
       .setOperator('')
-      .setValue(t('filter.included'))
-      .setRemoveLabel(t('filter.remove', { label: t('common.archived') }))
+      .setValue('Included')
+      .setRemoveLabel(`Remove ${'Archived'} filter`)
       .onRemove(() => {
         this.props.filter.showArchived = false
         this.changed()
       })
-    this.addBtn = renderAddButton(this.chipsEl, t('header.filter'), () => this.openPicker())
+    this.addBtn = renderAddButton(this.chipsEl, 'Filter', () => this.openPicker())
     this.addBtn.addClass('pm-filter-bar-add')
 
     const end = this.el.createDiv('pm-filter-bar-end')
     this.summaryEl = end.createSpan({ cls: 'pm-filter-bar-summary', text: props.summary })
     this.clearBtn = new ChipButton(end)
       .setVariant('flat')
-      .setLabel(t('filter.clearAll'))
+      .setLabel('Clear all')
       .onClick(() => {
         this.props.filter.conditions = []
         this.props.filter.showArchived = false
@@ -64,7 +64,7 @@ export class FilterBar {
     this.clearBtn.el.addClass('pm-filter-bar-clear')
     new IconButton(end)
       .setIcon('x')
-      .setTooltip(t('filter.hideBar'))
+      .setTooltip('Hide filters')
       .onClick(() => this.props.onClose())
       .el.addClass('pm-filter-bar-close')
     this.renderChips()
@@ -111,12 +111,12 @@ export class FilterBar {
         .setField(label, filterFieldIcon(condition.field, ctx.customFields))
         .setOperator(op)
         .setValue(value)
-        .setRemoveLabel(t('filter.remove', { label }))
+        .setRemoveLabel(`Remove ${label} filter`)
     })
     for (const extra of this.chips.splice(filter.conditions.length)) extra.el.remove()
     this.archivedChip.el.toggleClass('pm-hidden', !filter.showArchived)
     const count = filter.conditions.length + (filter.showArchived ? 1 : 0)
-    this.listBtn.setLabel(count ? tn('filter.count', count) : t('filter.addFilter'))
+    this.listBtn.setLabel(count ? (count === 1 ? `${count} filter` : `${count} filters`) : 'Add filter')
     this.clearBtn.el.toggleClass('pm-hidden', filter.conditions.length === 0 && !filter.showArchived)
   }
 }

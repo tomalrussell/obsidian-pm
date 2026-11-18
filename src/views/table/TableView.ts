@@ -1,7 +1,7 @@
 import { Notice, type KeymapEventHandler, type Scope } from 'obsidian'
 import { confirmDialog } from '#ui/ModalFactory'
 import type PMPlugin from '#main'
-import { t, tn, type TaskQuery, type Project, type SortRule, type ViewFields, shownFields } from '@dotpm/core'
+import { type TaskQuery, type Project, type SortRule, type ViewFields, shownFields } from '@dotpm/core'
 import type { ProjectScope } from '#store'
 import { safeAsync } from '@dotpm/ui'
 import type { SubView } from '../SubView'
@@ -112,7 +112,14 @@ export class TableView implements SubView {
     const groups = this.scope.groupByProject(ids)
     try {
       if (action.type === 'delete') {
-        if (!(await confirmDialog(this.plugin.app, tn('table.deleteTasksConfirm', ids.length)))) {
+        if (
+          !(await confirmDialog(
+            this.plugin.app,
+            ids.length === 1
+              ? `Delete ${ids.length} task? This cannot be undone.`
+              : `Delete ${ids.length} tasks? This cannot be undone.`
+          ))
+        ) {
           return
         }
       }
@@ -121,23 +128,29 @@ export class TableView implements SubView {
       }
       switch (action.type) {
         case 'set-parent':
-          new Notice(tn('table.movedTasksUnderParent', ids.length))
+          new Notice(
+            ids.length === 1
+              ? `Moved ${ids.length} task under new parent`
+              : `Moved ${ids.length} tasks under new parent`
+          )
           break
         case 'remove-parent':
-          new Notice(tn('table.movedTasksToTopLevel', ids.length))
+          new Notice(
+            ids.length === 1 ? `Moved ${ids.length} task to top level` : `Moved ${ids.length} tasks to top level`
+          )
           break
         case 'archive':
-          new Notice(tn('table.archivedTasks', ids.length))
+          new Notice(ids.length === 1 ? `Archived ${ids.length} task` : `Archived ${ids.length} tasks`)
           break
         case 'unarchive':
-          new Notice(tn('table.unarchivedTasks', ids.length))
+          new Notice(ids.length === 1 ? `Unarchived ${ids.length} task` : `Unarchived ${ids.length} tasks`)
           break
       }
       this.state.selectedTaskIds.clear()
       await this.onRefresh()
     } catch (err) {
       console.error('Bulk action failed', err)
-      new Notice(t('bulk.failed'))
+      new Notice(`Bulk action failed. Please try again.`)
       await this.onRefresh()
     }
   }

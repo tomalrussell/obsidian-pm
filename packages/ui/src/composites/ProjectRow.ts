@@ -1,4 +1,4 @@
-import { type ProjectListField, t, tn } from '@dotpm/core'
+import { type ProjectListField } from '@dotpm/core'
 import { AvatarStack, type AvatarPerson } from '#primitives/AvatarStack'
 import { Chip } from '#primitives/Chip'
 import { CollapseToggle } from '#primitives/CollapseToggle'
@@ -52,7 +52,7 @@ export class ProjectRow {
       new CollapseToggle(expand, {
         collapsed: props.collapsed,
         onToggle: onToggleCollapsed,
-        subject: t('collapse.subProjects')
+        subject: 'sub-projects'
       })
     }
 
@@ -61,14 +61,14 @@ export class ProjectRow {
     const inner = title.createDiv('pm-table-title-inner')
     renderGlyph(inner.createSpan({ cls: 'pm-project-row-icon' }), { icon: props.icon, color: props.color })
     inner.createSpan({ text: props.title, cls: 'pm-task-title-text' })
-    if (props.archived) new Chip(inner).setLabel(t('common.archived')).setVariant('outline').setSize('sm')
+    if (props.archived) new Chip(inner).setLabel('Archived').setVariant('outline').setSize('sm')
 
     for (const field of props.fields) renderCell(this.el.createEl('td', { cls: 'pm-table-cell' }), field, props)
 
     const actions = this.el.createEl('td', { cls: 'pm-table-cell pm-table-cell-actions' })
     new IconButton(actions)
       .setIcon('more-horizontal')
-      .setTooltip(t('cell.projectActions'))
+      .setTooltip('Project actions')
       .setRevealOnHover(true)
       .onClick((e) => props.onActions(e))
 
@@ -95,7 +95,7 @@ function renderCell(cell: HTMLElement, field: ProjectListField, props: ProjectRo
       cell.createSpan({ cls: 'pm-project-row-tasks', text: `${props.tasksDone}/${props.tasksTotal}` })
       if (props.overdue > 0) {
         new Chip(cell)
-          .setLabel(tn('projectRow.overdue', props.overdue))
+          .setLabel(props.overdue === 1 ? `${props.overdue} overdue` : `${props.overdue} overdue`)
           .setVariant('solid')
           .setColor('var(--color-red)')
           .setSize('sm')

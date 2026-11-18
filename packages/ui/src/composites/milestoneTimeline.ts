@@ -1,5 +1,3 @@
-import { t } from '@dotpm/core'
-
 export interface MilestonePoint {
   name: string
   dateLabel: string
@@ -30,7 +28,7 @@ export function renderMilestoneTimeline(
   if (todayPos !== null && todayPos >= 0 && todayPos <= 100) {
     const marker = timeline.createDiv('pm-timeline-today')
     marker.style.setProperty('--pm-timeline-pos', `${todayPos}%`)
-    marker.createSpan({ cls: 'pm-timeline-today-label', text: t('dates.today') })
+    marker.createSpan({ cls: 'pm-timeline-today-label', text: 'Today' })
   }
 
   const gap = (LABEL_WIDTH / width) * 100

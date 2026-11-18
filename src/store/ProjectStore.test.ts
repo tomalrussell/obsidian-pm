@@ -130,7 +130,7 @@ describe('ProjectStore live project instance', () => {
     store.onProjectChanged((path) => changes.push(path))
     await vi.advanceTimersByTimeAsync(6000) // past the self-write window
 
-    await editOnDisk(app, expectDefined(task.filePath), (c) => c.replace('status: "todo"', 'status: "done"'))
+    await editOnDisk(app, expectDefined(task.filePath), (c) => c.replace(/status: .*/, 'status: done'))
     await vi.advanceTimersByTimeAsync(400)
 
     expect(expectDefined(findTask(held.tasks, task.id)).status).toBe('done')

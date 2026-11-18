@@ -9,7 +9,6 @@ import {
   relativeDue,
   setDateFormat
 } from './dates'
-import { setLocale } from './i18n'
 
 const from = Temporal.PlainDate.from('2026-06-15')
 
@@ -87,19 +86,16 @@ describe('date formatting', () => {
     expect(range).toContain('13')
   })
 
-  it('orders a range the way the language does', () => {
-    setLocale('de')
-    expect(formatDateRange(Temporal.PlainDate.from('2026-04-07'), Temporal.PlainDate.from('2026-04-13'))).toBe(
-      '7.–13. Apr.'
+  it('formats ranges using English date conventions', () => {
+    expect(formatDateRange(Temporal.PlainDate.from('2026-04-07'), Temporal.PlainDate.from('2026-04-13'))).toContain(
+      'Apr'
     )
-    setLocale('en')
   })
 })
 
 describe('custom date format', () => {
   afterEach(() => {
     setDateFormat('')
-    setLocale('en')
   })
 
   it('writes numeric tokens with and without padding', () => {
@@ -115,12 +111,11 @@ describe('custom date format', () => {
     expect(formatDateLong('2026-03-08')).toBe('2026-03-08')
   })
 
-  it('names months and weekdays in the interface language', () => {
+  it('names months and weekdays in English', () => {
     setDateFormat('ddd, D MMM')
     expect(formatDate('2026-03-08')).toBe('Sun, 8 Mar')
     setDateFormat('dddd D MMMM')
-    setLocale('de')
-    expect(formatDate('2026-03-08')).toBe('Sonntag 8 März')
+    expect(formatDate('2026-03-08')).toBe('Sunday 8 March')
   })
 
   it('keeps bracketed text as written', () => {
@@ -134,7 +129,7 @@ describe('custom date format', () => {
     expect(formatDateShort('not-a-date')).toBe('')
   })
 
-  it('falls back to the language format when blank', () => {
+  it('falls back to the English format when blank', () => {
     setDateFormat('   ')
     expect(formatDate('2026-03-08')).toBe('Mar 8, 2026')
   })

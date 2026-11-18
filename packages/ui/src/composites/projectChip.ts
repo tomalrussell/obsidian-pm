@@ -1,4 +1,3 @@
-import { t } from '@dotpm/core'
 import { Chip } from '#primitives/Chip'
 
 export interface ProjectChipProps {
@@ -18,7 +17,7 @@ export function renderProjectChip(parent: HTMLElement, props: ProjectChipProps):
     .setColor(props.color)
   const onClick = props.onClick
   if (onClick) {
-    chip.setTooltip(t('projectChip.open', { title: props.title })).onClick((e) => {
+    chip.setTooltip(`Open ${props.title}`).onClick((e) => {
       e.stopPropagation()
       onClick()
     })

@@ -743,7 +743,7 @@ export class StyleguideView extends ItemView {
       filter: {
         ...makeDefaultFilter(),
         conditions: [
-          { field: 'status', op: 'any', value: ['todo', 'in-progress'] },
+          { field: 'status', op: 'any', value: ['capture', 'in-progress'] },
           { field: 'due', op: 'bucket', value: 'this-week' },
           { field: 'cf:estimate', op: 'between', value: [2, 8] },
           { field: 'tag', op: 'none', value: ['design'] }
@@ -771,7 +771,7 @@ export class StyleguideView extends ItemView {
         { id: 'status', label: 'Status', hidden: false, detail: '130' },
         { id: 'due', label: 'Due', hidden: false, detail: '110' },
         { id: 'time', label: 'Time', hidden: true },
-        { id: 'empty', label: 'Blocked', hidden: false, detail: 'empty', quiet: true }
+        { id: 'empty', label: 'someday', hidden: false, detail: 'empty', quiet: true }
       ],
       showLabel: 'Show field',
       hideLabel: 'Hide field',
@@ -816,7 +816,7 @@ export class StyleguideView extends ItemView {
       {
         task: makeTask({
           title: 'Fix the overdue banner',
-          status: 'blocked',
+          status: 'next',
           priority: 'critical',
           due: '2026-06-20',
           progress: 20,
@@ -829,7 +829,7 @@ export class StyleguideView extends ItemView {
         custom: { kind: 'links', links: [{ name: 'Missing Person', unresolved: true }] }
       },
       {
-        task: makeTask({ title: 'Sweep the leftover copy', status: 'review', priority: 'low' }),
+        task: makeTask({ title: 'Sweep the leftover copy', status: 'someday', priority: 'low' }),
         props: { depth: 2, isDone: false, isSelected: false },
         tree: { guides: [true, false], isLastChild: true },
         urgency: 'normal',

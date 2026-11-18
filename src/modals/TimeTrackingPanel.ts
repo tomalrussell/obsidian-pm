@@ -1,4 +1,4 @@
-import { type Task, totalLoggedHours, today, t } from '@dotpm/core'
+import { type Task, totalLoggedHours, today } from '@dotpm/core'
 import { renderAddButton, IconButton } from '@dotpm/ui'
 
 export function renderTimeTrackingPanel(container: HTMLElement, task: Task): void {
@@ -8,14 +8,14 @@ export function renderTimeTrackingPanel(container: HTMLElement, task: Task): voi
   const timeHeader = timeSection.createDiv('pm-modal-section-header')
   const logged = totalLoggedHours(task)
   const est = task.timeEstimate ?? 0
-  const timeLabel = est > 0 ? t('time.heading', { logged, estimate: est }) : t('time.headingLogged', { logged })
+  const timeLabel = est > 0 ? `Time tracking (${logged}h / ${est}h)` : `Time tracking (${logged}h logged)`
   timeHeader.createEl('h4', { text: timeLabel, cls: 'pm-modal-section-title' })
 
   const estRow = timeSection.createDiv('pm-time-est-row')
-  estRow.createSpan({ text: t('time.estimate'), cls: 'pm-time-label' })
+  estRow.createSpan({ text: `Estimate:`, cls: 'pm-time-label' })
   const estInput = estRow.createEl('input', { type: 'number', cls: 'pm-prop-text pm-time-est-input' })
   estInput.value = est > 0 ? String(est) : ''
-  estInput.placeholder = t('time.hours')
+  estInput.placeholder = `Hours`
   estInput.min = '0'
   estInput.step = '0.5'
   estInput.addEventListener('change', () => {
@@ -42,21 +42,21 @@ export function renderTimeTrackingPanel(container: HTMLElement, task: Task): voi
       hoursInput.value = String(log.hours)
       hoursInput.min = '0'
       hoursInput.step = '0.25'
-      hoursInput.placeholder = t('time.hours')
+      hoursInput.placeholder = `Hours`
       hoursInput.addEventListener('change', () => {
         log.hours = parseFloat(hoursInput.value) || 0
       })
 
       const noteInput = row.createEl('input', { type: 'text', cls: 'pm-prop-text pm-time-log-note' })
       noteInput.value = log.note
-      noteInput.placeholder = t('time.notePlaceholder')
+      noteInput.placeholder = `Note…`
       noteInput.addEventListener('change', () => {
         log.note = noteInput.value
       })
 
       new IconButton(row)
         .setIcon('x')
-        .setTooltip(t('time.removeLog'))
+        .setTooltip(`Remove log`)
         .onClick(() => {
           logs.splice(i, 1)
           renderLogs()
@@ -65,7 +65,7 @@ export function renderTimeTrackingPanel(container: HTMLElement, task: Task): voi
   }
   renderLogs()
 
-  renderAddButton(timeSection, t('time.logTime'), () => {
+  renderAddButton(timeSection, `Log time`, () => {
     if (!task.timeLogs) task.timeLogs = []
     task.timeLogs.push({
       date: today().toString(),

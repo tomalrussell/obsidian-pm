@@ -3,7 +3,7 @@ import { Checkbox } from '#primitives/Checkbox'
 import { ChipButton } from '#primitives/ChipButton'
 import { CollapseToggle } from '#primitives/CollapseToggle'
 import { Popover } from '#primitives/Popover'
-import { t, tn } from '@dotpm/core'
+
 import { renderPopSearch } from '../popoverParts'
 import { renderOptionRow } from '../properties/optionList'
 
@@ -92,7 +92,7 @@ export function renderProjectSwitcherPanel(
   ]
 
   const root = parent.createDiv('pm-switcher')
-  const search = renderPopSearch(root, t('header.findProject'), () => renderList())
+  const search = renderPopSearch(root, 'Find project or folder...', () => renderList())
   const presets = root.createDiv('pm-switcher-presets')
   for (const preset of props.presets) {
     new ChipButton(presets)
@@ -109,7 +109,7 @@ export function renderProjectSwitcherPanel(
   const summary = foot.createSpan('pm-switcher-summary')
   const clear = new ChipButton(foot)
     .setVariant('flat')
-    .setLabel(t('common.clear'))
+    .setLabel('Clear')
     .onClick(() => {
       selected.clear()
       sync()
@@ -124,9 +124,15 @@ export function renderProjectSwitcherPanel(
       box.setChecked(all).setIndeterminate(covered > 0 && !all)
     }
     const tasks = [...selected].reduce((sum, path) => sum + (byPath.get(path)?.taskCount ?? 0), 0)
-    summary.setText(tn('header.selectedSummary', selected.size, { tasks: tn('header.taskCount', tasks) }))
+    summary.setText(
+      selected.size === 1
+        ? `${selected.size} selected · ${tasks === 1 ? `${tasks} task` : `${tasks} tasks`}`
+        : `${selected.size} selected · ${tasks === 1 ? `${tasks} task` : `${tasks} tasks`}`
+    )
     clear.setDisabled(!selected.size)
-    showButton.setButtonText(tn('header.showProjects', selected.size)).setDisabled(!selected.size)
+    showButton
+      .setButtonText(selected.size === 1 ? `Show ${selected.size} project` : `Show ${selected.size} projects`)
+      .setDisabled(!selected.size)
   }
   const toggle = (path: string): void => {
     const members = branch(path)
@@ -142,7 +148,7 @@ export function renderProjectSwitcherPanel(
     const line = list.createDiv({ cls: 'pm-switcher-line', attr: { 'data-path': project.path } })
     line.setCssProps({ '--pm-depth': String(depth) })
     const box = new Checkbox(line)
-      .setAriaLabel(t('header.showProject', { title: project.title }))
+      .setAriaLabel(`Show ${project.title} in this view`)
       .onChange(() => toggle(project.path))
     boxes.push({ path: project.path, box })
     const kids = tree ? (children.get(project.path) ?? []) : []
@@ -150,7 +156,7 @@ export function renderProjectSwitcherPanel(
     if (kids.length) {
       new CollapseToggle(line, {
         collapsed: !isOpen,
-        subject: t('collapse.subProjects'),
+        subject: 'sub-projects',
         onToggle: () => setExpanded(project.path, !isOpen)
       })
     } else {
@@ -192,10 +198,10 @@ export function renderProjectSwitcherPanel(
       else folders.set(project.folder, [project])
     }
     for (const [folder, projects] of folders) {
-      list.createDiv({ cls: 'pm-pop-heading', text: folder || t('scope.vault') })
+      list.createDiv({ cls: 'pm-pop-heading', text: folder || 'Vault' })
       for (const project of projects) renderRow(project, 0, !query)
     }
-    if (!shown.length) list.createDiv({ cls: 'pm-pop-empty', text: t('header.noProjectMatch') })
+    if (!shown.length) list.createDiv({ cls: 'pm-pop-empty', text: 'No matching projects' })
     sync()
   }
 

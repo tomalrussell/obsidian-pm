@@ -1,13 +1,28 @@
 import type { GanttCanvas } from './canvas'
 import { HEADER_HEIGHT, dateToX, dayX, getWeekNumber, isHiddenDay } from './TimelineConfig'
 import { svgEl } from '#dom'
-import { Temporal, type GanttWeekLabel, formatDateRange, locale, t } from '@dotpm/core'
+import { Temporal, type GanttWeekLabel, formatDateRange } from '@dotpm/core'
+
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
+]
 
 function formatWeekLabel(weekStart: Temporal.PlainDate, days: number, weekNum: number, mode: GanttWeekLabel): string {
-  if (mode === 'weekNumber') return t('gantt.weekShort', { week: weekNum })
+  if (mode === 'weekNumber') return `W${weekNum}`
   const range = formatDateRange(weekStart, weekStart.add({ days: days - 1 }))
   if (mode === 'dateRange') return range
-  return t('gantt.weekWithRange', { week: weekNum, range })
+  return `W${weekNum}: ${range}`
 }
 
 export function renderTimelineHeader(ctx: GanttCanvas): void {
@@ -125,7 +140,7 @@ function renderMonthHeader(g: SVGGElement, ctx: GanttCanvas): void {
       y: 44,
       class: 'pm-gantt-header-month'
     })
-    text.textContent = monthStart.toLocaleString(locale(), { month: 'short' })
+    text.textContent = MONTHS[monthStart.month - 1].slice(0, 3)
     g.appendChild(text)
     g.appendChild(
       svgEl('line', {
@@ -158,7 +173,7 @@ function renderQuarterHeader(g: SVGGElement, ctx: GanttCanvas): void {
       y: 44,
       class: 'pm-gantt-header-quarter'
     })
-    text.textContent = t('gantt.quarterYear', { quarter: q, year: String(date.year) })
+    text.textContent = `Q${q} ${String(date.year)}`
     g.appendChild(text)
     date = nextQStart
   }
@@ -182,7 +197,7 @@ function renderYearHeader(g: SVGGElement, ctx: GanttCanvas): void {
       y: 44,
       class: 'pm-gantt-header-quarter'
     })
-    text.textContent = t('gantt.quarterShort', { quarter: q })
+    text.textContent = `Q${q}`
     g.appendChild(text)
     g.appendChild(
       svgEl('line', {
@@ -218,7 +233,7 @@ function renderMonthBands(g: SVGGElement, y: number, h: number, ctx: GanttCanvas
       y: y + h - 6,
       class: 'pm-gantt-header-month-top'
     })
-    text.textContent = monthStart.toLocaleString(locale(), { month: 'short', year: '2-digit' })
+    text.textContent = `${MONTHS[monthStart.month - 1].slice(0, 3)} '${String(monthStart.year).slice(-2)}`
     g.appendChild(text)
     monthStart = nextMonthStart
   }

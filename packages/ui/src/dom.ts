@@ -1,4 +1,3 @@
-import { t } from '@dotpm/core'
 import { activeDocument, showNotice, type PlatformMenu } from './platform'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -75,7 +74,7 @@ export function safeAsync<A extends unknown[]>(fn: (...args: A) => Promise<void>
         await fn(...args)
       } catch (err: unknown) {
         console.error('[PM]', err)
-        showNotice(t('common.somethingWentWrong'))
+        showNotice('Something went wrong. Check the console for details.')
       }
     })()
   }

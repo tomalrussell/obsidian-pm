@@ -1,9 +1,8 @@
 import { App, prepareFuzzySearch, TFile } from 'obsidian'
-import { t } from '@dotpm/core'
 
 function fileTypeLabel(extension: string): string | undefined {
-  if (extension === 'canvas') return t('fileType.canvas')
-  if (extension === 'base') return t('fileType.base')
+  if (extension === 'canvas') return `Canvas`
+  if (extension === 'base') return `Database`
   return undefined
 }
 

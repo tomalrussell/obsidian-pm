@@ -1,4 +1,3 @@
-import { t } from '@dotpm/core'
 import { setIcon, setTooltip } from '#platform'
 import { IconButton } from '#primitives/IconButton'
 import { renderNoteLink } from '../noteLink'
@@ -33,7 +32,7 @@ export function renderDepRow(parent: HTMLElement, props: DepRowProps): HTMLEleme
   }
   if (props.tooltip) setTooltip(row, props.tooltip)
   if (props.onRemove) {
-    new IconButton(row).setIcon('x').setTooltip(t('taskForm.removeDependency')).onClick(props.onRemove)
+    new IconButton(row).setIcon('x').setTooltip('Remove dependency').onClick(props.onRemove)
   }
   return row
 }

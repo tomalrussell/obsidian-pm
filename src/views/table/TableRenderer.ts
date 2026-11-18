@@ -17,8 +17,7 @@ import {
   flattenTasks,
   findTaskById,
   applyTaskFilterFlat,
-  isQueryActive,
-  t
+  isQueryActive
 } from '@dotpm/core'
 import { personKeyer, type ProjectScope } from '#store'
 import { renderAddButton, childTreeGuides, compareTasks } from '@dotpm/ui'
@@ -196,7 +195,7 @@ export function renderTable(ctx: TableContext): void {
  */
 function attachColumnResize(th: HTMLElement, id: string, ctx: TableContext): void {
   th.addClass('pm-table-th-resizable')
-  const handle = th.createDiv({ cls: 'pm-table-resize', attr: { 'aria-label': t('table.resizeColumn') } })
+  const handle = th.createDiv({ cls: 'pm-table-resize', attr: { 'aria-label': `Resize column` } })
   handle.addEventListener('click', (e) => e.stopPropagation())
   handle.addEventListener('pointerdown', (down: PointerEvent) => {
     down.preventDefault()
@@ -356,7 +355,7 @@ function renderWindowRows(ctx: TableContext): void {
 
   const addRow = tbody.createEl('tr', { cls: 'pm-table-add-row' })
   const addCell = addRow.createEl('td', { attr: { colspan: String(colCount) } })
-  renderAddButton(addCell, t('task.add'), (e) => {
+  renderAddButton(addCell, `Add task`, (e) => {
     openAddTask(ctx.plugin, ctx.scope, { event: e, onSave: () => ctx.onRefresh() })
   })
 

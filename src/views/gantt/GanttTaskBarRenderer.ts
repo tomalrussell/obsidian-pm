@@ -1,5 +1,5 @@
 import { Notice } from 'obsidian'
-import { type Task, t } from '@dotpm/core'
+import { type Task } from '@dotpm/core'
 import {
   svgEl,
   safeAsync,
@@ -196,7 +196,7 @@ function renderEmptyRowClickTarget(g: SVGGElement, task: Task, row: number, ctx:
       try {
         await ctx.plugin.store.updateTask(project, task.id, { start: iso, due: iso })
       } catch (err) {
-        new Notice(t('gantt.setDatesFailed'))
+        new Notice(`Failed to set task dates. Please try again.`)
         console.error('GanttTaskBarRenderer: click-to-set-dates failed', err)
         return
       }
@@ -206,7 +206,7 @@ function renderEmptyRowClickTarget(g: SVGGElement, task: Task, row: number, ctx:
   )
 
   const tt = svgEl('title', {})
-  tt.textContent = t('gantt.clickToSetDates')
+  tt.textContent = `Click to set dates`
   hitArea.appendChild(tt)
 }
 

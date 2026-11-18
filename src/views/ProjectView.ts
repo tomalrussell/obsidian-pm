@@ -27,9 +27,7 @@ import {
   sameValue,
   viewDifferences,
   makeId,
-  matchesQuery,
-  t,
-  tn
+  matchesQuery
 } from '@dotpm/core'
 import {
   folderOf,
@@ -112,21 +110,21 @@ interface ProjectViewState {
 const MODES: ViewMode[] = ['table', 'gantt', 'kanban']
 const MODE_ICONS: Record<ViewMode, string> = { table: 'table', gantt: 'chart-gantt', kanban: 'kanban' }
 const SCOPE_ICONS = { picked: 'layers', folder: 'folder', vault: 'vault' }
-const modeLabel = (mode: ViewMode): string =>
-  ({ table: t('views.table'), gantt: t('views.gantt'), kanban: t('views.kanban') })[mode]
-const granularityLabel = (granularity: GanttGranularity): string => t(`granularity.${granularity}`)
+const modeLabel = (mode: ViewMode): string => ({ table: `Table`, gantt: `Timeline`, kanban: `Board` })[mode]
+const granularityLabel = (granularity: GanttGranularity): string =>
+  ({ day: `Day`, week: `Week`, month: `Month`, quarter: `Quarter`, year: `Year` })[granularity]
 
 function ends(list: { label: string }[]): [string, string] | undefined {
   return list.length ? [list[0].label, list[list.length - 1].label] : undefined
 }
 
 const sortFields = (config?: ResolvedProjectConfig): SortField[] => [
-  { id: 'title', label: t('columns.task') },
-  { id: 'status', label: t('columns.status'), ends: config && ends(config.statuses) },
-  { id: 'priority', label: t('columns.priority'), ends: config && ends(config.priorities) },
-  { id: 'assignees', label: t('columns.assignees') },
-  { id: 'due', label: t('columns.due') },
-  { id: 'progress', label: t('columns.progress') }
+  { id: 'title', label: `Task` },
+  { id: 'status', label: `Status`, ends: config && ends(config.statuses) },
+  { id: 'priority', label: `Priority`, ends: config && ends(config.priorities) },
+  { id: 'assignees', label: `Assignees` },
+  { id: 'due', label: `Due` },
+  { id: 'progress', label: `Progress` }
 ]
 
 /** One of a mode's own controls, as the options slot, the Tune list and the More menu draw it. */
@@ -210,7 +208,7 @@ export class ProjectView extends ItemView {
     return PM_PROJECT_VIEW_TYPE
   }
   getDisplayText(): string {
-    return this.projectScope?.label() ?? t('common.project')
+    return this.projectScope?.label() ?? `Project`
   }
 
   /** The mode, filter, sort and scale a reader of an export starts from. */
@@ -238,7 +236,7 @@ export class ProjectView extends ItemView {
     menu.addItem((item) =>
       item
         .setSection('action')
-        .setTitle(t('commands.exportViewHtml'))
+        .setTitle(`Export current view as HTML`)
         .setIcon('file-output')
         .onClick(
           safeAsync(async () => {
@@ -436,13 +434,13 @@ export class ProjectView extends ItemView {
     const active = this.activeView()
     if (!active) return []
     const labels = {
-      filter: t('header.changedFilter'),
-      sort: t('header.changedSort'),
-      group: t('header.changedGroup'),
-      fields: t('header.changedFields'),
-      mode: t('header.mode'),
-      scale: t('header.scale'),
-      days: t('header.changedDays')
+      filter: `Filter`,
+      sort: `Sort`,
+      group: `Grouping`,
+      fields: `Fields`,
+      mode: `View mode`,
+      scale: `Timeline scale`,
+      days: `Non-working days`
     }
     const state = {
       filter: this.query.filter,
@@ -498,8 +496,8 @@ export class ProjectView extends ItemView {
     this.bodyEl.removeClass('pm-hidden')
     this.emptyEl.addClass('pm-hidden')
     const msg = this.bodyEl.createDiv('pm-empty-state')
-    msg.createEl('h3', { text: t('projectView.nothingToShow') })
-    msg.createEl('p', { text: t('projectView.missing') })
+    msg.createEl('h3', { text: `Nothing to show` })
+    msg.createEl('p', { text: `No project here. It may have been deleted or renamed.` })
   }
 
   private renderHeader(): void {
@@ -527,12 +525,12 @@ export class ProjectView extends ItemView {
     const active = this.activeView()
     const counts = this.taskCounts()
     this.viewSlot?.sync({
-      name: active?.name ?? t('header.allTasks'),
+      name: active?.name ?? `All tasks`,
       saved: !!active,
       dirty: this.viewChanges().length > 0,
       count: this.countLabel(counts)
     })
-    this.filterBar?.setSummary(t('header.shownSummary', { shown: counts.shown, total: counts.total }))
+    this.filterBar?.setSummary(`${counts.shown} of ${counts.total} shown`)
     this.syncFilterEmpty(counts)
     const filters = countActiveFilters(this.query.filter)
     this.filterButton?.setBadge(filters).setActive(filters > 0)
@@ -542,14 +540,14 @@ export class ProjectView extends ItemView {
       const label = this.groupSummary()
       const hidden = this.boardColumnsNow().filter((column) => column.hidden).length
       this.groupButton
-        .setLabel(label || t('header.group'))
-        .setDetail(hidden ? tn('header.hiddenCount', hidden) : '')
+        .setLabel(label || `Group`)
+        .setDetail(hidden ? (hidden === 1 ? `${hidden} hidden` : `${hidden} hidden`) : '')
         .setActive(!!label)
     }
     if (this.fieldsButton) {
       const hidden = this.hiddenFieldCount()
       this.fieldsButton
-        .setDetail(hidden ? tn('header.hiddenCount', hidden) : '')
+        .setDetail(hidden ? (hidden === 1 ? `${hidden} hidden` : `${hidden} hidden`) : '')
         .setActive(this.fields[this.currentView] !== undefined)
     }
     this.zoomStepper?.setValue(`${this.zoom}%`, this.zoom <= MIN_ZOOM, this.zoom >= MAX_ZOOM)
@@ -569,7 +567,7 @@ export class ProjectView extends ItemView {
     const state = new EmptyState(this.emptyEl).setIcon('search-x')
     const { conditions } = this.query.filter
     if (!conditions.length) {
-      state.setTitle(t('filter.noSearchMatch', { text: this.query.text.trim() }))
+      state.setTitle(`Nothing matches ${this.query.text.trim()}`)
       return
     }
     const ctx = scope.filterContext(personKeyer(this.plugin.app))
@@ -579,19 +577,23 @@ export class ProjectView extends ItemView {
       this.handleFilterMutation()
       this.renderFilterBar()
     }
-    state.setTitle(t('filter.emptyTitle'))
+    state.setTitle(`No tasks match these filters`)
     if (best) {
       const label = filterFieldLabel(conditions[best.index].field, ctx.customFields)
       state
-        .setBody(tn('filter.emptySuggest', best.shown, { label }))
-        .setAction(t('filter.removeNamed', { label }), () => {
+        .setBody(
+          best.shown === 1
+            ? `Removing ${label} would show ${best.shown} task.`
+            : `Removing ${label} would show ${best.shown} tasks.`
+        )
+        .setAction(`Remove ${label}`, () => {
           conditions.splice(best.index, 1)
           apply()
         })
     } else {
-      state.setBody(t('filter.emptyNone'))
+      state.setBody(`No single filter brings any task back.`)
     }
-    state.addSecondaryAction(t('filter.clearAllFilters'), () => {
+    state.addSecondaryAction(`Clear all filters`, () => {
       this.query.filter.conditions = []
       apply()
     })
@@ -600,11 +602,13 @@ export class ProjectView extends ItemView {
   /** The tasks shown, and how many projects they come from when there are several. */
   private countLabel(counts: { shown: number; total: number }): string {
     const tasks = isQueryActive(this.query)
-      ? t('header.shownOf', { shown: counts.shown, total: counts.total })
-      : tn('header.taskCount', counts.total)
+      ? `${counts.shown} of ${counts.total}`
+      : counts.total === 1
+        ? `${counts.total} task`
+        : `${counts.total} tasks`
     const scope = this.projectScope
     if (!scope?.isMulti) return tasks
-    return t('header.scopeCount', { projects: tn('scope.projectCount', scope.projects.length), tasks })
+    return `${scope.projects.length === 1 ? `${scope.projects.length} project` : `${scope.projects.length} projects`} · ${tasks}`
   }
 
   private taskCounts(): { shown: number; total: number } {
@@ -622,12 +626,12 @@ export class ProjectView extends ItemView {
     const count = scope.projects.length
     const common = {
       onSwitch: (anchor: HTMLElement) => this.openSwitcher(anchor, scope, primary),
-      switchLabel: t('header.switchProject'),
-      foldLabel: t('header.parentProjects'),
+      switchLabel: `Switch project`,
+      foldLabel: `Parent projects`,
       mode: {
         icon: MODE_ICONS[this.currentView],
         label: modeLabel(this.currentView),
-        tooltip: t('header.viewMode', { mode: modeLabel(this.currentView) }),
+        tooltip: `View mode: ${modeLabel(this.currentView)}`,
         onOpen: (anchor: HTMLElement) => this.showModeMenu(anchor, scope, primary)
       }
     }
@@ -646,9 +650,9 @@ export class ProjectView extends ItemView {
       return
     }
     const named = kind === 'picked' ? scope.projects.slice(0, 2) : []
-    let title = t('scope.all')
+    let title = `All projects`
     if (kind === 'picked') title = named.map((project) => project.title).join(', ')
-    else if (scope.spec.kind === 'folder') title = scope.spec.path || t('scope.vault')
+    else if (scope.spec.kind === 'folder') title = scope.spec.path || `Vault`
     renderBreadcrumb(parent, {
       ...common,
       icon: SCOPE_ICONS[kind],
@@ -680,7 +684,7 @@ export class ProjectView extends ItemView {
     menu.addSeparator()
     menu.addItem((item) =>
       item
-        .setTitle(t('views.overview'))
+        .setTitle(`Overview`)
         .setIcon('file-text')
         .onClick(safeAsync(() => this.plugin.router.openProjectOverview(primary.filePath, this.leaf)))
     )
@@ -710,7 +714,7 @@ export class ProjectView extends ItemView {
       for (const child of index.childRefs(ref.path)) add(child, ref.path, folder)
     }
     const roots = index.rootRefs().map((ref) => ({ ref, folder: this.containingFolder(ref.path) }))
-    roots.sort((a, b) => a.folder.localeCompare(b.folder))
+    roots.sort((a, b) => (a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0))
     for (const { ref, folder } of roots) add(ref, undefined, folder)
 
     const anchorProject = scope.projects.find((project) => project.filePath === this.anchorPath) ?? primary
@@ -718,17 +722,17 @@ export class ProjectView extends ItemView {
     const folder = this.containingFolder(path)
     const options: { label: string; spec: ScopeSpec }[] = [
       {
-        label: t('scope.only', { title: index.projectRef(path)?.title ?? anchorProject.title }),
+        label: `Only ${index.projectRef(path)?.title ?? anchorProject.title}`,
         spec: { kind: 'project', path }
       }
     ]
-    if (index.childRefs(path).length) options.push({ label: t('scope.subtree'), spec: { kind: 'subtree', path } })
+    if (index.childRefs(path).length) options.push({ label: `With sub-projects`, spec: { kind: 'subtree', path } })
     options.push(
       {
-        label: folder ? t('scope.folder', { folder }) : t('scope.vaultFolder'),
+        label: folder ? `Folder: ${folder}` : `Vault folder`,
         spec: { kind: 'folder', path: folder }
       },
-      { label: t('scope.all'), spec: { kind: 'vault' } }
+      { label: `All projects`, spec: { kind: 'vault' } }
     )
 
     openProjectSwitcher(anchor, {
@@ -776,11 +780,11 @@ export class ProjectView extends ItemView {
         !sameValue(this.sort, makeDefaultSort()) ||
         Object.keys(this.fields).length > 0 ||
         this.currentView !== this.projectScope?.config.defaultView,
-      builtInName: t('header.allTasks'),
+      builtInName: `All tasks`,
       storageNote:
         this.projectScope?.spec.kind === 'project' && primary
-          ? t('header.storedInNote', { name: primary.title })
-          : t('header.storedInSettings'),
+          ? `Kept in the note of ${primary.title}.`
+          : `Kept in plugin settings on this vault.`,
       onSelect: (id) => this.handleSavedViewSelect(id),
       onSave: (name, isDefault) => this.handleSavedViewSave(name, isDefault),
       onUpdate: (id) => this.handleSavedViewUpdate(id),
@@ -800,26 +804,23 @@ export class ProjectView extends ItemView {
     this.searchBox = new SearchBox(parent, this.searchProps())
     this.filterButton = new ChipButton(parent)
       .setIcon('list-filter')
-      .setLabel(t('header.filter'))
-      .setAriaLabel(t('header.filter'))
+      .setLabel(`Filter`)
+      .setAriaLabel(`Filter`)
       .onClick(() => this.openFilter())
     this.sortButton = null
     this.groupButton = null
     this.fieldsButton = null
     if (this.currentView !== 'gantt') {
-      const sortButton = new ChipButton(parent).setAriaLabel(t('header.sort'))
+      const sortButton = new ChipButton(parent).setAriaLabel(`Sort`)
       sortButton.onClick(() => this.openSort(sortButton.el))
       this.sortButton = sortButton
     }
     if (this.currentView === 'kanban') {
-      const groupButton = new ChipButton(parent).setIcon('group').setAriaLabel(t('header.group'))
+      const groupButton = new ChipButton(parent).setIcon('group').setAriaLabel(`Group`)
       groupButton.onClick(() => this.openGroup(groupButton.el))
       this.groupButton = groupButton
     }
-    const fieldsButton = new ChipButton(parent)
-      .setIcon('columns-3')
-      .setLabel(t('header.fields'))
-      .setAriaLabel(t('header.fields'))
+    const fieldsButton = new ChipButton(parent).setIcon('columns-3').setLabel(`Fields`).setAriaLabel(`Fields`)
     fieldsButton.onClick(() => this.openFields(fieldsButton.el))
     this.fieldsButton = fieldsButton
   }
@@ -827,9 +828,9 @@ export class ProjectView extends ItemView {
   private searchProps(): SearchBoxProps {
     return {
       value: this.query.text,
-      label: t('header.search'),
-      placeholder: t('taskForm.searchTasks'),
-      clearLabel: t('common.clear'),
+      label: `Search`,
+      placeholder: `Search tasks…`,
+      clearLabel: `Clear`,
       onChange: (value) => {
         this.query.text = value
         this.syncHeader()
@@ -908,7 +909,7 @@ export class ProjectView extends ItemView {
     if (!scope || !primary) return []
     const mode: TuneItem = {
       icon: MODE_ICONS[this.currentView],
-      label: t('header.mode'),
+      label: `View mode`,
       state: modeLabel(this.currentView),
       onOpen: (anchor) => this.showModeMenu(anchor, scope, primary)
     }
@@ -918,13 +919,13 @@ export class ProjectView extends ItemView {
     const query: TuneItem[] = [
       {
         icon: 'search',
-        label: t('header.search'),
+        label: `Search`,
         state: this.query.text.trim(),
         onOpen: (anchor) => openSearchPopover(anchor, this.searchProps())
       },
       {
         icon: 'list-filter',
-        label: t('header.filter'),
+        label: `Filter`,
         state: filters ? String(filters) : '',
         onOpen: () => this.openFilter()
       }
@@ -932,7 +933,7 @@ export class ProjectView extends ItemView {
     if (this.currentView !== 'gantt') {
       query.push({
         icon: 'arrow-down-up',
-        label: t('header.sort'),
+        label: `Sort`,
         state: sort ? `${sort.label} ${sort.more}`.trim() : '',
         onOpen: (anchor) => this.openSort(anchor)
       })
@@ -940,22 +941,22 @@ export class ProjectView extends ItemView {
     if (this.currentView === 'kanban') {
       query.push({
         icon: 'group',
-        label: t('header.group'),
+        label: `Group`,
         state: this.groupSummary(),
         onOpen: (anchor) => this.openGroup(anchor)
       })
     }
     query.push({
       icon: 'columns-3',
-      label: t('header.fields'),
-      state: hidden ? tn('header.hiddenCount', hidden) : '',
+      label: `Fields`,
+      state: hidden ? (hidden === 1 ? `${hidden} hidden` : `${hidden} hidden`) : '',
       onOpen: (anchor) => this.openFields(anchor)
     })
     const options = this.viewOptions(scope).map((option): TuneItem => {
       if (option !== 'zoom') return { icon: option.icon, label: option.label, state: option.value, onOpen: option.run }
       return {
         icon: 'zoom-in',
-        label: t('timeline.zoom'),
+        label: `Zoom`,
         control: (parent) => {
           const sync = (): void => {
             stepper.setValue(`${this.zoom}%`, this.zoom <= MIN_ZOOM, this.zoom >= MAX_ZOOM)
@@ -1033,7 +1034,7 @@ export class ProjectView extends ItemView {
     if (setup) {
       tabs.push({
         id: 'filter',
-        label: t('header.filter'),
+        label: `Filter`,
         badge: () => countActiveFilters(this.query.filter),
         render: (parent, changed) =>
           renderFilterPanel(
@@ -1051,14 +1052,14 @@ export class ProjectView extends ItemView {
     if (this.currentView !== 'gantt') {
       tabs.push({
         id: 'sort',
-        label: t('header.sort'),
+        label: `Sort`,
         render: (parent, changed) => renderSortPanel(parent, this.sortProps(changed))
       })
     }
     if (this.currentView === 'kanban') {
       tabs.push({
         id: 'group',
-        label: t('header.group'),
+        label: `Group`,
         render: (parent, changed) => {
           const props = this.groupProps(changed)
           if (props) renderGroupPanel(parent, props)
@@ -1067,7 +1068,7 @@ export class ProjectView extends ItemView {
     }
     tabs.push({
       id: 'fields',
-      label: t('header.fields'),
+      label: `Fields`,
       render: (parent, changed) => {
         const props = this.fieldsProps(changed)
         if (props) renderFieldsPanel(parent, props)
@@ -1076,7 +1077,7 @@ export class ProjectView extends ItemView {
     return {
       tabs,
       clear: {
-        label: t('filter.clearAll'),
+        label: `Clear all`,
         canClear: () => countActiveFilters(this.query.filter) > 0,
         onClear: () => {
           this.query.filter.conditions = []
@@ -1084,7 +1085,8 @@ export class ProjectView extends ItemView {
           this.handleFilterMutation()
         }
       },
-      doneLabel: () => tn('header.showTasks', this.taskCounts().shown)
+      doneLabel: () =>
+        this.taskCounts().shown === 1 ? `Show ${this.taskCounts().shown} task` : `Show ${this.taskCounts().shown} tasks`
     }
   }
 
@@ -1100,14 +1102,14 @@ export class ProjectView extends ItemView {
       if (option === 'zoom') {
         menu.addItem((item) =>
           item
-            .setTitle(t('timeline.zoomIn'))
+            .setTitle(`Zoom in`)
             .setIcon('zoom-in')
             .setDisabled(this.zoom >= MAX_ZOOM)
             .onClick(() => this.setZoom(stepZoom(this.zoom, 1)))
         )
         menu.addItem((item) =>
           item
-            .setTitle(t('timeline.zoomOut'))
+            .setTitle(`Zoom out`)
             .setIcon('zoom-out')
             .setDisabled(this.zoom <= MIN_ZOOM)
             .onClick(() => this.setZoom(stepZoom(this.zoom, -1)))
@@ -1126,7 +1128,7 @@ export class ProjectView extends ItemView {
       menu.addSeparator()
       menu.addItem((item) =>
         item
-          .setTitle(t('projectView.addMilestone'))
+          .setTitle(`Add milestone`)
           .setIcon('diamond')
           .onClick(() => this.addTask(anchor, { type: 'milestone' }))
       )
@@ -1162,14 +1164,14 @@ export class ProjectView extends ItemView {
         {
           id: 'today',
           icon: 'calendar-check',
-          label: t('gantt.today'),
+          label: `Today`,
           chip: 'label',
           run: () => this.scrollToToday()
         },
         {
           id: 'scale',
           icon: 'calendar-range',
-          label: t('header.scale'),
+          label: `Timeline scale`,
           value: granularityLabel(this.granularity),
           chip: 'value',
           run: (anchor) => this.openScaleMenu(anchor)
@@ -1178,7 +1180,7 @@ export class ProjectView extends ItemView {
         {
           id: 'days',
           icon: 'calendar-off',
-          label: t('timeline.nonWorkingDays'),
+          label: `Non-working days`,
           chip: 'icon',
           run: (anchor) => this.openNonWorkingDays(anchor)
         }
@@ -1189,7 +1191,7 @@ export class ProjectView extends ItemView {
       options.push({
         id: 'collapse',
         icon: anyCollapsed ? 'chevrons-up-down' : 'chevrons-down-up',
-        label: anyCollapsed ? t('gantt.expandAll') : t('gantt.collapseAll'),
+        label: anyCollapsed ? `Expand all` : `Collapse all`,
         chip: 'icon',
         run: () => this.toggleCollapseAll(scope, anyCollapsed)
       })
@@ -1221,9 +1223,9 @@ export class ProjectView extends ItemView {
       onZoom?.()
     }
     return {
-      decreaseLabel: t('timeline.zoomOut'),
-      increaseLabel: t('timeline.zoomIn'),
-      resetLabel: t('timeline.resetZoom'),
+      decreaseLabel: `Zoom out`,
+      increaseLabel: `Zoom in`,
+      resetLabel: `Reset zoom`,
       onDecrease: () => zoomTo(stepZoom(this.zoom, -1)),
       onIncrease: () => zoomTo(stepZoom(this.zoom, 1)),
       onReset: () => zoomTo(100)
@@ -1314,14 +1316,14 @@ export class ProjectView extends ItemView {
   }
 
   private renderActionsSlot(parent: HTMLElement): void {
-    const add = new SplitButton(parent).setIcon('plus').setLabel(t('projectView.addTask'))
+    const add = new SplitButton(parent).setIcon('plus').setLabel(`Add task`)
     add.onClick(() => this.addTask(add.el))
     if (this.currentView === 'gantt') {
-      add.onMenu(t('header.moreToAdd'), (anchor) => {
+      add.onMenu(`More to add`, (anchor) => {
         const menu = new Menu()
         menu.addItem((item) =>
           item
-            .setTitle(t('projectView.addMilestone'))
+            .setTitle(`Add milestone`)
             .setIcon('diamond')
             .onClick(() => this.addTask(add.el, { type: 'milestone' }))
         )
@@ -1357,7 +1359,7 @@ export class ProjectView extends ItemView {
     const counts = this.taskCounts()
     this.filterBar = new FilterBar(header.bar, {
       ...setup,
-      summary: t('header.shownSummary', { shown: counts.shown, total: counts.total }),
+      summary: `${counts.shown} of ${counts.total} shown`,
       onChange: () => this.handleFilterMutation(),
       onClose: () => {
         this.queryBarOpen = false

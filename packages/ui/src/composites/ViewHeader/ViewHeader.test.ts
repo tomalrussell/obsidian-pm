@@ -43,8 +43,8 @@ const FIELDS: CustomFieldDef[] = [
 ]
 
 const TASKS = [
-  makeTask({ id: 'a', status: 'todo', assignees: ['Ada'] }),
-  makeTask({ id: 'b', status: 'todo' }),
+  makeTask({ id: 'a', status: 'capture', assignees: ['Ada'] }),
+  makeTask({ id: 'b', status: 'capture' }),
   makeTask({ id: 'c', status: 'done', archived: true })
 ]
 
@@ -121,7 +121,7 @@ describe('FilterBar', () => {
     const filter: FilterState = {
       showArchived: false,
       conditions: [
-        { field: 'status', op: 'any', value: ['todo', 'in-progress'] },
+        { field: 'status', op: 'any', value: ['capture', 'next'] },
         { field: 'due', op: 'bucket', value: 'overdue' },
         { field: 'cf:estimate', op: 'between', value: [2, 8] },
         { field: 'tag', op: 'empty' }
@@ -150,7 +150,7 @@ describe('FilterBar', () => {
     const filter: FilterState = {
       showArchived: true,
       conditions: [
-        { field: 'status', op: 'any', value: ['todo'] },
+        { field: 'status', op: 'any', value: ['capture'] },
         { field: 'priority', op: 'any', value: ['high'] }
       ]
     }
@@ -192,26 +192,32 @@ describe('FilterBar', () => {
     document.body.findAll('.pm-filter-pop .pm-pop-item')[0].click()
     const rows = document.body.findAll('.pm-filter-pop-value .pm-pop-item')
     const todo = rows.find((row) => row.find('.pm-pop-item-label')?.textContent === DEFAULT_STATUSES[0].label)
-    const done = rows.find((row) => row.find('.pm-pop-item-label')?.textContent === 'Done')
+    const done = rows.find((row) => row.find('.pm-pop-item-label')?.textContent === 'done')
     expect(todo?.find('.pm-pop-item-note')?.textContent).toBe('2')
     expect(done?.find('.pm-pop-item-note')?.textContent).toBe('0')
     todo?.click()
-    expect(filter.conditions).toEqual([{ field: 'status', op: 'any', value: ['todo'] }])
+    expect(filter.conditions).toEqual([{ field: 'status', op: 'any', value: ['capture'] }])
     expect(visibleChips(bar).length).toBe(1)
   })
 
   it('edits a condition in place from its chip', () => {
-    const filter: FilterState = { showArchived: false, conditions: [{ field: 'status', op: 'any', value: ['todo'] }] }
+    const filter: FilterState = {
+      showArchived: false,
+      conditions: [{ field: 'status', op: 'any', value: ['capture'] }]
+    }
     const bar = mountBar(filter)
     visibleChips(bar)[0].querySelector<HTMLButtonElement>('.pm-filter-chip-op')?.click()
     const ops = document.body.findAll('.pm-filter-pop-op')
     ops.find((op) => op.textContent === 'is none of')?.click()
-    expect(filter.conditions).toEqual([{ field: 'status', op: 'none', value: ['todo'] }])
+    expect(filter.conditions).toEqual([{ field: 'status', op: 'none', value: ['capture'] }])
     expect(visibleChips(bar)[0].find('.pm-filter-chip-op')?.textContent).toBe('is not')
   })
 
   it('drops a condition whose values are cleared', () => {
-    const filter: FilterState = { showArchived: false, conditions: [{ field: 'status', op: 'any', value: ['todo'] }] }
+    const filter: FilterState = {
+      showArchived: false,
+      conditions: [{ field: 'status', op: 'any', value: ['capture'] }]
+    }
     const bar = mountBar(filter)
     visibleChips(bar)[0].querySelector<HTMLButtonElement>('.pm-filter-chip-value')?.click()
     document.body
@@ -238,7 +244,7 @@ describe('FilterBar', () => {
   })
 
   it('names how many filters apply on the button that stands in for the chips', () => {
-    const filter: FilterState = { showArchived: true, conditions: [{ field: 'status', op: 'any', value: ['todo'] }] }
+    const filter: FilterState = { showArchived: true, conditions: [{ field: 'status', op: 'any', value: ['capture'] }] }
     const bar = mountBar(filter)
     expect(bar.el.find('.pm-filter-bar-list')?.textContent).toBe('2 filters')
     bar.el.find('.pm-filter-bar-clear')?.click()
@@ -250,7 +256,7 @@ describe('FilterBar', () => {
     const filter: FilterState = {
       showArchived: false,
       conditions: [
-        { field: 'status', op: 'any', value: ['todo'] },
+        { field: 'status', op: 'any', value: ['capture'] },
         { field: 'due', op: 'bucket', value: 'overdue' }
       ]
     }
@@ -281,7 +287,10 @@ describe('FilterBar', () => {
   })
 
   it('leaves Clear all out of the list for a host that has its own', () => {
-    const filter: FilterState = { showArchived: false, conditions: [{ field: 'status', op: 'any', value: ['todo'] }] }
+    const filter: FilterState = {
+      showArchived: false,
+      conditions: [{ field: 'status', op: 'any', value: ['capture'] }]
+    }
     renderFilterPanel(document.body.createDiv(), setupFor(filter), noop, 'list', { showClear: false })
     expect(document.body.findAll('.pm-filter-list-row').length).toBe(1)
     expect(document.body.find('.pm-filter-list-foot')).toBeNull()
@@ -411,7 +420,7 @@ describe('saved views popover', () => {
 describe('sort popover', () => {
   const fields: SortField[] = [
     { id: 'title', label: 'Task' },
-    { id: 'status', label: 'Status', ends: ['To Do', 'Cancelled'] },
+    { id: 'status', label: 'Status', ends: ['capture', 'someday'] },
     { id: 'due', label: 'Due' }
   ]
   const open = (sort: SortRule[], onReset = vi.fn<() => void>()) => {
@@ -432,7 +441,7 @@ describe('sort popover', () => {
     expect(document.body.querySelector<HTMLButtonElement>('.pm-sort-add')?.disabled).toBe(true)
     expect(document.body.find('.pm-sort-pop-count')?.textContent).toBe('3 of 3')
     expect(Array.from(selects('pm-sort-dir')[2].options).map((o) => o.text)).toEqual(['Earliest first', 'Latest first'])
-    expect(Array.from(selects('pm-sort-dir')[0].options).map((o) => o.text)).toEqual(['To Do first', 'Cancelled first'])
+    expect(Array.from(selects('pm-sort-dir')[0].options).map((o) => o.text)).toEqual(['capture first', 'someday first'])
     expect(onChange).toHaveBeenCalledTimes(2)
   })
 

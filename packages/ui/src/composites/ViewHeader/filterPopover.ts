@@ -21,7 +21,6 @@ import {
   formatDate,
   isConditionComplete,
   priorityIcon,
-  t,
   valueKey
 } from '@dotpm/core'
 import { renderPopHead, renderPopSearch } from '../popoverParts'
@@ -51,10 +50,10 @@ const DATE_BUCKETS: DateBucket[] = ['overdue', 'today', 'this-week', 'this-month
 
 const bucketLabel = (bucket: DateBucket): string =>
   ({
-    overdue: t('filter.overdue'),
-    today: t('filter.today'),
-    'this-week': t('filter.thisWeek'),
-    'this-month': t('filter.thisMonth')
+    overdue: 'Overdue',
+    today: 'Today',
+    'this-week': 'This week',
+    'this-month': 'This month'
   })[bucket]
 
 /**
@@ -82,9 +81,9 @@ export function valueOptions(setup: FilterSetup, field: string): ValueOption[] {
       }))
     case 'type':
       return [
-        { id: 'task', label: t('taskForm.typeTask') },
-        { id: 'subtask', label: t('taskForm.typeSubtask') },
-        { id: 'milestone', label: t('taskForm.typeMilestone') }
+        { id: 'task', label: 'Task' },
+        { id: 'subtask', label: 'Subtask' },
+        { id: 'milestone', label: 'Milestone' }
       ]
     case 'project':
       return setup.projects.map((p) => ({ id: p.id, label: p.title, color: p.color }))
@@ -101,47 +100,47 @@ export function valueOptions(setup: FilterSetup, field: string): ValueOption[] {
     }
   }
   const options = [...seen.values()]
-  return custom?.options ? options : options.sort((a, b) => a.label.localeCompare(b.label))
+  return custom?.options ? options : options.sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : 0))
 }
 
 function opLabel(op: FilterOp, count: number): string {
   switch (op) {
     case 'any':
-      return count > 1 ? t('filter.isAnyOf') : t('filter.is')
+      return count > 1 ? 'is any of' : 'is'
     case 'none':
-      return count > 1 ? t('filter.op.noneOf') : t('filter.op.none')
+      return count > 1 ? 'is none of' : 'is not'
     case 'all':
-      return t('filter.op.all')
+      return 'has all of'
     case 'empty':
-      return t('filter.op.empty')
+      return 'is empty'
     case 'not-empty':
-      return t('filter.op.notEmpty')
+      return 'is not empty'
     case 'contains':
-      return t('filter.op.contains')
+      return 'contains'
     case 'not-contains':
-      return t('filter.op.notContains')
+      return 'does not contain'
     case 'eq':
-      return t('filter.op.eq')
+      return 'equals'
     case 'ne':
-      return t('filter.op.ne')
+      return 'does not equal'
     case 'gte':
-      return t('filter.op.gte')
+      return 'is at least'
     case 'lte':
-      return t('filter.op.lte')
+      return 'is at most'
     case 'between':
-      return t('filter.op.between')
+      return 'is between'
     case 'checked':
-      return t('filter.op.checked')
+      return 'is checked'
     case 'unchecked':
-      return t('filter.op.unchecked')
+      return 'is not checked'
     case 'bucket':
-      return t('filter.is')
+      return 'is'
   }
 }
 
 function rangeText(from: string, to: string): string {
-  if (from && to) return t('filter.range', { from, to })
-  return from ? t('filter.from', { date: from }) : t('filter.until', { date: to })
+  if (from && to) return `${from} to ${to}`
+  return from ? `from ${from}` : `until ${to}`
 }
 
 /** The operator and value words a chip shows for a condition. */
@@ -218,7 +217,7 @@ export function renderFilterPanel(
     const remove = (row: HTMLElement, label: string, onRemove: () => void): void => {
       new IconButton(row)
         .setIcon('x')
-        .setTooltip(t('filter.remove', { label }))
+        .setTooltip(`Remove ${label} filter`)
         .onClick(() => {
           onRemove()
           onChange()
@@ -241,15 +240,15 @@ export function renderFilterPanel(
     if (filter.showArchived) {
       const row = list.createDiv('pm-filter-list-row')
       renderOptionRow(row, {
-        label: t('common.archived'),
+        label: 'Archived',
         icon: 'archive',
-        note: t('filter.included'),
+        note: 'Included',
         onPick: () => showFields(showList)
       })
-      remove(row, t('common.archived'), () => (filter.showArchived = false))
+      remove(row, 'Archived', () => (filter.showArchived = false))
     }
     renderOptionRow(list, {
-      label: t('filter.addFilter'),
+      label: 'Add filter',
       icon: 'plus',
       accent: true,
       onPick: () => showFields(showList)
@@ -257,7 +256,7 @@ export function renderFilterPanel(
     if (!showClear || (!filter.conditions.length && !filter.showArchived)) return
     const clear = body.createDiv('pm-filter-list-foot pm-pop-section')
     renderOptionRow(clear, {
-      label: t('filter.clearAll'),
+      label: 'Clear all',
       icon: 'x',
       onPick: () => {
         filter.conditions = []
@@ -272,12 +271,12 @@ export function renderFilterPanel(
     body.empty()
     if (back) {
       renderPopHead(body, {
-        title: t('filter.addFilter'),
+        title: 'Add filter',
         variant: 'title',
-        back: { label: t('filter.back'), onClick: back }
+        back: { label: 'Back', onClick: back }
       })
     }
-    const search = renderPopSearch(body, t('filter.filterBy'), () => renderList())
+    const search = renderPopSearch(body, 'Filter by...', () => renderList())
     const list = body.createDiv('pm-pop-list')
     const fields = offeredFields(setup)
     const renderList = (): void => {
@@ -289,7 +288,7 @@ export function renderFilterPanel(
       let headed = false
       for (const field of shown) {
         if (field.startsWith('cf:') && !headed) {
-          list.createDiv({ cls: 'pm-pop-heading', text: t('filter.customFields') })
+          list.createDiv({ cls: 'pm-pop-heading', text: 'Custom fields' })
           headed = true
         }
         const index = filter.conditions.findIndex((c) => c.field === field)
@@ -302,7 +301,7 @@ export function renderFilterPanel(
       }
       if (!q) {
         renderOptionRow(list, {
-          label: t('filter.includeArchived'),
+          label: 'Include archived',
           icon: 'archive',
           selected: filter.showArchived,
           onPick: () => {
@@ -348,7 +347,7 @@ export function renderFilterPanel(
     renderPopHead(body, {
       title: filterFieldLabel(field, setup.ctx.customFields),
       variant: 'title',
-      back: back && { label: t('filter.back'), onClick: back }
+      back: back && { label: 'Back', onClick: back }
     })
 
     const ops = body.createDiv('pm-filter-pop-ops')
@@ -385,7 +384,7 @@ export function renderFilterPanel(
         case 'not-contains': {
           const input = valueEl.createEl('input', {
             cls: 'pm-pop-field',
-            attr: { placeholder: t('filter.valuePlaceholder'), spellcheck: 'false' }
+            attr: { placeholder: 'Value', spellcheck: 'false' }
           })
           input.value = typeof draft.value === 'string' ? draft.value : ''
           input.addEventListener('input', () => {
@@ -409,7 +408,7 @@ export function renderFilterPanel(
             const input = row.createEl('input', {
               type: isDate ? 'date' : 'number',
               cls: 'pm-pop-field',
-              attr: { placeholder: t('filter.valuePlaceholder') }
+              attr: { placeholder: 'Value' }
             })
             input.value = current[i] === undefined || current[i] === null ? '' : String(current[i])
             inputs.push(input)
@@ -470,14 +469,14 @@ function renderChecklist(
   commit: () => void
 ): void {
   const options = valueOptions(setup, field)
-  const search = options.length > 8 ? renderPopSearch(parent, t('filter.findValue'), () => render()) : null
+  const search = options.length > 8 ? renderPopSearch(parent, 'Find value...', () => render()) : null
   const list = parent.createDiv('pm-pop-list')
   const selected = (): string[] => (Array.isArray(draft.value) ? draft.value.map(String) : [])
   const keyOf = (id: string): string => valueKey(field, id, setup.ctx)
   const render = (): void => {
     list.empty()
     if (!options.length) {
-      list.createDiv({ cls: 'pm-pop-empty', text: t('filter.noValues') })
+      list.createDiv({ cls: 'pm-pop-empty', text: 'No values in this view yet.' })
       return
     }
     const q = search?.value.trim().toLowerCase() ?? ''

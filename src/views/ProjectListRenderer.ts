@@ -8,15 +8,14 @@ import {
   type ProjectListItem,
   type ProjectListRow,
   formatDateShort,
-  dateUrgency,
-  t
+  dateUrgency
 } from '@dotpm/core'
 import { safeAsync, CollapseToggle, ProjectRow, projectFieldLabel } from '@dotpm/ui'
 import { linkedRefs } from './linkedRefs'
 
 const columns = (fields: ProjectListField[]): { label: string; cls?: string }[] => [
   { label: '' },
-  { label: t('columns.project'), cls: 'pm-project-th-title' },
+  { label: `Project`, cls: 'pm-project-th-title' },
   ...fields.map((field) => ({ label: projectFieldLabel(field) })),
   { label: '' }
 ]
@@ -92,8 +91,8 @@ export function renderProjectTable(
 }
 
 function groupLabel(groupBy: ProjectGroupBy, key: string): string {
-  if (groupBy === 'tag') return key ? `#${key}` : t('list.noTag')
-  return key ? `${key}/` : t('list.noFolder')
+  if (groupBy === 'tag') return key ? `#${key}` : `No tag`
+  return key ? `${key}/` : `Vault root`
 }
 
 function renderRow(ctx: ProjectListContext, tbody: HTMLElement, row: ProjectListRow): void {
@@ -134,27 +133,27 @@ function openProjectContextMenu(ctx: ProjectListContext, ref: ProjectRef, e: Mou
   const menu = new Menu()
   menu.addItem((item) =>
     item
-      .setTitle(t('project.openOverview'))
+      .setTitle(`Open overview`)
       .setIcon('file-text')
       .onClick(safeAsync(() => ctx.plugin.router.openProjectOverview(ref.path)))
   )
   menu.addItem((item) =>
     item
-      .setTitle(t('project.openTasks'))
+      .setTitle(`Open tasks`)
       .setIcon('table')
       .onClick(safeAsync(() => ctx.plugin.router.openScope({ kind: 'project', path: ref.path })))
   )
   if (ctx.plugin.index.childRefs(ref.path).length) {
     menu.addItem((item) =>
       item
-        .setTitle(t('project.openWithSubProjects'))
+        .setTitle(`Open with sub-projects`)
         .setIcon('layers')
         .onClick(safeAsync(() => ctx.plugin.router.openScope({ kind: 'subtree', path: ref.path })))
     )
   }
   menu.addItem((item) =>
     item
-      .setTitle(t('commands.duplicateProject'))
+      .setTitle(`Duplicate project`)
       .setIcon('copy')
       .onClick(
         safeAsync(async () => {
@@ -166,28 +165,28 @@ function openProjectContextMenu(ctx: ProjectListContext, ref: ProjectRef, e: Mou
   )
   menu.addItem((item) =>
     item
-      .setTitle(t('project.edit'))
+      .setTitle(`Edit project`)
       .setIcon('settings')
       .onClick(safeAsync(() => ctx.plugin.router.openProjectEdit(ref.path)))
   )
   if (!ctx.plugin.index.isArchived(ref.path)) {
     menu.addItem((item) =>
       item
-        .setTitle(t('project.archive'))
+        .setTitle(`Archive project`)
         .setIcon('archive')
         .onClick(safeAsync(() => ctx.plugin.setProjectArchived(ref.path, true)))
     )
   } else if (ref.archived) {
     menu.addItem((item) =>
       item
-        .setTitle(t('project.unarchive'))
+        .setTitle(`Unarchive project`)
         .setIcon('archive-restore')
         .onClick(safeAsync(() => ctx.plugin.setProjectArchived(ref.path, false)))
     )
   }
   menu.addItem((item) =>
     item
-      .setTitle(t('project.delete'))
+      .setTitle(`Delete project`)
       .setIcon('trash')
       .onClick(
         safeAsync(async () => {

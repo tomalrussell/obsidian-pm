@@ -26,7 +26,9 @@ export type ViewPart = 'filter' | 'sort' | 'group' | 'fields' | 'mode' | 'scale'
 function stable(value: unknown): string {
   return JSON.stringify(value, (_, v: unknown) =>
     v && typeof v === 'object' && !Array.isArray(v)
-      ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)))
+      ? Object.fromEntries(
+          Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        )
       : v
   )
 }

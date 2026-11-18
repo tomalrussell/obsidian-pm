@@ -59,7 +59,7 @@ describe('HttpApi', () => {
   })
 
   it('writes tasks through every mutation', async () => {
-    const created = await api.createTask('p1', { title: 'Third', status: 'todo' })
+    const created = await api.createTask('p1', { title: 'Third', status: 'capture' })
     expect(created.title).toBe('Third')
     const updated = await api.updateTask(created.id, { title: 'Third!' }, created.updatedAt)
     expect(updated.title).toBe('Third!')

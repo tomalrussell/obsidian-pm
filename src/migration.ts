@@ -8,9 +8,7 @@ import {
   makeDefaultGroup,
   makeDefaultSort,
   parseFrontmatter,
-  isOldFormat,
-  t,
-  tn
+  isOldFormat
 } from '@dotpm/core'
 
 /** Rewrites projects whose tasks are embedded in frontmatter as one file per task. */
@@ -29,18 +27,22 @@ export async function migrateProjects(plugin: PMPlugin): Promise<void> {
       const project = await plugin.store.loadProject(file)
       if (!project || project.tasks.length === 0) continue
 
-      new Notice(t('migration.migrating', { title: project.title }))
+      new Notice(`Migrating project: ${project.title}...`)
 
       await plugin.store.saveProject(project)
       migrated++
     } catch (e) {
       console.error(`[PM] Migration failed for ${file.path}:`, e)
-      new Notice(t('migration.failed', { file: file.basename }))
+      new Notice(`dotpm: Migration failed for "${file.basename}". Check console for details.`)
     }
   }
 
   if (migrated > 0) {
-    new Notice(tn('migration.migrated', migrated))
+    new Notice(
+      migrated === 1
+        ? `dotpm: Migrated ${migrated} project to new format.`
+        : `dotpm: Migrated ${migrated} projects to new format.`
+    )
   }
 }
 
@@ -138,7 +140,11 @@ export async function migrateTaskRefs(plugin: PMPlugin): Promise<void> {
   }
 
   if (rewritten > 0) {
-    new Notice(tn('migration.updatedRefs', rewritten))
+    new Notice(
+      rewritten === 1
+        ? `dotpm: Updated the references in ${rewritten} task note.`
+        : `dotpm: Updated the references in ${rewritten} task notes.`
+    )
   }
 }
 
@@ -177,7 +183,7 @@ export async function migrateProjectLayout(plugin: PMPlugin): Promise<void> {
       })
     } catch (e) {
       console.error(`[PM] Failed to move "${path}" into its own folder:`, e)
-      new Notice(t('migration.moveFailed', { path }))
+      new Notice(`dotpm: Could not move "${path}" into its own folder. Check console for details.`)
     }
   }
 
@@ -192,7 +198,11 @@ export async function migrateProjectLayout(plugin: PMPlugin): Promise<void> {
   remapProjectSettings(plugin, moves)
   retargetOpenViews(plugin, moves)
   await plugin.saveSettings()
-  new Notice(tn('migration.moved', moves.length))
+  new Notice(
+    moves.length === 1
+      ? `dotpm: Moved ${moves.length} project into its own folder.`
+      : `dotpm: Moved ${moves.length} projects into their own folders.`
+  )
 }
 
 function movedPath(path: string, moves: ProjectMove[]): string | null {

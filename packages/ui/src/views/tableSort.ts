@@ -5,7 +5,6 @@ import {
   type PriorityConfig,
   type SortRule,
   displayName,
-  locale,
   statusSortOrder
 } from '@dotpm/core'
 
@@ -28,21 +27,23 @@ function compareBy(a: Task, b: Task, rule: SortRule, statuses: StatusConfig[], p
   const dir = rule.dir === 'asc' ? 1 : -1
   switch (rule.key) {
     case 'title':
-      return dir * a.title.localeCompare(b.title, locale())
+      return dir * compareText(a.title, b.title)
     case 'status':
       return dir * (statusSortOrder(a.status, statuses) - statusSortOrder(b.status, statuses))
     case 'priority':
       return dir * (priorityOrder(a.priority, priorities) - priorityOrder(b.priority, priorities))
     case 'due':
-      return dir * (a.due || 'zzz').localeCompare(b.due || 'zzz')
+      return dir * compareText(a.due || 'zzz', b.due || 'zzz')
     case 'assignees':
-      return dir * displayName(a.assignees[0] ?? '').localeCompare(displayName(b.assignees[0] ?? ''), locale())
+      return dir * compareText(displayName(a.assignees[0] ?? ''), displayName(b.assignees[0] ?? ''))
     case 'progress':
       return dir * (a.progress - b.progress)
     default:
       return 0
   }
 }
+
+const compareText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
 
 function priorityOrder(p: TaskPriority, priorities: PriorityConfig[]): number {
   const idx = priorities.findIndex((cfg) => cfg.id === p)

@@ -3,7 +3,7 @@ import { makeReorderable, safeAsync } from '#dom'
 import { Checkbox } from '#primitives/Checkbox'
 import { IconButton } from '#primitives/IconButton'
 import { Popover } from '#primitives/Popover'
-import { locale, t } from '@dotpm/core'
+
 import { renderPopSearch } from '../popoverParts'
 import { renderOptionRow } from '../properties/optionList'
 
@@ -56,14 +56,14 @@ export function renderSavedViewsPanel(parent: HTMLElement, props: SavedViewsProp
   const foot = createDiv('pm-saved-views-foot pm-pop-section')
   const openForm = (): void => {
     foot.empty()
-    foot.createDiv({ cls: 'pm-pop-heading', text: t('header.saveAsNewTitle') })
+    foot.createDiv({ cls: 'pm-pop-heading', text: 'Save as new view' })
     const input = foot.createEl('input', {
       cls: 'pm-pop-field',
-      attr: { placeholder: t('header.viewName'), spellcheck: 'false' }
+      attr: { placeholder: 'View name…', spellcheck: 'false' }
     })
     const defaultRow = foot.createEl('label', { cls: 'pm-saved-views-check' })
     const isDefault = new Checkbox(defaultRow).el
-    defaultRow.createSpan({ text: t('header.makeDefault') })
+    defaultRow.createSpan({ text: 'Open with this view' })
     foot.createDiv({ cls: 'pm-saved-views-storage', text: props.storageNote })
     input.focus()
     input.addEventListener('keydown', (e) => {
@@ -79,25 +79,24 @@ export function renderSavedViewsPanel(parent: HTMLElement, props: SavedViewsProp
     const dirty = body.createDiv('pm-saved-views-dirty')
     const note = dirty.createDiv('pm-saved-views-dirty-note')
     note.createSpan('pm-dirty-dot')
-    const changes = new Intl.ListFormat(locale(), { type: 'conjunction', style: 'narrow' }).format(props.changes)
-    note.createSpan({ text: t('header.unsaved', { changes }) })
+    const changes = props.changes.join(', ')
+    note.createSpan({ text: `Unsaved changes: ${changes}` })
     const actions = dirty.createDiv('pm-saved-views-dirty-actions')
     createButton(actions)
-      .setButtonText(t('header.updateView'))
+      .setButtonText('Update view')
       .setCta()
       .onClick(() => run(() => props.onUpdate(active.id)))
-    createButton(actions).setButtonText(t('header.saveAsNew')).onClick(openForm)
+    createButton(actions).setButtonText('Save as new').onClick(openForm)
     new IconButton(actions)
       .setIcon('undo-2')
-      .setTooltip(t('header.revert'))
+      .setTooltip('Revert changes')
       .onClick(() => {
         close()
         props.onRevert()
       })
   }
 
-  const search =
-    props.views.length >= SEARCH_FROM ? renderPopSearch(body, t('header.findView'), () => renderList()) : null
+  const search = props.views.length >= SEARCH_FROM ? renderPopSearch(body, 'Find view...', () => renderList()) : null
   const list = body.createDiv('pm-pop-list')
 
   const beginRename = (main: HTMLButtonElement, view: SavedViewItem): void => {
@@ -152,7 +151,7 @@ export function renderSavedViewsPanel(parent: HTMLElement, props: SavedViewsProp
     const query = search?.value.trim().toLowerCase() ?? ''
     if (!query) {
       const all = renderRow(list, props.builtInName, props.activeId === null, undefined, () => props.onSelect(null))
-      all.row.createSpan({ cls: 'pm-saved-view-note', text: t('header.builtIn') })
+      all.row.createSpan({ cls: 'pm-saved-view-note', text: 'Built in' })
     }
     const rows: { el: HTMLElement; id: string }[] = []
     for (const view of props.views.filter((v) => !query || v.name.toLowerCase().includes(query))) {
@@ -160,26 +159,33 @@ export function renderSavedViewsPanel(parent: HTMLElement, props: SavedViewsProp
         props.onSelect(view.id)
       )
 
-      const star = rowAction(row, 'star', view.isDefault ? t('header.isDefault') : t('header.makeDefault'), () =>
+      const star = rowAction(row, 'star', view.isDefault ? 'Opens with this view' : 'Open with this view', () =>
         run(() => props.onSetDefault(view.isDefault ? null : view.id))
       )
       star.toggleClass('is-default', !!view.isDefault)
       star.toggleClass('pm-icon-btn--hover-only', !view.isDefault)
-      rowAction(row, 'pencil', t('header.rename'), () => beginRename(main, view))
-      rowAction(row, 'trash-2', t('header.deleteView'), () => run(() => props.onDelete(view.id)))
+      rowAction(row, 'pencil', 'Rename view', () => beginRename(main, view))
+      rowAction(row, 'trash-2', 'Delete view', () => run(() => props.onDelete(view.id)))
 
       rows.push({ el: row, id: view.id })
     }
     if (!query) makeReorderable(rows, (ids) => run(() => props.onReorder(ids)))
-    if (!props.views.length) list.createDiv({ cls: 'pm-pop-empty', text: t('header.noViewsHint') })
+    if (!props.views.length) {
+      list.createDiv({ cls: 'pm-pop-empty', text: 'Save the current filters and sort as a view to come back to them.' })
+    }
   }
 
   renderList()
 
   body.appendChild(foot)
-  const start = renderOptionRow(foot, { label: t('header.saveCurrent'), icon: 'plus', accent: true, onPick: openForm })
+  const start = renderOptionRow(foot, {
+    label: 'Save current as view...',
+    icon: 'plus',
+    accent: true,
+    onPick: openForm
+  })
   start.disabled = !props.canSave
-  if (!props.canSave) setTooltip(start, t('header.nothingToSave'))
+  if (!props.canSave) setTooltip(start, 'Set a filter first to save it as a view.')
 }
 
 /** The saved views in a popover under `anchor`, with the search field focused when there is one. */

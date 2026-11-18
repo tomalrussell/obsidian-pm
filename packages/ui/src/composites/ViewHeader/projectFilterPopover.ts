@@ -1,5 +1,5 @@
 import { Popover } from '#primitives/Popover'
-import { type ProjectListFilter, type ProjectProgress, PROJECT_PROGRESS, countProjectFilters, t } from '@dotpm/core'
+import { type ProjectListFilter, type ProjectProgress, PROJECT_PROGRESS, countProjectFilters } from '@dotpm/core'
 import { renderPopHead } from '../popoverParts'
 import { renderOptionRow } from '../properties/optionList'
 
@@ -16,9 +16,9 @@ export interface ProjectFilterProps {
 
 const progressLabel = (stage: ProjectProgress): string =>
   ({
-    'not-started': t('projectFilter.notStarted'),
-    'in-progress': t('projectFilter.inProgress'),
-    complete: t('projectFilter.complete')
+    'not-started': 'Not started',
+    'in-progress': 'In progress',
+    complete: 'Complete'
   })[stage]
 
 /** The project list's filter: a checklist of progress stages and one of tags, each with its project count. */
@@ -41,12 +41,12 @@ export function renderProjectFilterPanel(parent: HTMLElement, props: ProjectFilt
   const render = (): void => {
     body.empty()
     renderPopHead(body, {
-      title: t('columns.progress'),
+      title: 'Progress',
       action:
         props.showClear === false
           ? undefined
           : {
-              label: t('filter.clearAll'),
+              label: 'Clear all',
               disabled: countProjectFilters(filter) === 0,
               onClick: () => {
                 filter.tags = undefined
@@ -67,8 +67,10 @@ export function renderProjectFilterPanel(parent: HTMLElement, props: ProjectFilt
       })
     }
 
-    renderPopHead(body, { title: t('taskForm.tags'), section: true })
-    if (!props.tags.length) body.createDiv({ cls: 'pm-pop-empty', text: t('projectFilter.noTags') })
+    renderPopHead(body, { title: 'Tags', section: true })
+    if (!props.tags.length) {
+      body.createDiv({ cls: 'pm-pop-empty', text: 'Add a tags property to a project note to filter by it.' })
+    }
     for (const { tag, count } of props.tags) {
       renderOptionRow(body, {
         label: `#${tag}`,

@@ -1,7 +1,7 @@
 import { createMenu, isPhone, type PlatformMenu } from '#platform'
 import { showMenuBelow } from '#dom'
 import { ChipButton } from '#primitives/ChipButton'
-import { t } from '@dotpm/core'
+
 import { openTunePopover, type TuneItem } from './tunePopover'
 import { openTuneSheet, type TuneSheetProps } from './tuneSheet'
 
@@ -59,8 +59,8 @@ export class ViewHeader {
     this.tune = new ChipButton(tuneSlot)
       .setIcon('sliders-horizontal')
       .setLabel('')
-      .setAriaLabel(t('header.viewOptions'))
-      .setTooltip(t('header.viewOptions'))
+      .setAriaLabel('View options')
+      .setTooltip('View options')
       .onClick(() => {
         if (this.phone && this.tuneSheet) openTuneSheet(this.tune.el, this.tuneSheet())
         else if (this.tuneItems) openTunePopover(this.tune.el, this.tuneItems())
@@ -90,7 +90,7 @@ export class ViewHeader {
     const more = new ChipButton(this.row.createDiv('pm-vh-slot pm-vh-more'))
       .setIcon('ellipsis-vertical')
       .setLabel('')
-      .setAriaLabel(t('header.more'))
+      .setAriaLabel('More options')
     more.onClick(() => {
       const menu = createMenu()
       build(menu, more.el)

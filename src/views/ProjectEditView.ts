@@ -14,9 +14,7 @@ import {
   priorityIconSetLabels,
   collectAllAssignees,
   flattenTasks,
-  mergeById,
-  t,
-  tn
+  mergeById
 } from '@dotpm/core'
 import {
   safeAsync,
@@ -58,7 +56,7 @@ export class ProjectEditView extends ItemView {
     return PM_PROJECT_EDIT_VIEW_TYPE
   }
   getDisplayText(): string {
-    return this.project?.title ?? t('common.project')
+    return this.project?.title ?? `Project`
   }
   getIcon(): string {
     return 'settings'
@@ -100,7 +98,10 @@ export class ProjectEditView extends ItemView {
     this.project = path ? await this.plugin.store.loadProjectByPath(path) : null
     if (!this.project) {
       this.container.empty()
-      new EmptyState(this.container).setIcon('📋').setTitle(t('project.missingTitle')).setBody(t('project.missingBody'))
+      new EmptyState(this.container)
+        .setIcon('📋')
+        .setTitle(`No project here`)
+        .setBody(`It may have been deleted or renamed.`)
       return
     }
     await this.plugin.store.loadProjectBody(this.project)
@@ -149,23 +150,23 @@ export class ProjectEditView extends ItemView {
     renderGlyph(tile, { icon: project.icon, color: project.color })
     const identity = header.createDiv('pm-overview-identity')
     identity.createDiv({ cls: 'pm-overview-title', text: project.title })
-    identity.createDiv({ cls: 'pm-overview-subline', text: t('project.settings') })
+    identity.createDiv({ cls: 'pm-overview-subline', text: `Project settings` })
     new ButtonComponent(header)
-      .setButtonText(t('projectEdit.done'))
+      .setButtonText(`Done`)
       .setCta()
       .onClick(safeAsync(() => this.plugin.router.openProjectOverview(project.filePath, this.leaf)))
   }
 
   private renderGeneral(project: Project): void {
-    const section = this.section(t('projectEdit.general'))
+    const section = this.section(`General`)
     const props = section.createDiv('pm-edit-props')
 
-    renderPropRow(props, t('projectEdit.name'), () => {
+    renderPropRow(props, `Name`, () => {
       const cell = createDiv('pm-prop-value')
       renderInputControl({
         container: cell,
         value: project.title,
-        placeholder: t('project.namePlaceholder'),
+        placeholder: `Project name`,
         onChange: (value) => {
           const title = value.trim()
           if (!title || title === project.title) return
@@ -177,7 +178,7 @@ export class ProjectEditView extends ItemView {
       return cell
     })
 
-    renderPropRow(props, t('project.icon'), () => {
+    renderPropRow(props, `Icon`, () => {
       const cell = createDiv('pm-prop-value')
       renderIconControl({
         container: cell,
@@ -191,11 +192,11 @@ export class ProjectEditView extends ItemView {
       return cell
     })
 
-    renderPropRow(props, t('project.color'), () => {
+    renderPropRow(props, `Color`, () => {
       const cell = createDiv('pm-prop-value')
       const picker = cell.createEl('input', { type: 'color', cls: 'pm-color-custom' })
       picker.value = project.color
-      picker.title = t('projectEdit.projectColor')
+      picker.title = `Project color`
       picker.addEventListener('change', () => {
         this.save({ color: picker.value })
         this.render()
@@ -203,7 +204,7 @@ export class ProjectEditView extends ItemView {
       return cell
     })
 
-    renderPropRow(props, t('project.parent'), () => {
+    renderPropRow(props, `Parent`, () => {
       const cell = createDiv('pm-prop-value')
       const excluded = new Set([
         project.filePath,
@@ -212,10 +213,10 @@ export class ProjectEditView extends ItemView {
       renderSelectControl({
         container: cell,
         value: project.parentPath ?? '',
-        placeholder: t('common.noParent'),
+        placeholder: `No parent`,
         search: true,
         options: [
-          { id: '', label: t('common.noParent') },
+          { id: '', label: `No parent` },
           ...this.plugin.index
             .projectRefs(true)
             .filter((ref) => !excluded.has(ref.path))
@@ -230,19 +231,19 @@ export class ProjectEditView extends ItemView {
       return cell
     })
 
-    renderPropRow(props, t('common.archived'), () => {
+    renderPropRow(props, `Archived`, () => {
       const cell = createDiv('pm-prop-value')
       const ancestor = this.plugin.index.ancestorRefs(project.filePath).find((ref) => ref.archived)
       if (!project.archived && ancestor) {
-        cell.createSpan({ text: t('projectEdit.archivedWith', { title: ancestor.title }) })
+        cell.createSpan({ text: `Yes, with "${ancestor.title}"` })
         return cell
       }
       renderSelectControl({
         container: cell,
         value: project.archived ? 'yes' : 'no',
         options: [
-          { id: 'no', label: t('common.no') },
-          { id: 'yes', label: t('common.yes') }
+          { id: 'no', label: `No` },
+          { id: 'yes', label: `Yes` }
         ],
         onChange: (id) => {
           this.save({ archived: id === 'yes' || undefined })
@@ -253,9 +254,9 @@ export class ProjectEditView extends ItemView {
     })
 
     const desc = section.createDiv('pm-edit-block')
-    desc.createEl('label', { text: t('common.description'), cls: 'pm-label' })
+    desc.createEl('label', { text: `Description`, cls: 'pm-label' })
     const area = desc.createEl('textarea', { cls: 'pm-input pm-edit-desc' })
-    area.placeholder = t('projectEdit.descriptionPlaceholder')
+    area.placeholder = `What is this project about?`
     area.value = project.description
     area.addEventListener('change', () => {
       this.save({ description: area.value })
@@ -263,13 +264,13 @@ export class ProjectEditView extends ItemView {
   }
 
   private renderMembers(project: Project): void {
-    const section = this.section(t('project.members'), t('projectEdit.membersHint'))
+    const section = this.section(`Members`, `Who is on this project`)
     renderPersonPicker({
       container: section.createDiv('pm-prop-value'),
       plugin: this.plugin,
       sourcePath: project.filePath,
       extra: () => collectAllAssignees(project.tasks),
-      addLabel: t('people.addMember'),
+      addLabel: `Add member`,
       selected: () => project.teamMembers,
       add: (value) => this.save({ teamMembers: [...project.teamMembers, value] }),
       remove: (value) => this.save({ teamMembers: project.teamMembers.filter((name) => name !== value) })
@@ -278,16 +279,16 @@ export class ProjectEditView extends ItemView {
 
   private renderStatuses(project: Project): void {
     this.renderPaletteOverride<StatusConfig>({
-      heading: t('settings.statuses.name'),
-      hint: t('projectEdit.statusesHint'),
-      toggleLabel: t('projectEdit.customStatuses'),
-      addLabel: t('settings.statuses.add'),
+      heading: `Statuses`,
+      hint: `The workflow for this project`,
+      toggleLabel: `Use custom statuses instead of the global ones`,
+      addLabel: `Add status`,
       get: () => project.config?.statuses,
       set: (statuses) => this.patchConfig('statuses', statuses),
       copyGlobal: () => this.plugin.settings.statuses.map((status) => ({ ...status })),
       makeEntry: () => ({
         id: 'status-' + makeId().slice(0, 6),
-        label: t('settings.statuses.newLabel'),
+        label: `New status`,
         color: DEFAULT_PALETTE_COLOR,
         icon: '',
         complete: false
@@ -302,16 +303,16 @@ export class ProjectEditView extends ItemView {
 
   private renderPriorities(project: Project): void {
     this.renderPaletteOverride<PriorityConfig>({
-      heading: t('settings.priorities.name'),
-      hint: t('projectEdit.prioritiesHint'),
-      toggleLabel: t('projectEdit.customPriorities'),
-      addLabel: t('settings.priorities.add'),
+      heading: `Priorities`,
+      hint: `The priority scale for this project`,
+      toggleLabel: `Use custom priorities instead of the global ones`,
+      addLabel: `Add priority`,
       get: () => project.config?.priorities,
       set: (priorities) => this.patchConfig('priorities', priorities),
       copyGlobal: () => this.plugin.settings.priorities.map((priority) => ({ ...priority })),
       makeEntry: () => ({
         id: 'priority-' + makeId().slice(0, 6),
-        label: t('settings.priorities.newLabel'),
+        label: `New priority`,
         color: DEFAULT_PALETTE_COLOR,
         icon: ''
       }),
@@ -362,7 +363,7 @@ export class ProjectEditView extends ItemView {
   }
 
   private renderBehavior(project: Project): void {
-    const section = this.section(t('projectEdit.behavior'), t('projectEdit.behaviorHint'))
+    const section = this.section(`View and scheduling`, `Overrides for this project`)
     const props = section.createDiv('pm-edit-props')
     const row = <K extends keyof ProjectConfig>(
       label: string,
@@ -376,7 +377,7 @@ export class ProjectEditView extends ItemView {
           container: cell,
           value: current === undefined ? 'inherit' : String(options.findIndex((o) => o.value === current)),
           options: [
-            { id: 'inherit', label: t('projectEdit.useGlobal') },
+            { id: 'inherit', label: `Use global` },
             ...options.map((option, i) => ({ id: String(i), label: option.label }))
           ],
           onChange: (id) => {
@@ -388,37 +389,40 @@ export class ProjectEditView extends ItemView {
       })
     }
 
-    row(t('settings.defaultView.name'), 'defaultView', [
-      { value: 'table', label: t('views.table') },
-      { value: 'gantt', label: t('views.gantt') },
-      { value: 'kanban', label: t('views.kanban') }
+    row(`Default tasks view`, 'defaultView', [
+      { value: 'table', label: `Table` },
+      { value: 'gantt', label: `Timeline` },
+      { value: 'kanban', label: `Board` }
     ])
     row(
-      t('settings.priorityIcons.name'),
+      `Priority icons`,
       'priorityIcons',
       Object.entries(priorityIconSetLabels()).map(([value, label]) => ({ value: value as PriorityIconSet, label }))
     )
-    row(t('settings.autoSchedule.name'), 'autoSchedule', [
-      { value: true, label: t('common.on') },
-      { value: false, label: t('common.off') }
+    row(`Auto-schedule`, 'autoSchedule', [
+      { value: true, label: `On` },
+      { value: false, label: `Off` }
     ])
-    row(t('projectEdit.pullForward'), 'pullForwardOnEarlyFinish', [
-      { value: true, label: t('common.on') },
-      { value: false, label: t('common.off') }
+    row(`Pull forward on early finish`, 'pullForwardOnEarlyFinish', [
+      { value: true, label: `On` },
+      { value: false, label: `Off` }
     ])
-    row(t('settings.autoArchiveDays.name'), 'autoArchiveDays', [
-      { value: 0, label: t('projectEdit.never') },
-      ...[7, 14, 30, 90].map((days) => ({ value: days, label: tn('projectEdit.afterDays', days) }))
+    row(`Auto-archive completed tasks`, 'autoArchiveDays', [
+      { value: 0, label: `Never` },
+      ...[7, 14, 30, 90].map((days) => ({
+        value: days,
+        label: days === 1 ? `After ${days} day` : `After ${days} days`
+      }))
     ])
-    row(t('projectEdit.subtreeConnections'), 'showSubtreeConnections', [
-      { value: true, label: t('common.show') },
-      { value: false, label: t('common.hide') }
+    row(`Subtree connections in table`, 'showSubtreeConnections', [
+      { value: true, label: `Show` },
+      { value: false, label: `Hide` }
     ])
-    row(t('projectEdit.lineBorders'), 'lineBorders', [
-      { value: 'none', label: t('settings.lineBorders.none') },
-      { value: 'horizontal', label: t('settings.lineBorders.horizontal') },
-      { value: 'vertical', label: t('settings.lineBorders.vertical') },
-      { value: 'both', label: t('settings.lineBorders.both') }
+    row(`Line borders in table`, 'lineBorders', [
+      { value: 'none', label: `None` },
+      { value: 'horizontal', label: `Horizontal` },
+      { value: 'vertical', label: `Vertical` },
+      { value: 'both', label: `Both` }
     ])
   }
 
@@ -432,23 +436,23 @@ export class ProjectEditView extends ItemView {
       this.plugin.settings.customFields.map((field) => ({
         id: field.id,
         field,
-        source: t('projectEdit.vaultSettings')
+        source: `vault settings`
       })),
       ...ancestors.map((ref) => ref.customFields.map((field) => ({ id: field.id, field, source: ref.title })))
     ])
   }
 
   private renderCustomFields(project: Project): void {
-    const section = this.section(t('settings.customFields.name'), t('projectEdit.customFieldsHint'))
+    const section = this.section(`Custom fields`, `Extra properties for tasks`)
 
     const inherited = this.inheritedFields(project)
     const own = new Set(project.customFields.map((field) => field.id))
     const notOverridden = inherited.filter((entry) => !own.has(entry.field.id))
     if (notOverridden.length > 0) {
-      section.createDiv({ cls: 'pm-section-sublabel', text: t('projectEdit.inherited') })
+      section.createDiv({ cls: 'pm-section-sublabel', text: `Inherited` })
       const inheritedList = section.createDiv('pm-cf-list')
       for (const entry of notOverridden) this.renderInheritedField(inheritedList, project, entry.field, entry.source)
-      section.createDiv({ cls: 'pm-section-sublabel', text: t('projectEdit.thisProject') })
+      section.createDiv({ cls: 'pm-section-sublabel', text: `This project` })
     }
 
     const sourceById = new Map(inherited.map((entry) => [entry.field.id, entry.source]))
@@ -459,14 +463,14 @@ export class ProjectEditView extends ItemView {
       renderExtra: (row, field) => {
         const source = sourceById.get(field.id)
         if (source) {
-          row.createSpan({ cls: 'pm-cf-source', text: t('projectEdit.overrides', { source }) })
+          row.createSpan({ cls: 'pm-cf-source', text: `overrides ${source}` })
           return
         }
         const twin = notOverridden.find((entry) => entry.field.name === field.name && entry.field.type === field.type)
         if (!twin) return
         new IconButton(row)
           .setIcon('git-merge')
-          .setTooltip(t('projectEdit.mergeTooltip', { field: twin.field.name, source: twin.source }))
+          .setTooltip(`Merge into the ${twin.field.name} from ${twin.source}`)
           .onClick(() => this.mergeIntoInherited(project, field, twin.field, twin.source))
       }
     })
@@ -477,8 +481,8 @@ export class ProjectEditView extends ItemView {
     async (project: Project, own: CustomFieldDef, target: CustomFieldDef, source: string) => {
       const ok = await confirmDialog(
         this.app,
-        t('projectEdit.mergeConfirm', { field: own.name, target: target.name, source }),
-        t('projectEdit.merge')
+        `Move this project's ${own.name} values onto the ${target.name} from ${source}, and stop defining it here?`,
+        `Merge`
       )
       if (!ok) return
       const taskIds = flattenTasks(project.tasks).map((flat) => flat.task.id)
@@ -502,11 +506,11 @@ export class ProjectEditView extends ItemView {
 
     row.createSpan({ cls: 'pm-cf-name', text: field.name })
     row.createSpan({ cls: 'pm-cf-type', text: customFieldTypeLabels()[field.type] })
-    row.createSpan({ cls: 'pm-cf-source', text: t('projectEdit.from', { source }) })
+    row.createSpan({ cls: 'pm-cf-source', text: `from ${source}` })
 
     new IconButton(row)
       .setIcon(isHidden ? 'eye-off' : 'eye')
-      .setTooltip(t(isHidden ? 'projectEdit.showField' : 'projectEdit.hideField'))
+      .setTooltip(isHidden ? `Show on this project` : `Hide on this project`)
       .onClick(() => {
         const next = isHidden ? hidden.filter((id) => id !== field.id) : [...hidden, field.id]
         this.patchConfig('hiddenCustomFields', next.length ? next : undefined)
@@ -515,7 +519,7 @@ export class ProjectEditView extends ItemView {
 
     new IconButton(row)
       .setIcon('pencil')
-      .setTooltip(t('projectEdit.overrideField'))
+      .setTooltip(`Override on this project`)
       .onClick(() => {
         // Copied, not aliased: the definition belongs to the ancestor's indexed frontmatter.
         const copy: CustomFieldDef = { ...field }
@@ -529,14 +533,14 @@ export class ProjectEditView extends ItemView {
   private renderDangerZone(project: Project): void {
     const section = this.container.createDiv('pm-edit-danger')
     const text = section.createDiv('pm-edit-danger-text')
-    text.createDiv({ cls: 'pm-edit-danger-title', text: t('project.delete') })
-    text.createDiv({ cls: 'pm-modal-hint', text: t('projectEdit.deleteHint') })
+    text.createDiv({ cls: 'pm-edit-danger-title', text: `Delete project` })
+    text.createDiv({ cls: 'pm-modal-hint', text: `Removes the project note. Its task files are left in the vault.` })
     new ButtonComponent(section)
-      .setButtonText(t('project.delete'))
+      .setButtonText(`Delete project`)
       .setDestructive()
       .onClick(
         safeAsync(async () => {
-          const ok = await confirmDialog(this.app, t('project.deleteConfirm', { title: project.title }))
+          const ok = await confirmDialog(this.app, `Delete "${project.title}"?`)
           if (!ok) return
           await this.plugin.store.deleteProject(project)
           this.leaf.detach()

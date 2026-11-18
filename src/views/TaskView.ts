@@ -1,7 +1,7 @@
 import { ItemView, Menu, Scope, WorkspaceLeaf } from 'obsidian'
 import type PMPlugin from '#main'
 import { addTabPageItems } from '#ui/tab'
-import { type Task, flattenTasks, t } from '@dotpm/core'
+import { type Task, flattenTasks } from '@dotpm/core'
 import { EmptyState } from '@dotpm/ui'
 import { TaskEditor } from '#modals/TaskEditor'
 
@@ -20,7 +20,7 @@ export class TaskView extends ItemView {
   plugin: PMPlugin
   private editor: TaskEditor | null = null
   private state: TaskViewState = {}
-  private taskTitle = t('common.task')
+  private taskTitle = `Task`
   private keyScope: Scope
 
   constructor(leaf: WorkspaceLeaf, plugin: PMPlugin) {
@@ -80,7 +80,7 @@ export class TaskView extends ItemView {
     const resolvedProjectPath = projectPath ?? (filePath ? this.plugin.index.projectPathForTask(filePath) : null)
     const project = resolvedProjectPath ? await this.plugin.store.loadProjectByPath(resolvedProjectPath) : null
     if (!project) {
-      this.showMissing(t('taskView.notInProject'))
+      this.showMissing(`This note does not belong to a project.`)
       return
     }
 
@@ -88,13 +88,13 @@ export class TaskView extends ItemView {
     if (filePath) {
       task = flattenTasks(project.tasks).find((f) => f.task.filePath === filePath)?.task ?? null
       if (!task) {
-        this.showMissing(t('taskView.notTask', { project: project.title }))
+        this.showMissing(`This note is not a task in ${project.title}.`)
         return
       }
       await this.plugin.store.loadTaskBody(task)
     }
 
-    this.taskTitle = task?.title ?? t('taskView.newTask')
+    this.taskTitle = task?.title ?? `New task`
     this.editor = new TaskEditor(
       this.app,
       this.plugin,
@@ -109,7 +109,7 @@ export class TaskView extends ItemView {
   }
 
   private showMissing(message: string): void {
-    this.taskTitle = t('common.task')
-    new EmptyState(this.contentEl).setIcon('square-check-big').setTitle(t('taskView.missingTitle')).setBody(message)
+    this.taskTitle = `Task`
+    new EmptyState(this.contentEl).setIcon('square-check-big').setTitle(`No task here`).setBody(message)
   }
 }

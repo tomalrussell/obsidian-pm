@@ -72,7 +72,7 @@ describe('LocalApi over the vault', () => {
   it('searches through the index', async () => {
     expect((await api.searchTasks({ query: 'alpha' })).map((t) => t.id)).toEqual(['a', 'a1'])
     expect((await api.searchTasks({ query: 'alpha', limit: 1 })).map((t) => t.id)).toEqual(['a'])
-    expect((await api.searchTasks({ status: 'todo', projectId })).length).toBe(3)
+    expect((await api.searchTasks({ status: 'capture', projectId })).length).toBe(3)
   })
 
   it('creates and updates through the store and refreshes the views', async () => {

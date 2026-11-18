@@ -9,7 +9,6 @@ import {
   type NonWorkingDays,
   type ViewMode,
   flattenTasks,
-  locale,
   PRIORITY_ICON_SETS,
   stringifyCustomValue
 } from '@dotpm/core'
@@ -131,7 +130,6 @@ export async function buildSnapshot(plugin: PMPlugin, scope: ProjectScope, view:
     version: SNAPSHOT_VERSION,
     generator: { name: 'dotpm', version: plugin.manifest.version },
     exportedAt: new Date().toISOString(),
-    locale: locale(),
     title: scope.label(),
     primaryProjectId: primary.id,
     view: {

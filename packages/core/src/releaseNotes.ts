@@ -26,7 +26,24 @@ export function compareVersions(left: string, right: string): number {
   if (leftParts.prerelease === rightParts.prerelease) return 0
   if (!leftParts.prerelease) return 1
   if (!rightParts.prerelease) return -1
-  return Math.sign(leftParts.prerelease.localeCompare(rightParts.prerelease, 'en', { numeric: true }))
+  return comparePrerelease(leftParts.prerelease, rightParts.prerelease)
+}
+
+function comparePrerelease(left: string, right: string): number {
+  const a = left.split('.')
+  const b = right.split('.')
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if (a[i] === undefined) return -1
+    if (b[i] === undefined) return 1
+    const aNumber = /^\d+$/.test(a[i]) ? Number(a[i]) : null
+    const bNumber = /^\d+$/.test(b[i]) ? Number(b[i]) : null
+    if (aNumber !== null && bNumber !== null) {
+      if (aNumber !== bNumber) return aNumber < bNumber ? -1 : 1
+    } else if (aNumber !== null) return -1
+    else if (bNumber !== null) return 1
+    else if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1
+  }
+  return 0
 }
 
 /** The released sections of a Keep a Changelog file, in the order the file lists them. */

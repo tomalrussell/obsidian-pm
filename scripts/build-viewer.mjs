@@ -35,7 +35,7 @@ const bundled = readFileSync(join(dist, built), 'utf8')
 const js = bundled.replace(/<\/script/gi, '<\\/script')
 
 const html = `<!doctype html>
-<html lang="__DOTPM_LOCALE__">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

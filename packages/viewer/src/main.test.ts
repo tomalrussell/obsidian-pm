@@ -12,7 +12,6 @@ function snapshot(): Snapshot {
     version: 2,
     generator: { name: 'dotpm', version: '0' },
     exportedAt: '2030-01-01T10:00:00.000Z',
-    locale: 'en',
     title: 'Alpha',
     primaryProjectId: 'p1',
     view: {
@@ -48,7 +47,7 @@ function snapshot(): Snapshot {
         createdAt: '2030-01-01T00:00:00.000Z',
         updatedAt: '2030-01-01T00:00:00.000Z',
         tasks: [
-          task('a', 'First', null, 0, 'todo'),
+          task('a', 'First', null, 0, 'capture'),
           task('a1', 'First child', 'a', 0, 'done'),
           task('b', 'Second', null, 1, 'done')
         ]
@@ -120,13 +119,13 @@ describe('viewer', () => {
     const old = snapshot()
     old.version = 1
     old.view.filter = {
-      statuses: ['todo'],
+      statuses: ['capture'],
       dueDateFilter: 'overdue',
       showArchived: false
     } as unknown as Snapshot['view']['filter']
     expect(viewModelFromSnapshot(old).filter).toEqual({
       conditions: [
-        { field: 'status', op: 'any', value: ['todo'] },
+        { field: 'status', op: 'any', value: ['capture'] },
         { field: 'due', op: 'bucket', value: 'overdue' }
       ],
       showArchived: false

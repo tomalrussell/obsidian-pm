@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { TaskNotesTaskInfo } from './tasknotes'
 import { buildImportForest, type TaskNotesImportItem } from './tasknotesImport'
 
-const OPTS = { defaultStatus: 'todo', defaultPriority: 'medium', taskTag: 'task', archiveTag: 'archived' }
+const OPTS = { defaultStatus: 'capture', defaultPriority: 'medium', taskTag: 'task', archiveTag: 'archived' }
 
 function makeInfo(overrides: Partial<TaskNotesTaskInfo> = {}): TaskNotesTaskInfo {
   return {
@@ -61,7 +61,7 @@ describe('buildImportForest', () => {
     const item = makeItem('Tasks/b.md')
     item.info = makeInfo({ path: 'Tasks/b.md', title: 'B', status: '', priority: '', recurrence: 'FREQ=HOURLY' })
     const { roots } = buildImportForest([item], OPTS)
-    expect(roots[0].status).toBe('todo')
+    expect(roots[0].status).toBe('capture')
     expect(roots[0].priority).toBe('medium')
     expect(roots[0].recurrence).toBeUndefined()
   })

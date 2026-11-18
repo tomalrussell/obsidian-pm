@@ -1,5 +1,5 @@
 import type PMPlugin from '#main'
-import { type Project, type Task, type CustomFieldDef, collectAllAssignees, stringifyCustomValue, t } from '@dotpm/core'
+import { type Project, type Task, type CustomFieldDef, collectAllAssignees, stringifyCustomValue } from '@dotpm/core'
 import { Checkbox, renderDateControl, renderInputControl, renderMultiSelect, renderSelectControl } from '@dotpm/ui'
 import { renderPersonPicker } from '#ui/PersonPicker'
 
@@ -47,10 +47,7 @@ export function renderCustomFieldInput(
       renderSelectControl({
         container: wrap,
         value: stringifyCustomValue(value) || null,
-        options: [
-          { id: '', label: t('common.none') },
-          ...(cf.options ?? []).map((option) => ({ id: option, label: option }))
-        ],
+        options: [{ id: '', label: `None` }, ...(cf.options ?? []).map((option) => ({ id: option, label: option }))],
         onChange: commit
       })
       break
@@ -62,8 +59,8 @@ export function renderCustomFieldInput(
       }
       renderMultiSelect({
         container: wrap,
-        addLabel: t('customField.addValue'),
-        addLabelMore: t('common.addAnother'),
+        addLabel: `Add value`,
+        addLabelMore: `Add another`,
         selected: picked,
         options: () => (cf.options ?? []).map((option) => ({ id: option, label: option })),
         add: (option) => {
@@ -81,7 +78,7 @@ export function renderCustomFieldInput(
         plugin,
         sourcePath: task.filePath ?? project.filePath,
         extra: () => [...project.teamMembers, ...collectAllAssignees(project.tasks)],
-        addLabel: t('customField.setPerson'),
+        addLabel: `Set person`,
         selected: () => {
           const current = task.customFields[cf.id]
           return typeof current === 'string' && current ? [current] : []

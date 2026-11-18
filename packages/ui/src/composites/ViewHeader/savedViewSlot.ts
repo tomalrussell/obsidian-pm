@@ -1,5 +1,4 @@
 import { ChipButton } from '#primitives/ChipButton'
-import { t } from '@dotpm/core'
 
 export interface SavedViewSlotProps {
   /** Opens the saved views, anchored to the button. */
@@ -29,14 +28,11 @@ export class SavedViewSlot {
   private countEl: HTMLElement
 
   constructor(parent: HTMLElement, props: SavedViewSlotProps) {
-    this.button = new ChipButton(parent).setIcon('bookmark').setChevron(true).setAriaLabel(t('header.savedViews'))
+    this.button = new ChipButton(parent).setIcon('bookmark').setChevron(true).setAriaLabel('Saved views')
     this.button.el.addClass('pm-vh-saved-view')
     this.button.el.createSpan({ cls: 'pm-dirty-dot', attr: { 'aria-hidden': 'true' } })
     this.button.onClick(() => props.onOpen(this.button.el))
-    this.save = new ChipButton(parent)
-      .setLabel(t('header.saveChanges'))
-      .setTooltip(t('header.updateView'))
-      .onClick(props.onSave)
+    this.save = new ChipButton(parent).setLabel('Save').setTooltip('Update view').onClick(props.onSave)
     this.save.el.addClass('pm-vh-save-view')
     this.countEl = parent.createSpan('pm-vh-count')
   }

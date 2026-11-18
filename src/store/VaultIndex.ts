@@ -11,10 +11,8 @@ import {
   customFieldList,
   stringList,
   dedupePeople,
-  locale,
   DEFAULT_PROJECT_COLOR,
-  readColor,
-  t
+  readColor
 } from '@dotpm/core'
 import { projectPathForTaskPath, resolveVaultLink } from './vaultFs'
 import { isRefLink, refToId, refToPath } from './refs'
@@ -207,7 +205,7 @@ export class VaultIndex {
     const archived = this.tree().archived
     return [...this.projects.values()]
       .filter((ref) => includeArchived || !archived.has(ref.path))
-      .sort((a, b) => a.title.localeCompare(b.title, locale()))
+      .sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0))
   }
 
   /** Projects with no parent, plus any whose parent link is broken or circular. */
@@ -224,7 +222,7 @@ export class VaultIndex {
       .filter((child) => includeArchived || !archived.has(child))
       .map((child) => this.projects.get(child))
       .filter((ref): ref is ProjectRef => ref !== undefined)
-      .sort((a, b) => a.title.localeCompare(b.title, locale()))
+      .sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0))
   }
 
   /** Archived on its own note or through any ancestor. */
@@ -501,8 +499,8 @@ export class VaultIndex {
       path,
       projectId,
       projectPath: this.resolveOwner(path, projectId),
-      title: str(frontmatter.title, t('common.untitled')),
-      status: str(frontmatter.status, 'todo'),
+      title: str(frontmatter.title, `Untitled`),
+      status: str(frontmatter.status, 'capture'),
       priority: str(frontmatter.priority, 'medium'),
       start: str(frontmatter.start),
       due: str(frontmatter.due),

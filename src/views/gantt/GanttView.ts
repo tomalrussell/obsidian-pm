@@ -11,8 +11,7 @@ import {
   flattenTasks,
   applyTaskFilterPromote,
   Temporal,
-  today,
-  t
+  today
 } from '@dotpm/core'
 import { personKeyer, type ProjectScope } from '#store'
 import {
@@ -162,7 +161,7 @@ export class GanttView implements SubView {
     leftPanel.style.minWidth = `${this.labelWidth}px`
     const leftHeader = leftPanel.createDiv('pm-gantt-left-header')
     leftHeader.style.height = `${HEADER_HEIGHT}px`
-    leftHeader.createSpan({ text: t('columns.task'), cls: 'pm-gantt-left-header-label' })
+    leftHeader.createSpan({ text: `Task`, cls: 'pm-gantt-left-header-label' })
     const leftBody = leftPanel.createDiv('pm-gantt-left-body')
 
     const resizeHandle = wrapper.createDiv('pm-gantt-resize-handle')
@@ -267,7 +266,7 @@ export class GanttView implements SubView {
 
     const addRow = leftBody.createDiv('pm-gantt-label-row pm-gantt-add-row')
     addRow.style.height = `${ROW_HEIGHT}px`
-    renderAddButton(addRow, t('task.add'), (e) => {
+    renderAddButton(addRow, `Add task`, (e) => {
       openAddTask(this.plugin, this.scope, { event: e, onSave: () => this.onRefresh() })
     })
 

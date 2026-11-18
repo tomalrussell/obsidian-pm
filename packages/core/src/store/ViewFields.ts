@@ -1,5 +1,4 @@
 import type { CustomFieldDef, FieldList, ViewFields, ViewMode } from '../types'
-import { t } from '../i18n'
 
 /**
  * The built-in fields each presentation can show, in their default order: table columns,
@@ -120,29 +119,29 @@ export function viewFieldLabel(id: string, customFields: CustomFieldDef[]): stri
   if (id.startsWith('cf:')) return customFields.find((cf) => `cf:${cf.id}` === id)?.name ?? id.slice(3)
   switch (id) {
     case 'title':
-      return t('columns.task')
+      return 'Task'
     case 'project':
-      return t('columns.project')
+      return 'Project'
     case 'status':
-      return t('columns.status')
+      return 'Status'
     case 'priority':
-      return t('columns.priority')
+      return 'Priority'
     case 'assignees':
-      return t('columns.assignees')
+      return 'Assignees'
     case 'due':
-      return t('columns.due')
+      return 'Due'
     case 'progress':
-      return t('columns.progress')
+      return 'Progress'
     case 'time':
-      return t('columns.time')
+      return 'Time'
     case 'tags':
-      return t('taskForm.tags')
+      return 'Tags'
     case 'description':
-      return t('fields.description')
+      return 'Description'
     case 'subtasks':
-      return t('fields.subtasks')
+      return 'Subtasks'
     case 'dates':
-      return t('fields.dates')
+      return 'Dates'
     default:
       return id
   }

@@ -1,6 +1,6 @@
 import { ChipButton } from '#primitives/ChipButton'
 import { Popover } from '#primitives/Popover'
-import { type ProjectListField, PROJECT_LIST_FIELDS, t, withFieldShown } from '@dotpm/core'
+import { type ProjectListField, PROJECT_LIST_FIELDS, withFieldShown } from '@dotpm/core'
 import { renderPopHead } from '../popoverParts'
 import { renderVisibilityList } from '../visibilityList'
 
@@ -12,10 +12,10 @@ export interface ProjectFieldsProps {
 
 export const projectFieldLabel = (field: ProjectListField): string =>
   ({
-    progress: t('columns.progress'),
-    tasks: t('columns.tasks'),
-    members: t('columns.members'),
-    due: t('columns.due')
+    progress: 'Progress',
+    tasks: 'Tasks',
+    members: 'Members',
+    due: 'Due'
   })[field]
 
 const asFields = (ids: string[]): ProjectListField[] =>
@@ -39,23 +39,23 @@ export function renderProjectFieldsPanel(parent: HTMLElement, props: ProjectFiel
         : withFieldShown(shown, field, PROJECT_LIST_FIELDS)
     )
   }
-  const lists = { showLabel: t('header.showField'), hideLabel: t('header.hideField'), onToggle: toggle }
+  const lists = { showLabel: 'Show field', hideLabel: 'Hide field', onToggle: toggle }
 
   const render = (): void => {
     body.empty()
     renderVisibilityList(body, {
       ...lists,
       rows: [
-        { id: 'project', label: t('columns.project'), hidden: false, locked: true },
+        { id: 'project', label: 'Project', hidden: false, locked: true },
         ...shown.map((id) => ({ id, label: projectFieldLabel(id), hidden: false }))
       ],
-      lockedLabel: t('header.lockedField'),
+      lockedLabel: 'Always shown',
       onReorder: (ids) => set(asFields(ids))
     })
 
     const hidden = PROJECT_LIST_FIELDS.filter((field) => !shown.includes(field))
     if (hidden.length) {
-      renderPopHead(body, { title: t('header.hiddenFields'), section: true })
+      renderPopHead(body, { title: 'Hidden', section: true })
       renderVisibilityList(body, {
         ...lists,
         rows: hidden.map((id) => ({ id, label: projectFieldLabel(id), hidden: true }))
@@ -64,7 +64,7 @@ export function renderProjectFieldsPanel(parent: HTMLElement, props: ProjectFiel
 
     new ChipButton(body.createDiv('pm-fields-foot pm-pop-section'))
       .setVariant('flat')
-      .setLabel(t('header.showAll'))
+      .setLabel('Show all')
       .setDisabled(shown.join() === PROJECT_LIST_FIELDS.join())
       .onClick(() => set([...PROJECT_LIST_FIELDS]))
   }

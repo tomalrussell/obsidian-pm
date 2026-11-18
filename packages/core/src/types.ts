@@ -1,5 +1,4 @@
 import { today } from './dates'
-import { t } from './i18n'
 import type { TaskIndex } from './store/TaskIndex'
 
 export type TaskStatus = string
@@ -299,7 +298,7 @@ export interface ProjectConfig {
 
 /**
  * A project's config with every fallback applied. Views and modals read this rather
- * than the global settings, so another task source can supply its own catalogs.
+ * than the global settings, so another task source can supply its own configuration.
  */
 export interface ResolvedProjectConfig {
   statuses: StatusConfig[]
@@ -334,11 +333,11 @@ export const PRIORITY_ICON_SETS: Record<PriorityIconSet, string[]> = {
 
 export function priorityIconSetLabels(): Record<PriorityIconSet, string> {
   return {
-    chevrons: t('priorityIcons.chevrons'),
-    signal: t('priorityIcons.signal'),
-    arrows: t('priorityIcons.arrows'),
-    alerts: t('priorityIcons.alerts'),
-    none: t('priorityIcons.none')
+    chevrons: 'Chevrons',
+    signal: 'Signal',
+    arrows: 'Arrows',
+    alerts: 'Alerts',
+    none: 'None'
   }
 }
 
@@ -371,7 +370,7 @@ export interface PMSettings {
   showSubtreeConnections: boolean
   lineBorders: LineBorders
   showTagColors: boolean
-  /** Moment-style tokens for every date label. Empty follows the interface language. */
+  /** Moment-style tokens for every date label. Empty uses the default date format. */
   dateFormat: string
   saveTaskOnClose: boolean
   taskEditorSurface: 'modal' | 'tab'
@@ -404,12 +403,11 @@ export interface PMSettings {
 }
 
 export const DEFAULT_STATUSES: StatusConfig[] = [
-  { id: 'todo', label: 'To Do', color: '#8a94a0', icon: '', complete: false },
-  { id: 'in-progress', label: 'In Progress', color: '#8b72be', icon: '', complete: false },
-  { id: 'blocked', label: 'Blocked', color: '#c47070', icon: '', complete: false },
-  { id: 'review', label: 'In Review', color: '#b8a06b', icon: '', complete: false },
-  { id: 'done', label: 'Done', color: '#79b58d', icon: '', complete: true },
-  { id: 'cancelled', label: 'Cancelled', color: '#767491', icon: '', complete: true }
+  { id: 'capture', label: 'capture', color: '#8a94a0', icon: '', complete: false },
+  { id: 'next', label: 'next', color: '#8b72be', icon: '', complete: false },
+  { id: 'in-progress', label: 'in-progress', color: '#c47070', icon: '', complete: false },
+  { id: 'done', label: 'done', color: '#79b58d', icon: '', complete: true },
+  { id: 'someday', label: 'someday', color: '#767491', icon: '', complete: false }
 ]
 
 export const DEFAULT_PRIORITIES: PriorityConfig[] = [
@@ -419,25 +417,17 @@ export const DEFAULT_PRIORITIES: PriorityConfig[] = [
   { id: 'low', label: 'Low', color: '#79b58d', icon: '' }
 ]
 
-/** The default palettes with their labels in the active language, for a vault that has none yet. */
+/** The default palettes for a vault that has none yet. */
 export function defaultStatuses(): StatusConfig[] {
-  const labels: Record<string, string> = {
-    todo: t('status.todo'),
-    'in-progress': t('status.inProgress'),
-    blocked: t('status.blocked'),
-    review: t('status.review'),
-    done: t('status.done'),
-    cancelled: t('status.cancelled')
-  }
-  return DEFAULT_STATUSES.map((status) => ({ ...status, label: labels[status.id] ?? status.label }))
+  return DEFAULT_STATUSES.map((status) => ({ ...status }))
 }
 
 export function defaultPriorities(): PriorityConfig[] {
   const labels: Record<string, string> = {
-    critical: t('priority.critical'),
-    high: t('priority.high'),
-    medium: t('priority.medium'),
-    low: t('priority.low')
+    critical: 'Critical',
+    high: 'High',
+    medium: 'Medium',
+    low: 'Low'
   }
   return DEFAULT_PRIORITIES.map((priority) => ({ ...priority, label: labels[priority.id] ?? priority.label }))
 }
@@ -500,10 +490,10 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
   const now = new Date().toISOString()
   return {
     id: makeId(),
-    title: t('task.newTitle'),
+    title: 'New task',
     description: '',
     type: 'task',
-    status: 'todo',
+    status: 'capture',
     priority: 'medium',
     start: today().toString(),
     due: '',

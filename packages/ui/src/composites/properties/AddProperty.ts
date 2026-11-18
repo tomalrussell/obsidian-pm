@@ -1,4 +1,3 @@
-import { t } from '@dotpm/core'
 import { setIcon } from '#platform'
 import { renderAddButton } from '../addButton'
 import { Popover } from '#primitives/Popover'
@@ -17,7 +16,7 @@ export function renderAddProperty(
 ): void {
   if (hidden.length === 0) return
   let pop: Popover | null = null
-  const btn = renderAddButton(container, t('property.add'), () => {
+  const btn = renderAddButton(container, 'Add property', () => {
     if (pop?.isOpen) {
       pop.close()
       return

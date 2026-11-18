@@ -4,8 +4,8 @@ import type { FilterSetup } from '../composites/ViewHeader/filterPopover'
 import { boardColumns, boardField, groupableFields } from './boardColumns'
 
 const tasks = [
-  makeTask({ id: 'a', status: 'todo', priority: 'high', assignees: ['Ada'], tags: ['web'] }),
-  makeTask({ id: 'b', status: 'todo', priority: 'low', assignees: ['Ada', 'Bo'] }),
+  makeTask({ id: 'a', status: 'capture', priority: 'high', assignees: ['Ada'], tags: ['web'] }),
+  makeTask({ id: 'b', status: 'capture', priority: 'low', assignees: ['Ada', 'Bo'] }),
   makeTask({ id: 'c', status: 'done', priority: 'high', customFields: { client: 'Acme' } })
 ]
 
@@ -64,7 +64,7 @@ describe('boardColumns', () => {
     const group: GroupState = {
       field: 'priority',
       hideEmpty: true,
-      columns: { priority: { order: ['low', 'high'], hidden: ['low'] }, status: { hidden: ['todo'] } }
+      columns: { priority: { order: ['low', 'high'], hidden: ['low'] }, status: { hidden: ['capture'] } }
     }
     expect(ids(group)).toEqual([
       ['low', 'b', true],

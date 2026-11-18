@@ -2,7 +2,6 @@ import { TFile } from 'obsidian'
 import type PMPlugin from '#main'
 import type { ProjectRef, TaskRef } from '#store'
 import { safeAsync } from '@dotpm/ui'
-import { t } from '@dotpm/core'
 
 const DEBOUNCE_MS = 5000
 
@@ -114,7 +113,7 @@ export class IdRepair {
         const project = await this.plugin.store.loadProjectByPath(plan.projectPath)
         if (!project) continue
         await this.plugin.store.reassignIds(project, plan.taskIds, plan.newProjectId)
-        this.plugin.showNotice(t('idRepair.repaired', { title: project.title }))
+        this.plugin.showNotice(`Repaired duplicated ids in "${project.title}" (copied project).`)
       }
     } finally {
       this.running = false

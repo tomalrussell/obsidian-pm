@@ -1,5 +1,5 @@
 import { SuggestModal, App } from 'obsidian'
-import { type Task, displayName, t } from '@dotpm/core'
+import { type Task, displayName } from '@dotpm/core'
 import type { ProjectRef } from '#store'
 import { renderGlyph } from '@dotpm/ui'
 
@@ -11,7 +11,7 @@ export class ProjectPickerModal extends SuggestModal<ProjectRef> {
     private onChoose: (project: ProjectRef) => void
   ) {
     super(app)
-    this.setPlaceholder(t('picker.pickProject'))
+    this.setPlaceholder(`Pick a project…`)
   }
 
   getSuggestions(query: string): ProjectRef[] {
@@ -35,7 +35,7 @@ export class TaskPickerModal extends SuggestModal<Task> {
     app: App,
     private tasks: Task[],
     private onChoose: (task: Task) => void,
-    placeholder = t('picker.pickParentTask')
+    placeholder = `Pick a parent task…`
   ) {
     super(app)
     this.setPlaceholder(placeholder)
@@ -63,7 +63,7 @@ export class PersonLookupModal extends SuggestModal<string> {
     private onChoose: (person: string) => void
   ) {
     super(app)
-    this.setPlaceholder(t('picker.pickPerson'))
+    this.setPlaceholder(`Pick a person…`)
   }
 
   getSuggestions(query: string): string[] {

@@ -17,9 +17,7 @@ import {
   projectProgress,
   projectTagCounts,
   sameValue,
-  t,
   tidyProjectFields,
-  tn,
   withDefault
 } from '@dotpm/core'
 import {
@@ -58,13 +56,12 @@ import { projectListItems, renderProjectTable, type ProjectListContext } from '.
 export const PM_DASHBOARD_VIEW_TYPE = 'pm-dashboard'
 
 const sortFields = (): SortField<ProjectSortKey>[] => [
-  { id: 'title', label: t('columns.project') },
-  { id: 'progress', label: t('columns.progress') },
-  { id: 'due', label: t('columns.due') }
+  { id: 'title', label: `Project` },
+  { id: 'progress', label: `Progress` },
+  { id: 'due', label: `Due` }
 ]
 
-const groupLabel = (group: ProjectGroupBy): string =>
-  ({ none: t('header.groupNone'), folder: t('header.groupFolder'), tag: t('header.groupTag') })[group]
+const groupLabel = (group: ProjectGroupBy): string => ({ none: `No grouping`, folder: `Folder`, tag: `Tag` })[group]
 
 export class DashboardView extends ItemView {
   private plugin: PMPlugin
@@ -101,7 +98,7 @@ export class DashboardView extends ItemView {
     return PM_DASHBOARD_VIEW_TYPE
   }
   getDisplayText(): string {
-    return t('dashboard.title')
+    return `Projects`
   }
   getIcon(): string {
     return 'chart-gantt'
@@ -160,8 +157,8 @@ export class DashboardView extends ItemView {
     renderBreadcrumb(header.context, {
       icon: 'library',
       ancestors: [],
-      title: t('dashboard.title'),
-      foldLabel: t('header.parentProjects')
+      title: `Projects`,
+      foldLabel: `Parent projects`
     })
     this.renderViewSlot(header.view)
     this.renderQuerySlot(header.query)
@@ -171,7 +168,7 @@ export class DashboardView extends ItemView {
       .setMoreMenu((menu) => this.fillMoreMenu(menu))
     new SplitButton(header.actions)
       .setIcon('plus')
-      .setLabel(t('header.newProject'))
+      .setLabel(`New project`)
       .onClick(() => openProjectCreate(this.plugin))
   }
 
@@ -184,18 +181,18 @@ export class DashboardView extends ItemView {
 
   private renderQuerySlot(parent: HTMLElement): void {
     this.searchBox = new SearchBox(parent, this.searchProps())
-    const filter = new ChipButton(parent).setIcon('list-filter').setLabel(t('header.filter'))
-    filter.setAriaLabel(t('header.filter')).onClick(() => this.openFilter(filter.el))
+    const filter = new ChipButton(parent).setIcon('list-filter').setLabel(`Filter`)
+    filter.setAriaLabel(`Filter`).onClick(() => this.openFilter(filter.el))
     this.filterButton = filter
-    this.archivedButton = new ChipButton(parent).setLabel(t('common.archived')).onClick(() => this.toggleArchived())
-    const sort = new ChipButton(parent).setAriaLabel(t('header.sort'))
+    this.archivedButton = new ChipButton(parent).setLabel(`Archived`).onClick(() => this.toggleArchived())
+    const sort = new ChipButton(parent).setAriaLabel(`Sort`)
     sort.onClick(() => this.openSort(sort.el))
     this.sortButton = sort
-    const group = new ChipButton(parent).setIcon('group').setAriaLabel(t('header.groupBy'))
+    const group = new ChipButton(parent).setIcon('group').setAriaLabel(`Group by`)
     group.onClick(() => this.openGroupMenu(group.el))
     this.groupButton = group
-    const fields = new ChipButton(parent).setIcon('columns-3').setLabel(t('header.fields'))
-    fields.setAriaLabel(t('header.fields')).onClick(() => this.openFields(fields.el))
+    const fields = new ChipButton(parent).setIcon('columns-3').setLabel(`Fields`)
+    fields.setAriaLabel(`Fields`).onClick(() => this.openFields(fields.el))
     this.fieldsButton = fields
   }
 
@@ -227,9 +224,9 @@ export class DashboardView extends ItemView {
   private searchProps(): SearchBoxProps {
     return {
       value: this.text,
-      label: t('header.search'),
-      placeholder: t('header.search'),
-      clearLabel: t('common.clear'),
+      label: `Search`,
+      placeholder: `Search`,
+      clearLabel: `Clear`,
       onChange: (value) => {
         this.text = value
         this.renderList()
@@ -291,19 +288,19 @@ export class DashboardView extends ItemView {
       tabs: [
         {
           id: 'filter',
-          label: t('header.filter'),
+          label: `Filter`,
           badge: () => countProjectFilters(this.state.filter),
           render: (parent, changed) =>
             renderProjectFilterPanel(parent, { ...this.filterProps(changed), showClear: false })
         },
         {
           id: 'sort',
-          label: t('header.sort'),
+          label: `Sort`,
           render: (parent, changed) => renderSortPanel(parent, this.sortProps(changed))
         },
         {
           id: 'group',
-          label: t('header.group'),
+          label: `Group`,
           render: (parent, changed) => {
             const draw = (): void => {
               parent.empty()
@@ -326,19 +323,19 @@ export class DashboardView extends ItemView {
         },
         {
           id: 'fields',
-          label: t('header.fields'),
+          label: `Fields`,
           render: (parent, changed) => renderProjectFieldsPanel(parent, this.fieldsProps(changed))
         }
       ],
       clear: {
-        label: t('filter.clearAll'),
+        label: `Clear all`,
         canClear: () => countProjectFilters(this.state.filter) > 0,
         onClear: () => {
           this.state.filter = {}
           this.changed()
         }
       },
-      doneLabel: () => tn('header.showProjects', this.shown)
+      doneLabel: () => (this.shown === 1 ? `Show ${this.shown} project` : `Show ${this.shown} projects`)
     }
   }
 
@@ -346,7 +343,7 @@ export class DashboardView extends ItemView {
   private fillMoreMenu(menu: PlatformMenu): void {
     menu.addItem((item) =>
       item
-        .setTitle(t('common.archived'))
+        .setTitle(`Archived`)
         .setIcon('archive')
         .setChecked(this.plugin.settings.showArchivedProjects)
         .onClick(() => this.toggleArchived())
@@ -377,13 +374,13 @@ export class DashboardView extends ItemView {
     const items: TuneItem[] = [
       {
         icon: 'search',
-        label: t('header.search'),
+        label: `Search`,
         state: this.text.trim(),
         onOpen: (anchor) => openSearchPopover(anchor, this.searchProps())
       },
       {
         icon: 'list-filter',
-        label: t('header.filter'),
+        label: `Filter`,
         state: filters ? String(filters) : '',
         onOpen: (anchor) => this.openFilter(anchor)
       }
@@ -391,27 +388,27 @@ export class DashboardView extends ItemView {
     if (index.projectRefs(true).length > index.projectRefs().length || settings.showArchivedProjects) {
       items.push({
         icon: settings.showArchivedProjects ? 'eye' : 'eye-off',
-        label: t('common.archived'),
-        state: settings.showArchivedProjects ? t('filter.included') : '',
+        label: `Archived`,
+        state: settings.showArchivedProjects ? `Included` : '',
         onOpen: () => this.toggleArchived()
       })
     }
     items.push(
       {
         icon: 'arrow-down-up',
-        label: t('header.sort'),
+        label: `Sort`,
         state: sort ? `${sort.label} ${sort.more}`.trim() : '',
         onOpen: (anchor) => this.openSort(anchor)
       },
       {
         icon: 'group',
-        label: t('header.groupBy'),
+        label: `Group by`,
         state: groupLabel(this.state.group),
         onOpen: (anchor) => this.openGroupMenu(anchor)
       },
       {
         icon: 'columns-3',
-        label: t('header.fields'),
+        label: `Fields`,
         state: this.hiddenFieldsLabel(),
         onOpen: (anchor) => this.openFields(anchor)
       }
@@ -442,8 +439,8 @@ export class DashboardView extends ItemView {
     if (!groups.length) {
       new EmptyState(this.bodyEl)
         .setIcon('search-x')
-        .setTitle(t('list.noMatch'))
-        .setAction(t('filter.clearAllFilters'), () => {
+        .setTitle(`No projects match these filters`)
+        .setAction(`Clear all filters`, () => {
           this.state.filter = {}
           this.text = ''
           this.renderHeader()
@@ -465,29 +462,31 @@ export class DashboardView extends ItemView {
     const { index } = this.plugin
     const state = new EmptyState(this.bodyEl).setIcon('folder-kanban')
     if (!index.ready) {
-      state.setTitle(t('list.looking'))
+      state.setTitle(`Looking for projects`)
       return
     }
     if (index.projectRefs(true).length) {
-      state.setTitle(t('list.allArchived')).setBody(t('list.allArchivedBody'))
+      state.setTitle(`Every project is archived`).setBody(`Turn on "Archived" above to see them.`)
       return
     }
     state
-      .setTitle(t('list.empty'))
-      .setBody(t('list.emptyBody'))
-      .setAction(t('header.newProject'), () => openProjectCreate(this.plugin))
+      .setTitle(`No projects yet`)
+      .setBody(`Create your first project to get started.`)
+      .setAction(`New project`, () => openProjectCreate(this.plugin))
   }
 
   private syncHeader(shown: number, total: number): void {
     const { settings, index } = this.plugin
     const active = this.activeView()
     this.viewSlot?.sync({
-      name: active?.name ?? t('header.allProjects'),
+      name: active?.name ?? `All projects`,
       saved: !!active,
       dirty: this.viewChanges().length > 0,
       count: isProjectQueryActive(this.state.filter, this.text)
-        ? t('header.shownOf', { shown, total })
-        : tn('count.projects', total)
+        ? `${shown} of ${total}`
+        : total === 1
+          ? `${total} project`
+          : `${total} projects`
     })
     const filters = countProjectFilters(this.state.filter)
     this.filterButton?.setBadge(filters).setActive(filters > 0)
@@ -498,7 +497,7 @@ export class DashboardView extends ItemView {
     this.archivedButton?.el.toggleClass('pm-hidden', !hasArchived && !settings.showArchivedProjects)
     if (this.sortButton) syncSortButton(this.sortButton, summarizeSort(sortFields(), this.state.sort))
     const grouped = this.state.group !== 'none'
-    this.groupButton?.setLabel(grouped ? groupLabel(this.state.group) : t('header.group')).setActive(grouped)
+    this.groupButton?.setLabel(grouped ? groupLabel(this.state.group) : `Group`).setActive(grouped)
     this.fieldsButton?.setDetail(this.hiddenFieldsLabel()).setActive(this.state.fields !== undefined)
     this.header?.fit()
   }
@@ -506,7 +505,7 @@ export class DashboardView extends ItemView {
   /** "2 hidden" while columns are hidden, or nothing. */
   private hiddenFieldsLabel(): string {
     const hidden = PROJECT_LIST_FIELDS.length - this.shownFields().length
-    return hidden ? tn('header.hiddenCount', hidden) : ''
+    return hidden ? (hidden === 1 ? `${hidden} hidden` : `${hidden} hidden`) : ''
   }
 
   private activeView(): ProjectListView | undefined {
@@ -518,11 +517,11 @@ export class DashboardView extends ItemView {
     const active = this.activeView()
     if (!active) return []
     const changes: string[] = []
-    if (!sameValue(active.filter, this.state.filter)) changes.push(t('header.changedFilter'))
-    if (!sameValue(active.sort, this.state.sort)) changes.push(t('header.changedSort'))
-    if (active.group !== this.state.group) changes.push(t('header.changedGroup'))
-    if (active.fields && !sameValue(active.fields, this.shownFields())) changes.push(t('header.changedFields'))
-    if (active.showArchived !== this.plugin.settings.showArchivedProjects) changes.push(t('header.changedArchived'))
+    if (!sameValue(active.filter, this.state.filter)) changes.push(`Filter`)
+    if (!sameValue(active.sort, this.state.sort)) changes.push(`Sort`)
+    if (active.group !== this.state.group) changes.push(`Grouping`)
+    if (active.fields && !sameValue(active.fields, this.shownFields())) changes.push(`Fields`)
+    if (active.showArchived !== this.plugin.settings.showArchivedProjects) changes.push(`Archived`)
     return changes
   }
 
@@ -569,8 +568,8 @@ export class DashboardView extends ItemView {
       activeId: this.state.activeViewId,
       changes: this.viewChanges(),
       canSave: !sameValue({ ...this.state, activeViewId: null }, makeDefaultProjectList()),
-      storageNote: t('header.storedInSettings'),
-      builtInName: t('header.allProjects'),
+      storageNote: `Kept in plugin settings on this vault.`,
+      builtInName: `All projects`,
       onSelect: (id) => {
         const view = views.find((v) => v.id === id)
         if (view) this.applyView(view)

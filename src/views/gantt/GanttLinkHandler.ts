@@ -2,7 +2,6 @@ import { Notice } from 'obsidian'
 import type PMPlugin from '#main'
 import type { ProjectScope } from '#store'
 import { safeAsync } from '@dotpm/ui'
-import { t } from '@dotpm/core'
 
 export interface LinkState {
   active: boolean
@@ -54,7 +53,7 @@ export function handleLinkDotClick(
   }
 
   if (link.side === side) {
-    new Notice(t('gantt.linkDirection'))
+    new Notice(`Connect a right dot (output) to a left dot (input).`)
     return
   }
 
@@ -70,17 +69,17 @@ export function handleLinkDotClick(
   const successor = scope.taskById(successorId)
   const project = scope.projectOf(successorId)
   if (!successor || !project) {
-    new Notice(t('gantt.linkGone'))
+    new Notice(`That task is no longer in this view.`)
     return
   }
 
   if (successor.dependencies.includes(predecessorId)) {
-    new Notice(t('gantt.linkExists'))
+    new Notice(`This dependency already exists.`)
     return
   }
 
   if (plugin.index.wouldCreateCycle(successorId, predecessorId)) {
-    new Notice(t('gantt.linkCycle'))
+    new Notice(`That link would create a dependency cycle.`)
     return
   }
 
@@ -89,7 +88,7 @@ export function handleLinkDotClick(
     try {
       await plugin.store.updateTask(project, successorId, { dependencies: deps })
     } catch (err) {
-      new Notice(t('gantt.linkSaveFailed'))
+      new Notice(`Failed to save dependency.`)
       console.error('GanttLinkHandler: save failed', err)
       return
     }

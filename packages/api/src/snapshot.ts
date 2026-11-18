@@ -59,8 +59,6 @@ export interface Snapshot {
   version: number
   generator: { name: string; version: string }
   exportedAt: string
-  /** The language tag the page's own text is shown in. */
-  locale: string
   title: string
   /** The project the view was opened from; first in `projects`. */
   primaryProjectId: string

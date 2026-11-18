@@ -1,4 +1,4 @@
-import { type Task, formatDateShort, t } from '@dotpm/core'
+import { type Task, formatDateShort } from '@dotpm/core'
 import { AvatarStack, type AvatarPerson } from '#primitives/AvatarStack'
 import { Chip } from '#primitives/Chip'
 import { ProgressBar } from '#primitives/ProgressBar'
@@ -59,27 +59,27 @@ export class KanbanCard {
     titleRow.createSpan({ text: task.title, cls: 'pm-kanban-card-title' })
     if (task.type === 'milestone') {
       new Chip(titleRow)
-        .setLabel(t('chip.milestone'))
+        .setLabel('M')
         .setVariant('solid')
         .setSize('sm')
         .setColor('var(--color-purple)')
-        .setTooltip(t('taskForm.typeMilestone'))
+        .setTooltip('Milestone')
     }
     if (task.type === 'subtask') {
       new Chip(titleRow)
-        .setLabel(t('chip.subtask'))
+        .setLabel('Sub')
         .setVariant('solid')
         .setSize('sm')
         .setColor('var(--color-green)')
-        .setTooltip(t('taskForm.typeSubtask'))
+        .setTooltip('Subtask')
     }
     if (task.recurrence) {
       new Chip(titleRow)
-        .setLabel(t('chip.recurring'))
+        .setLabel('R')
         .setVariant('solid')
         .setSize('sm')
         .setColor('var(--color-blue)')
-        .setTooltip(t('chip.recurringTooltip'))
+        .setTooltip('Recurring')
     }
 
     const footer = body.createDiv('pm-kanban-card-footer')

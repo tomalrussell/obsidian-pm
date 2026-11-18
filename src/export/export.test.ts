@@ -12,7 +12,7 @@ import { buildSnapshot } from './snapshot'
 
 const SETTINGS: PMSettings = { ...DEFAULT_SETTINGS, autoSchedule: false }
 const TEMPLATE =
-  '<html lang="__DOTPM_LOCALE__"><title>__DOTPM_TITLE__</title><script id="s" type="application/json">__DOTPM_SNAPSHOT__</script>'
+  '<html lang="en"><title>__DOTPM_TITLE__</title><script id="s" type="application/json">__DOTPM_SNAPSHOT__</script>'
 
 function fakePlugin(): { plugin: PMPlugin; store: ProjectStore; index: VaultIndex } {
   const { app } = makeFakeApp({ liveMetadataCache: true })
@@ -43,7 +43,7 @@ describe('buildSnapshot', () => {
   it('carries the projects, the tasks with bodies, the view state and the icon table', async () => {
     const snapshot = await buildSnapshot(plugin, scope, {
       mode: 'gantt',
-      filter: { ...makeDefaultFilter(), conditions: [{ field: 'status', op: 'any', value: ['todo'] }] },
+      filter: { ...makeDefaultFilter(), conditions: [{ field: 'status', op: 'any', value: ['capture'] }] },
       sort: [{ key: 'due', dir: 'desc' }],
       group: { field: 'priority' },
       fields: { table: { visible: ['title', 'due'], widths: { due: 80 } } },
@@ -61,7 +61,7 @@ describe('buildSnapshot', () => {
       ganttGranularity: 'month',
       nonWorkingDays: { weekends: true }
     })
-    expect(snapshot.view.filter.conditions).toEqual([{ field: 'status', op: 'any', value: ['todo'] }])
+    expect(snapshot.view.filter.conditions).toEqual([{ field: 'status', op: 'any', value: ['capture'] }])
     expect(snapshot.projects.length).toBe(1)
     const [project] = snapshot.projects
     expect(project.taskCount).toBe(2)
@@ -102,7 +102,6 @@ describe('renderSnapshotHtml', () => {
     projects: [],
     icons: {},
     exportedAt: '',
-    locale: 'en',
     generator: { name: 'dotpm', version: '0' },
     primaryProjectId: 'p',
     view: {
@@ -129,11 +128,6 @@ describe('renderSnapshotHtml', () => {
     expect(json).not.toContain('</script>')
     expect(json).toContain('\\u003c/script>')
     expect(JSON.parse(json).title).toBe('A & <B> </script><script>alert(1)')
-  })
-
-  it('stamps the language of the export on the page', () => {
-    expect(renderSnapshotHtml({ ...snapshot, locale: 'zh' }, TEMPLATE)).toContain('<html lang="zh">')
-    expect(renderSnapshotHtml({ ...snapshot, locale: 'x"><b' }, TEMPLATE)).toContain('<html lang="x&quot;&gt;&lt;b">')
   })
 
   it('refuses to render without a viewer', () => {

@@ -1,7 +1,6 @@
 import type { DueUrgency, Task, StatusConfig, PriorityConfig, TaskPriority, PriorityIconSet } from './types'
 import { HEX_COLOR, LOCAL_API_PORT_BASE, LOCAL_API_PORT_SPAN, PRIORITY_ICON_SETS } from './types'
 import { today, parsePlainDate } from './dates'
-import { locale } from './i18n'
 
 export function displayName(raw: string): string {
   // Values come from frontmatter, where anything YAML allows can turn up in a list of names.
@@ -34,8 +33,10 @@ export function dedupePeople(values: string[], keyOf: (raw: string) => string = 
     const kept = byKey.get(key)
     if (kept === undefined || (!kept.startsWith('[[') && value.startsWith('[['))) byKey.set(key, value)
   }
-  return [...byKey.values()].sort((a, b) => displayName(a).localeCompare(displayName(b), locale()))
+  return [...byKey.values()].sort((a, b) => compareText(displayName(a), displayName(b)))
 }
+
+const compareText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
 
 /** A hand-edited color as `#rrggbb`, the only form a color input accepts; `#rgb` is expanded. */
 export function readColor(raw: unknown): string | null {
@@ -69,7 +70,7 @@ export function isTerminalStatus(status: string, statuses: StatusConfig[]): bool
 }
 
 export function getDefaultStatusId(statuses: StatusConfig[]): string {
-  return statuses.length > 0 ? statuses[0].id : 'todo'
+  return statuses.length > 0 ? statuses[0].id : 'capture'
 }
 
 export function getDefaultPriorityId(priorities: PriorityConfig[]): string {

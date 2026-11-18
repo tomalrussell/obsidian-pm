@@ -63,7 +63,7 @@ describe('importTaskNotesPalettes', () => {
   it('keeps entries TaskNotes does not know and is idempotent', () => {
     const settings = makeSettings()
     importTaskNotesPalettes(makeApi(), settings)
-    expect(settings.statuses.map((s) => s.id)).toContain('blocked')
+    expect(settings.statuses.map((s) => s.id)).toContain('someday')
     expect(settings.priorities.map((p) => p.id)).toContain('critical')
 
     const second = importTaskNotesPalettes(makeApi(), settings)

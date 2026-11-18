@@ -1,7 +1,7 @@
 import { Menu } from 'obsidian'
 import { Chip, CollapseToggle, IconButton, renderProjectChip, renderStatusDot, safeAsync, ROW_HEIGHT } from '@dotpm/ui'
 import type PMPlugin from '#main'
-import { type StatusConfig, type Task, t, tn } from '@dotpm/core'
+import { type StatusConfig, type Task } from '@dotpm/core'
 import type { ProjectScope, TaskRef } from '#store'
 import { openTaskByPath, openTaskModal } from '#ui/ModalFactory'
 import { toggleCollapsed } from '../collapse'
@@ -98,10 +98,12 @@ export function renderTaskLabel(
   if (elsewhere.length) {
     const nameOf = (ref: TaskRef) => {
       const owner = ref.projectPath ? ctx.plugin.index.projectRef(ref.projectPath) : null
-      return owner ? t('gantt.inProject', { title: ref.title, project: owner.title }) : ref.title
+      return owner ? `${ref.title} (${owner.title})` : ref.title
     }
     new Chip(el)
-      .setLabel(tn('gantt.dependsElsewhere', elsewhere.length))
+      .setLabel(
+        elsewhere.length === 1 ? `Depends on ${elsewhere.length} elsewhere` : `Depends on ${elsewhere.length} elsewhere`
+      )
       .setVariant('plain')
       .setSize('sm')
       .setTooltip(elsewhere.map(nameOf).join('\n'))
@@ -132,7 +134,7 @@ export function renderTaskLabel(
 
   new IconButton(el)
     .setIcon('plus')
-    .setTooltip(t('taskMenu.addSubtask'))
+    .setTooltip(`Add subtask`)
     .setRevealOnHover(true)
     .onClick((e) => {
       e.stopPropagation()

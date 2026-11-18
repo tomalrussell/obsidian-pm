@@ -20,8 +20,7 @@ import {
   flattenTasks,
   getDefaultStatusId,
   getDefaultPriorityId,
-  getPriorityConfig,
-  t
+  getPriorityConfig
 } from '@dotpm/core'
 import { TaskFileNameConflictError } from '#store'
 import { safeAsync, renderGlyph } from '@dotpm/ui'
@@ -117,7 +116,7 @@ export class TaskEditor {
     ) {
       const conflict = this.plugin.store.findTaskFileConflict(this.project, this.task)
       if (conflict) {
-        new Notice(t('taskEditor.notSavedConflict', { name: conflict.fileName }))
+        new Notice(`Task not saved: a note named "${conflict.fileName}" already exists.`)
       } else {
         void this.persistTask()
       }
@@ -162,7 +161,7 @@ export class TaskEditor {
         autoResize()
       } catch (err) {
         console.error('Failed to save attachment', err)
-        new Notice(t('taskEditor.attachmentFailed'))
+        new Notice(`Failed to save attachment`)
       }
     }
   }
@@ -229,7 +228,7 @@ export class TaskEditor {
       if (this.host.surface === 'modal') {
         menu.addItem((item) =>
           item
-            .setTitle(t('taskEditor.openInTab'))
+            .setTitle(`Open in tab`)
             .setIcon('maximize-2')
             .onClick(
               // Moving the editor is not cancelling it, so the edits go with it.
@@ -244,7 +243,7 @@ export class TaskEditor {
       }
       menu.addItem((item) =>
         item
-          .setTitle(t('taskEditor.openAsNote'))
+          .setTitle(`Open as note`)
           .setIcon('file-text')
           .onClick(() => {
             this.saved = false
@@ -258,12 +257,12 @@ export class TaskEditor {
     if (this.task.archived) {
       menu.addItem((item) =>
         item
-          .setTitle(t('common.unarchive'))
+          .setTitle(`Unarchive`)
           .setIcon('archive-restore')
           .onClick(
             safeAsync(async () => {
               await this.plugin.store.unarchiveTask(this.project, this.task.id)
-              new Notice(t('task.unarchived'))
+              new Notice(`Task unarchived`)
               await this.onSave(this.task)
               this.cancelled = true
               this.host.close()
@@ -273,12 +272,12 @@ export class TaskEditor {
     } else {
       menu.addItem((item) =>
         item
-          .setTitle(t('common.archive'))
+          .setTitle(`Archive`)
           .setIcon('archive')
           .onClick(
             safeAsync(async () => {
               await this.plugin.store.archiveTask(this.project, this.task.id)
-              new Notice(t('task.archived'))
+              new Notice(`Task archived`)
               await this.onSave(this.task)
               this.cancelled = true
               this.host.close()
@@ -288,12 +287,12 @@ export class TaskEditor {
     }
     menu.addItem((item) =>
       item
-        .setTitle(t('common.delete'))
+        .setTitle(`Delete`)
         .setIcon('trash-2')
         .setWarning(true)
         .onClick(
           safeAsync(async () => {
-            if (await confirmDialog(this.app, t('task.deleteConfirm', { title: this.task.title }))) {
+            if (await confirmDialog(this.app, `Delete "${this.task.title}"?`)) {
               await this.plugin.store.deleteTask(this.project, this.task.id)
               await this.onSave(this.task)
               this.cancelled = true
@@ -322,25 +321,23 @@ export class TaskEditor {
     const crumbSep = crumb.createSpan({ cls: 'pm-te-crumb-sep' })
     setIcon(crumbSep, 'chevron-right')
     const idEl = crumb.createSpan({ cls: 'pm-te-crumb-id pm-te-copyable', text: this.task.id })
-    setTooltip(idEl, t('taskEditor.copyId'))
+    setTooltip(idEl, `Copy task ID`)
     idEl.addEventListener(
       'click',
       safeAsync(async () => {
         await navigator.clipboard.writeText(this.task.id)
-        new Notice(t('taskEditor.copiedId'))
+        new Notice(`Copied task ID`)
       })
     )
 
     header.createDiv('pm-te-header-spacer')
 
     if (!this.isNew) {
-      const moreBtn = new ExtraButtonComponent(header)
-        .setIcon('more-horizontal')
-        .setTooltip(t('taskEditor.moreActions'))
+      const moreBtn = new ExtraButtonComponent(header).setIcon('more-horizontal').setTooltip(`More actions`)
       moreBtn.extraSettingsEl.addClass('pm-te-header-btn')
       moreBtn.onClick(() => this.openOverflowMenu(moreBtn.extraSettingsEl))
     }
-    const closeBtn = new ExtraButtonComponent(header).setIcon('x').setTooltip(t('common.close'))
+    const closeBtn = new ExtraButtonComponent(header).setIcon('x').setTooltip(`Close`)
     closeBtn.extraSettingsEl.addClass('pm-te-header-btn')
     closeBtn.onClick(() => {
       this.cancelled = true
@@ -354,7 +351,7 @@ export class TaskEditor {
     this.titleInput = titleInput
     titleInput.rows = 1
     titleInput.value = this.task.title
-    titleInput.placeholder = t('taskEditor.titlePlaceholder')
+    titleInput.placeholder = `Task title`
     titleInput.spellcheck = false
     const autosizeTitle = () => {
       titleInput.setCssProps({ '--te-title-height': 'auto' })
@@ -399,11 +396,11 @@ export class TaskEditor {
     })
 
     const descSection = body.createDiv('pm-modal-section pm-modal-desc-section')
-    descSection.createEl('h4', { text: t('common.description'), cls: 'pm-modal-section-title' })
+    descSection.createEl('h4', { text: `Description`, cls: 'pm-modal-section-title' })
 
     const descPreview = descSection.createDiv('pm-modal-desc-preview')
     const descArea = descSection.createEl('textarea', { cls: 'pm-modal-description' })
-    descArea.placeholder = t('taskEditor.descriptionPlaceholder')
+    descArea.placeholder = `Add a description…`
     descArea.value = this.task.description
 
     const autoResize = () => {
@@ -624,26 +621,26 @@ export class TaskEditor {
       const fileIcon = pathHint.createSpan({ cls: 'pm-te-footer-icon' })
       setIcon(fileIcon, 'file-text')
       pathHint.createSpan({ text: filePath })
-      setTooltip(pathHint, t('taskEditor.copyPath'))
+      setTooltip(pathHint, `Copy file path`)
       pathHint.addEventListener(
         'click',
         safeAsync(async () => {
           await navigator.clipboard.writeText(filePath)
-          new Notice(t('taskEditor.copiedPath'))
+          new Notice(`Copied file path`)
         })
       )
     }
 
     footer.createDiv('pm-footer-spacer')
 
-    new ButtonComponent(footer).setButtonText(t('common.cancel')).onClick(() => {
+    new ButtonComponent(footer).setButtonText(`Cancel`).onClick(() => {
       this.cancelled = true
       this.host.close()
     })
 
     const modifier = this.plugin.settings.editorSaveModifier
     const saveBtn = new ButtonComponent(footer)
-      .setButtonText(t(this.isNew ? 'taskEditor.create' : 'taskEditor.save', { shortcut: saveShortcutLabel(modifier) }))
+      .setButtonText(this.isNew ? `Create (${saveShortcutLabel(modifier)})` : `Save (${saveShortcutLabel(modifier)})`)
       .setCta()
     let saving = false
     const doSave = async () => {
@@ -661,11 +658,11 @@ export class TaskEditor {
         this.host.close()
       } catch (err) {
         if (err instanceof TaskFileNameConflictError) {
-          showTitleError(t('taskEditor.titleConflict', { name: err.fileName }))
+          showTitleError(`A note named "${err.fileName}" already exists. Choose a different title.`)
           return
         }
         console.error('[PM]', err)
-        new Notice(t('common.somethingWentWrong'))
+        new Notice(`Something went wrong. Check the console for details.`)
       } finally {
         saving = false
       }

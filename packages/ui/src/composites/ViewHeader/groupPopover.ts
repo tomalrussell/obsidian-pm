@@ -1,6 +1,6 @@
 import { Checkbox } from '#primitives/Checkbox'
 import { Popover } from '#primitives/Popover'
-import { type GroupState, t } from '@dotpm/core'
+import { type GroupState } from '@dotpm/core'
 import { renderPopHead } from '../popoverParts'
 import { renderGlyph } from '../properties/optionList'
 import { renderVisibilityList } from '../visibilityList'
@@ -40,7 +40,7 @@ export function renderGroupPanel(parent: HTMLElement, props: GroupPopoverProps):
   const render = (): void => {
     body.empty()
     const byRow = body.createDiv('pm-group-row')
-    byRow.createSpan({ cls: 'pm-group-label', text: t('header.columnsBy') })
+    byRow.createSpan({ cls: 'pm-group-label', text: 'Columns by' })
     const field = byRow.createEl('select', { cls: 'dropdown pm-group-field' })
     for (const option of props.fields) {
       field.createEl('option', { value: option.id, text: option.label }).selected = option.id === props.field()
@@ -51,7 +51,7 @@ export function renderGroupPanel(parent: HTMLElement, props: GroupPopoverProps):
     })
 
     const emptyRow = body.createEl('label', { cls: 'pm-group-row' })
-    emptyRow.createSpan({ cls: 'pm-group-label', text: t('header.hideEmpty') })
+    emptyRow.createSpan({ cls: 'pm-group-label', text: 'Hide empty columns' })
     new Checkbox(emptyRow).setChecked(!!group.hideEmpty).onChange((checked) => {
       if (checked) group.hideEmpty = true
       else delete group.hideEmpty
@@ -60,10 +60,10 @@ export function renderGroupPanel(parent: HTMLElement, props: GroupPopoverProps):
 
     const columns = props.columns()
     renderPopHead(body, {
-      title: t('header.columns'),
+      title: 'Columns',
       section: true,
       action: {
-        label: t('header.showAll'),
+        label: 'Show all',
         disabled: !prefs().hidden?.length,
         onClick: () => {
           delete prefs().hidden
@@ -77,12 +77,12 @@ export function renderGroupPanel(parent: HTMLElement, props: GroupPopoverProps):
         id: column.id,
         label: column.label,
         hidden: prefs().hidden?.includes(column.id) ?? false,
-        detail: column.tasks.length ? String(column.tasks.length) : t('header.emptyColumn'),
+        detail: column.tasks.length ? String(column.tasks.length) : 'empty',
         quiet: !column.tasks.length,
         glyph: (el) => renderGlyph(el, { icon: column.icon, color: column.color })
       })),
-      showLabel: t('header.showColumn'),
-      hideLabel: t('header.hideColumn'),
+      showLabel: 'Show column',
+      hideLabel: 'Hide column',
       onToggle: (id) => {
         const hidden = new Set(prefs().hidden ?? [])
         if (hidden.has(id)) hidden.delete(id)

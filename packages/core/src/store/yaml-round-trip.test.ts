@@ -150,7 +150,7 @@ describe('task round-trip', () => {
     const frontmatter: Record<string, unknown> = { id: 't-x' }
     const { task } = hydrateTaskFromFile(frontmatter, '', 'path.md')
     expect(task.title).toBe('Untitled')
-    expect(task.status).toBe('todo')
+    expect(task.status).toBe('capture')
     expect(task.priority).toBe('medium')
     expect(task.progress).toBe(0)
     expect(task.assignees).toEqual([])

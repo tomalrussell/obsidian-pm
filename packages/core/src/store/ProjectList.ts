@@ -80,14 +80,16 @@ function compareItems(a: ProjectListItem, b: ProjectListItem, sort: ProjectSortR
     }
     const order =
       key === 'title'
-        ? a.title.localeCompare(b.title)
+        ? compareText(a.title, b.title)
         : key === 'progress'
           ? ratio(a) - ratio(b)
-          : a.latestDue.localeCompare(b.latestDue)
+          : compareText(a.latestDue, b.latestDue)
     if (order !== 0) return dir === 'asc' ? order : -order
   }
   return 0
 }
+
+const compareText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
 
 /** Every project in the trees, sub-projects included. */
 export function allProjectItems(roots: ProjectListItem[]): ProjectListItem[] {
@@ -98,7 +100,7 @@ export function allProjectItems(roots: ProjectListItem[]): ProjectListItem[] {
 export function projectTagCounts(roots: ProjectListItem[]): { tag: string; count: number }[] {
   const counts = new Map<string, number>()
   for (const item of allProjectItems(roots)) for (const tag of item.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
-  return [...counts].map(([tag, count]) => ({ tag, count })).sort((a, b) => a.tag.localeCompare(b.tag))
+  return [...counts].map(([tag, count]) => ({ tag, count })).sort((a, b) => compareText(a.tag, b.tag))
 }
 
 /**
@@ -155,7 +157,7 @@ export function arrangeProjects(
     const keys = state.group === 'folder' ? [root.folder] : root.tags.length ? root.tags : ['']
     for (const key of keys) byKey.set(key, [...(byKey.get(key) ?? []), root])
   }
-  const keys = [...byKey.keys()].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
+  const keys = [...byKey.keys()].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : compareText(a, b)))
   const groups = keys
     .map((key) => {
       const members = byKey.get(key) ?? []

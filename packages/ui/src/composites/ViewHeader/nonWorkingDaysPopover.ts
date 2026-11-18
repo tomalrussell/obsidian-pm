@@ -1,7 +1,7 @@
 import { Checkbox } from '#primitives/Checkbox'
 import { Chip } from '#primitives/Chip'
 import { Popover } from '#primitives/Popover'
-import { type NonWorkingDays, formatDateLong, parsePlainDate, t } from '@dotpm/core'
+import { type NonWorkingDays, formatDateLong, parsePlainDate } from '@dotpm/core'
 import { renderAddButton } from '../addButton'
 
 export interface NonWorkingDaysProps {
@@ -38,11 +38,11 @@ export function renderNonWorkingDaysPanel(parent: HTMLElement, props: NonWorking
 
   const render = (): void => {
     body.empty()
-    toggle('weekends', t('timeline.hideWeekends'))
-    toggle('holidays', t('timeline.hideHolidays'))
+    toggle('weekends', 'Hide weekends')
+    toggle('holidays', 'Hide holidays')
     list = body.createDiv('pm-days-list')
     renderList()
-    body.createDiv({ cls: 'pm-days-note', text: t('timeline.holidaysNote') })
+    body.createDiv({ cls: 'pm-days-note', text: 'Holidays are kept in plugin settings for the whole vault.' })
   }
 
   const renderList = (): void => {
@@ -52,10 +52,10 @@ export function renderNonWorkingDaysPanel(parent: HTMLElement, props: NonWorking
         .setLabel(formatDateLong(date) || date)
         .setVariant('outline')
         .setSize('sm')
-        .setRemovable(() => setHolidays(holidays.filter((d) => d !== date)), t('timeline.removeHoliday'))
+        .setRemovable(() => setHolidays(holidays.filter((d) => d !== date)), 'Remove holiday')
         .el.addClass('pm-days-chip')
     }
-    const add = renderAddButton(list, t('timeline.addHoliday'), () => {
+    const add = renderAddButton(list, 'Add day', () => {
       const input = list.createEl('input', { type: 'date', cls: 'pm-days-input' })
       add.replaceWith(input)
       input.focus()

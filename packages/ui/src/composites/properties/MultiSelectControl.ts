@@ -1,4 +1,3 @@
-import { t } from '@dotpm/core'
 import { setIcon } from '#platform'
 import { safeAsync } from '#dom'
 import { Popover } from '#primitives/Popover'
@@ -191,7 +190,7 @@ export function renderMultiSelect(opts: MultiSelectOpts): void {
       if (create && q && !matched) {
         const label = query.trim()
         renderOptionRow(listEl, {
-          label: opts.createLabel ? opts.createLabel(label) : t('property.create', { name: label }),
+          label: opts.createLabel ? opts.createLabel(label) : `Create "${label}"`,
           icon: 'plus',
           accent: true,
           onPick: () => {

@@ -40,8 +40,8 @@ const noop = (): void => undefined
 const noopAsync = (): Promise<void> => Promise.resolve()
 
 const TASKS = [
-  makeTask({ id: 'a', status: 'todo', priority: 'high', tags: ['design'], assignees: ['Ada Lovelace'] }),
-  makeTask({ id: 'b', status: 'todo', priority: 'medium', tags: ['web'] }),
+  makeTask({ id: 'a', status: 'capture', priority: 'high', tags: ['design'], assignees: ['Ada Lovelace'] }),
+  makeTask({ id: 'b', status: 'capture', priority: 'medium', tags: ['web'] }),
   makeTask({ id: 'c', status: 'in-progress', priority: 'high', customFields: { client: 'Acme' } }),
   makeTask({ id: 'd', status: 'done', priority: 'low', due: '2030-01-01', customFields: { estimate: 3 } })
 ]
@@ -80,11 +80,11 @@ export function renderPanelSections({ section, row }: GalleryLayout): void {
   const filter = section('Filter panel', 'panel-filter')
   const filterRow = row(filter, 'field picker / one condition: operators and values / the applied list')
   renderFilterPanel(frame(filterRow, 300), setupWith([]), noop)
-  renderFilterPanel(frame(filterRow, 300), setupWith([{ field: 'status', op: 'any', value: ['todo'] }]), noop, 0)
+  renderFilterPanel(frame(filterRow, 300), setupWith([{ field: 'status', op: 'any', value: ['capture'] }]), noop, 0)
   renderFilterPanel(
     frame(filterRow, 300),
     setupWith([
-      { field: 'status', op: 'any', value: ['todo', 'in-progress'] },
+      { field: 'status', op: 'any', value: ['capture', 'in-progress'] },
       { field: 'cf:estimate', op: 'between', value: [2, 8] }
     ]),
     noop,
@@ -240,9 +240,15 @@ export function renderPanelSections({ section, row }: GalleryLayout): void {
           label: 'Filter',
           badge: () => '1',
           render: (parent, changed) =>
-            renderFilterPanel(parent, setupWith([{ field: 'status', op: 'any', value: ['todo'] }]), changed, 'list', {
-              showClear: false
-            })
+            renderFilterPanel(
+              parent,
+              setupWith([{ field: 'status', op: 'any', value: ['capture'] }]),
+              changed,
+              'list',
+              {
+                showClear: false
+              }
+            )
         },
         {
           id: 'sort',

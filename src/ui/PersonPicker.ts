@@ -1,7 +1,7 @@
 import type PMPlugin from '#main'
 import { createPersonLink, personCandidates, personColor, personKeyer, type PersonCandidate } from '#store'
 import { renderMultiSelect } from '@dotpm/ui'
-import { dedupePeople, displayName, t } from '@dotpm/core'
+import { dedupePeople, displayName } from '@dotpm/core'
 
 export interface PeopleSource {
   /** Offered before the user types. */
@@ -47,20 +47,20 @@ export function renderPersonPicker(opts: PersonPickerOpts): void {
     avatarStack: true,
     search: true,
     addLabel: opts.addLabel,
-    placeholder: t('people.search'),
+    placeholder: `Search people…`,
     selected: opts.selected,
     keyOf: personKeyer(plugin.app),
     labelFor: displayName,
     colorFor: (value) => personColor(plugin.app, value, opts.sourcePath),
     options: () => source.known().map((member) => ({ id: member, label: displayName(member) })),
     moreOptions: (query) => source.search(query).map((candidate) => ({ id: candidate.link, label: candidate.name })),
-    moreHeading: t('people.inVault'),
+    moreHeading: `People in your vault`,
     add: opts.add,
     remove: opts.remove,
-    createLabel: (name) => t('people.add', { name }),
+    createLabel: (name) => `Add "${name}"`,
     create: opts.add,
     createAlt: {
-      label: (name) => t('people.createNote', { name }),
+      label: (name) => `Create person note "${name}"`,
       icon: 'user-plus',
       run: async (name) => {
         opts.add(await createPersonLink(plugin.app, plugin.settings.peopleFolder, name, opts.sourcePath))

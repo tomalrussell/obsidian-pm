@@ -5,7 +5,6 @@ import {
   filterKind,
   filterValue,
   makeDefaultGroup,
-  t,
   valueKey
 } from '@dotpm/core'
 import { valueOptions, type FilterSetup } from '../composites/ViewHeader/filterPopover'
@@ -59,7 +58,7 @@ export function boardColumns(setup: FilterSetup, group: GroupState, tasks: Task[
   }
   const none: BoardColumn = {
     id: '',
-    label: t('group.none', { field: filterFieldLabel(field, setup.ctx.customFields) }),
+    label: `No ${filterFieldLabel(field, setup.ctx.customFields)}`,
     tasks: [],
     hidden: false
   }

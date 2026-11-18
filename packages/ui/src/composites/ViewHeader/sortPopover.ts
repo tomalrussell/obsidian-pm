@@ -3,7 +3,7 @@ import { makeReorderable } from '#dom'
 import type { ChipButton } from '#primitives/ChipButton'
 import { IconButton } from '#primitives/IconButton'
 import { Popover } from '#primitives/Popover'
-import { type SortDir, type SortKey, MAX_SORT_RULES, t } from '@dotpm/core'
+import { type SortDir, type SortKey, MAX_SORT_RULES } from '@dotpm/core'
 import { renderPopHead } from '../popoverParts'
 import { renderOptionRow } from '../properties/optionList'
 
@@ -32,16 +32,16 @@ export function sortDirLabel<K extends string>(field: SortField<K>, dir: SortDir
   const asc = dir === 'asc'
   switch (field.id) {
     case 'due':
-      return asc ? t('sort.earliest') : t('sort.latest')
+      return asc ? 'Earliest first' : 'Latest first'
     case 'progress':
-      return asc ? t('sort.lowest') : t('sort.highest')
+      return asc ? 'Lowest first' : 'Highest first'
     case 'status':
     case 'priority': {
       const end = field.ends?.[asc ? 0 : 1]
-      return end ? t('sort.firstNamed', { label: end }) : asc ? t('sort.az') : t('sort.za')
+      return end ? `${end} first` : asc ? 'A to Z' : 'Z to A'
     }
     default:
-      return asc ? t('sort.az') : t('sort.za')
+      return asc ? 'A to Z' : 'Z to A'
   }
 }
 
@@ -61,9 +61,9 @@ export function renderSortPanel<K extends string>(parent: HTMLElement, props: So
   const render = (): void => {
     body.empty()
     renderPopHead(body, {
-      title: t('header.sortBy'),
+      title: 'Sort by',
       action: {
-        label: t('header.resetSort'),
+        label: 'Reset',
         onClick: () => {
           props.onReset()
           render()
@@ -71,7 +71,7 @@ export function renderSortPanel<K extends string>(parent: HTMLElement, props: So
       }
     })
 
-    if (!sort.length) body.createDiv({ cls: 'pm-pop-empty', text: t('header.noSort') })
+    if (!sort.length) body.createDiv({ cls: 'pm-pop-empty', text: 'Tasks keep the order they are stored in.' })
 
     const rows: { el: HTMLElement; id: K }[] = []
     sort.forEach((rule, index) => {
@@ -104,7 +104,7 @@ export function renderSortPanel<K extends string>(parent: HTMLElement, props: So
 
       new IconButton(row)
         .setIcon('x')
-        .setTooltip(t('header.removeSortKey'))
+        .setTooltip('Remove sort key')
         .onClick(() => {
           sort.splice(index, 1)
           changed()
@@ -120,7 +120,7 @@ export function renderSortPanel<K extends string>(parent: HTMLElement, props: So
     const foot = body.createDiv('pm-sort-pop-foot pm-pop-section')
     const unused = props.fields.find((option) => !sort.some((rule) => rule.key === option.id))
     const add = renderOptionRow(foot, {
-      label: t('header.addSortKey'),
+      label: 'Add sort key',
       icon: 'plus',
       accent: true,
       onPick: () => {
@@ -133,7 +133,7 @@ export function renderSortPanel<K extends string>(parent: HTMLElement, props: So
     add.disabled = !unused || sort.length >= MAX_SORT_RULES
     foot.createSpan({
       cls: 'pm-sort-pop-count',
-      text: t('header.sortCount', { count: sort.length, max: MAX_SORT_RULES })
+      text: `${sort.length} of ${MAX_SORT_RULES}`
     })
   }
 
@@ -162,7 +162,7 @@ export function summarizeSort<K extends string>(
 /** Shows the sort on the header's Sort button: the first key's name, its direction as the icon, and "+N". */
 export function syncSortButton(button: ChipButton, summary: SortSummary | undefined): void {
   button
-    .setLabel(summary?.label ?? t('header.sort'))
+    .setLabel(summary?.label ?? 'Sort')
     .setIcon(!summary ? 'arrow-down-up' : summary.dir === 'asc' ? 'arrow-up-narrow-wide' : 'arrow-down-wide-narrow')
     .setBadge(summary?.more ?? '')
     .setActive(!!summary)

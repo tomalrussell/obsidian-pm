@@ -9,11 +9,7 @@ import {
   hydrateNonWorkingDays,
   hydrateSort,
   legacyBoardFields,
-  locale,
-  setDateFormat,
-  setLocale,
-  t,
-  tn
+  setDateFormat
 } from '@dotpm/core'
 import {
   renderSnapshotGantt,
@@ -29,9 +25,9 @@ import {
 const MODE_IDS: ViewMode[] = ['table', 'gantt', 'kanban']
 
 const modes = (): { id: ViewMode; icon: string; label: string }[] => [
-  { id: 'table', icon: 'table', label: t('views.table') },
-  { id: 'gantt', icon: 'git-fork', label: t('views.gantt') },
-  { id: 'kanban', icon: 'layout-dashboard', label: t('views.kanban') }
+  { id: 'table', icon: 'table', label: 'Table' },
+  { id: 'gantt', icon: 'git-fork', label: 'Timeline' },
+  { id: 'kanban', icon: 'layout-dashboard', label: 'Board' }
 ]
 
 export function viewModelFromSnapshot(snapshot: Snapshot): ViewModel {
@@ -155,7 +151,6 @@ export function isViewMode(value: string): value is ViewMode {
 }
 
 export function mount(root: HTMLElement, snapshot: Snapshot, options: MountOptions = {}): void {
-  setLocale(snapshot.locale)
   setDateFormat(snapshot.settings.dateFormat)
   installSnapshotPlatform(snapshot)
   const model = viewModelFromSnapshot(snapshot)
@@ -173,13 +168,10 @@ export function mount(root: HTMLElement, snapshot: Snapshot, options: MountOptio
   }
   header.createEl('h1', { text: snapshot.title, cls: 'pm-snapshot-title' })
   const exported = new Date(snapshot.exportedAt)
+  const taskCount = tableRows(model).length
   header.createDiv({
     cls: 'pm-snapshot-meta',
-    text: t('viewer.meta', {
-      tasks: tn('count.tasks', tableRows(model).length),
-      date: exported.toLocaleDateString(locale()),
-      time: exported.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
-    })
+    text: `${taskCount} ${taskCount === 1 ? 'task' : 'tasks'} · ${exported.toISOString().slice(0, 16).replace('T', ' ')} UTC`
   })
 
   const body = root.createDiv('pm-snapshot-body')
@@ -238,7 +230,7 @@ async function boot(): Promise<void> {
   if (!root) return
   const snapshot = await loadSnapshot(document)
   if (!snapshot) {
-    root.setText(t('viewer.noSnapshot'))
+    root.setText('This page has no project snapshot.')
     return
   }
   followSystemTheme()

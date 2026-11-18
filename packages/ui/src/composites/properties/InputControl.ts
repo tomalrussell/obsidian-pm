@@ -1,4 +1,3 @@
-import { t } from '@dotpm/core'
 import { makeInlineEdit } from '../cells/inlineEdit'
 
 export interface InputControlOpts {
@@ -19,7 +18,7 @@ export function renderInputControl(opts: InputControlOpts): void {
   if (!has) trigger.addClass('pm-prop-inline--empty')
   trigger.createSpan({
     cls: 'pm-prop-inline-label',
-    text: has ? `${opts.value}${opts.suffix ?? ''}` : (opts.placeholder ?? t('property.setValue'))
+    text: has ? `${opts.value}${opts.suffix ?? ''}` : (opts.placeholder ?? 'Set value')
   })
 
   trigger.addEventListener('click', () => {

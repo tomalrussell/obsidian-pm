@@ -1,6 +1,6 @@
 import { Menu, Notice } from 'obsidian'
 import type PMPlugin from '#main'
-import { type Task, type Project, t } from '@dotpm/core'
+import { type Task, type Project } from '@dotpm/core'
 import { safeAsync } from '@dotpm/ui'
 import { openTaskModal, confirmDialog, confirmDuplicateSubtasks, openProjectPicker } from './ModalFactory'
 
@@ -13,7 +13,7 @@ export interface TaskMenuContext {
 export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContext): Menu {
   menu.addItem((item) =>
     item
-      .setTitle(t('taskMenu.edit'))
+      .setTitle(`Edit task`)
       .setIcon('pencil')
       .onClick(() => {
         openTaskModal(ctx.plugin, ctx.project, {
@@ -26,7 +26,7 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
   )
   menu.addItem((item) =>
     item
-      .setTitle(t('taskMenu.addSubtask'))
+      .setTitle(`Add subtask`)
       .setIcon('plus')
       .onClick(() => {
         openTaskModal(ctx.plugin, ctx.project, {
@@ -39,7 +39,7 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
   )
   menu.addItem((item) =>
     item
-      .setTitle(t('taskMenu.duplicate'))
+      .setTitle(`Duplicate task`)
       .setIcon('copy')
       .onClick(
         safeAsync(async () => {
@@ -56,12 +56,12 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
   )
   menu.addItem((item) =>
     item
-      .setTitle(t('taskMenu.moveToProject'))
+      .setTitle(`Move to project`)
       .setIcon('folder-input')
       .onClick(() => {
         const targets = ctx.plugin.index.projectRefs().filter((ref) => ref.path !== ctx.project.filePath)
         if (!targets.length) {
-          new Notice(t('taskMenu.noOtherProject'))
+          new Notice(`There is no other project to move this task to.`)
           return
         }
         openProjectPicker(
@@ -71,7 +71,7 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
             const target = await ctx.plugin.store.loadProjectByPath(ref.path)
             if (!target) return
             await ctx.plugin.store.moveTaskToProject(ctx.project, target, task.id)
-            new Notice(t('taskMenu.moved', { title: task.title, project: target.title }))
+            new Notice(`Moved "${task.title}" to ${target.title}`)
             await ctx.onRefresh()
           })
         )
@@ -81,12 +81,12 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
   if (task.archived) {
     menu.addItem((item) =>
       item
-        .setTitle(t('common.unarchive'))
+        .setTitle(`Unarchive`)
         .setIcon('archive-restore')
         .onClick(
           safeAsync(async () => {
             await ctx.plugin.store.unarchiveTask(ctx.project, task.id)
-            new Notice(t('task.unarchived'))
+            new Notice(`Task unarchived`)
             await ctx.onRefresh()
           })
         )
@@ -94,12 +94,12 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
   } else {
     menu.addItem((item) =>
       item
-        .setTitle(t('common.archive'))
+        .setTitle(`Archive`)
         .setIcon('archive')
         .onClick(
           safeAsync(async () => {
             await ctx.plugin.store.archiveTask(ctx.project, task.id)
-            new Notice(t('task.archived'))
+            new Notice(`Task archived`)
             await ctx.onRefresh()
           })
         )
@@ -107,11 +107,11 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
   }
   menu.addItem((item) =>
     item
-      .setTitle(t('taskMenu.delete'))
+      .setTitle(`Delete task`)
       .setIcon('trash')
       .onClick(
         safeAsync(async () => {
-          if (await confirmDialog(ctx.plugin.app, t('task.deleteConfirm', { title: task.title }))) {
+          if (await confirmDialog(ctx.plugin.app, `Delete "${task.title}"?`)) {
             await ctx.plugin.store.deleteTask(ctx.project, task.id)
             await ctx.onRefresh()
           }

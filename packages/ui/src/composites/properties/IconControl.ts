@@ -1,4 +1,3 @@
-import { t } from '@dotpm/core'
 import { getIconIds, setIcon } from '#platform'
 import { Popover } from '#primitives/Popover'
 import { renderGlyph, renderOptionRow } from './optionList'
@@ -51,7 +50,7 @@ export function renderIconControl(opts: IconControlOpts): void {
 
     const search = popover.contentEl.createEl('input', {
       cls: 'pm-pop-field',
-      attr: { placeholder: t('property.searchIcons'), spellcheck: 'false' }
+      attr: { placeholder: 'Search icons or paste an emoji', spellcheck: 'false' }
     })
     const clearRow = popover.contentEl.createDiv()
     const grid = popover.contentEl.createDiv('pm-icon-grid')
@@ -69,7 +68,7 @@ export function renderIconControl(opts: IconControlOpts): void {
 
       clearRow.empty()
       renderOptionRow(clearRow, {
-        label: t('property.noIcon'),
+        label: 'No icon',
         icon: 'ban',
         selected: !value,
         onPick: () => commit('')
@@ -78,7 +77,7 @@ export function renderIconControl(opts: IconControlOpts): void {
       if (isGlyphQuery(query)) {
         const cell = grid.createEl('button', { cls: 'pm-icon-cell pm-icon-cell--glyph', text: query })
         cell.toggleClass('pm-icon-cell--selected', query === value)
-        cell.setAttribute('aria-label', t('property.useGlyph', { glyph: query }))
+        cell.setAttribute('aria-label', `Use ${query}`)
         cell.addEventListener('click', () => commit(query))
       }
 
@@ -91,9 +90,9 @@ export function renderIconControl(opts: IconControlOpts): void {
       }
 
       if (found.length > GRID_LIMIT) {
-        hint.setText(t('property.iconsShowing', { shown: GRID_LIMIT, total: found.length }))
+        hint.setText(`Showing ${GRID_LIMIT} of ${found.length}. Keep typing to narrow.`)
       } else if (found.length === 0 && !isGlyphQuery(query)) {
-        hint.setText(t('property.noIconMatch'))
+        hint.setText('No icon matches that.')
       }
     }
 

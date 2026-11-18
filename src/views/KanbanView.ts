@@ -16,9 +16,7 @@ import {
   totalLoggedHours,
   matchesQuery,
   dueUrgency,
-  getPriorityConfig,
-  t,
-  tn
+  getPriorityConfig
 } from '@dotpm/core'
 import { personKeyer, type ProjectScope } from '#store'
 import {
@@ -116,8 +114,8 @@ export class KanbanView implements SubView {
       const rail = new ChipButton(board)
         .setVariant('flat')
         .setIcon('eye-off')
-        .setLabel(tn('header.hiddenCount', hidden))
-        .setAriaLabel(t('header.showHiddenColumns'))
+        .setLabel(hidden === 1 ? `${hidden} hidden` : `${hidden} hidden`)
+        .setAriaLabel(`Show hidden columns`)
         .onClick(() => this.onShowHidden(rail.el))
       rail.el.addClass('pm-kanban-hidden-rail')
     }
