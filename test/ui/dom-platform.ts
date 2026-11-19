@@ -6,7 +6,7 @@ import {
   type PlatformMenu,
   type PlatformMenuItem,
   type UiPlatform
-} from './platform'
+} from '@dotpm/ui'
 
 const LUCIDE_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/
 

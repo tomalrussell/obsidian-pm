@@ -288,7 +288,6 @@ describe('ProjectStore round-trip', () => {
     const b = await addNamed(store, project, 'Build')
     await store.updateTask(project, a.id, {
       priority: 'high',
-      assignees: ['Alice'],
       tags: ['design']
     })
     await store.updateTask(project, b.id, { status: 'in-progress' })
@@ -310,7 +309,6 @@ describe('ProjectStore round-trip', () => {
     const reloadedA = expectDefined(flat.find((f) => f.task.id === a.id)).task
     expect(reloadedA.title).toBe('Design')
     expect(reloadedA.priority).toBe('high')
-    expect(reloadedA.assignees).toEqual(['Alice'])
     expect(reloadedA.tags).toEqual(['design'])
     expect(reloadedA.subtasks.map((s) => s.id)).toEqual([childOfA.id])
 
@@ -1157,14 +1155,11 @@ describe('ProjectStore bulk mutators', () => {
     const project = await store.createProject('Bulk', 'Projects')
     const a = await addNamed(store, project, 'alpha')
     const b = await addNamed(store, project, 'beta')
-    await store.updateTask(project, b.id, { assignees: ['sam'] })
     vault.resetCounts()
 
-    await store.updateTasks(project, [a.id, b.id], (t) =>
-      t.assignees.includes('sam') ? null : { assignees: [...t.assignees, 'sam'] }
-    )
+    await store.updateTasks(project, [a.id, b.id], (task) => (task.id === b.id ? null : { tags: ['sam'] }))
 
-    expect(a.assignees).toEqual(['sam'])
+    expect(a.tags).toEqual(['sam'])
     expect(vault.modifyCount.get(expectDefined(a.filePath))).toBe(1)
     expect(vault.modifyCount.get(expectDefined(b.filePath))).toBeUndefined()
     const file = vault.getAbstractFileByPath(expectDefined(a.filePath))
@@ -1331,56 +1326,11 @@ describe('ProjectStore.importNoteAsTask', () => {
   })
 })
 
-describe('ProjectStore.importTaskForest', () => {
-  it('writes a parent/child forest that reloads as a tree with dependencies', async () => {
-    const { store, vault, app } = newStore()
-    const project = await store.createProject('Forest', 'Projects')
-    const parentSource = await vault.create('Notes/Parent.md', 'parent body')
-    const childSource = await vault.create('Notes/Child.md', 'child body')
-
-    const child = makeTask({ title: 'Child', type: 'subtask' })
-    const parent = makeTask({ title: 'Parent', subtasks: [child] })
-    child.dependencies = [parent.id]
-    const sources = new Map([
-      [parent.id, parentSource],
-      [child.id, childSource]
-    ])
-
-    const count = await store.importTaskForest(project, [parent], sources, 'move')
-    expect(count).toBe(2)
-    expect(vault.getAbstractFileByPath('Notes/Parent.md')).toBeNull()
-
-    const store2 = new ProjectStore(app, () => SETTINGS)
-    const file = vault.getAbstractFileByPath(project.filePath)
-    if (!(file instanceof TFile)) throw new Error('project file missing')
-    const reloaded = expectDefined(await store2.loadProject(file))
-    const top = reloaded.tasks.find((t) => t.title === 'Parent')
-    expect(expectDefined(top).subtasks.map((t) => t.title)).toEqual(['Child'])
-    expect(expectDefined(top).subtasks[0].dependencies).toEqual([parent.id])
-    expect(expectDefined(top).description).toBe('parent body')
-  })
-
-  it('places archived tasks in the Archive subfolder', async () => {
-    const { store, vault } = newStore()
-    const project = await store.createProject('Arch', 'Projects')
-    const source = await vault.create('Notes/Old.md', 'old body')
-    const task = makeTask({ title: 'Old', archived: true })
-
-    await store.importTaskForest(project, [task], new Map([[task.id, source]]), 'copy')
-    expect(vault.getAbstractFileByPath('Projects/Arch/_tasks/Archive/old.md')).toBeInstanceOf(TFile)
-    expect(vault.getAbstractFileByPath('Notes/Old.md')).toBeInstanceOf(TFile)
-  })
-})
-
 describe('per-project config', () => {
   it('round-trips the config overrides through the project file', async () => {
     const { store, vault, app } = newStore()
     const project = await store.createProject('Custom', 'Projects')
     project.config = {
-      statuses: [
-        { id: 'idea', label: 'Idea', color: '#888888', icon: '', complete: false },
-        { id: 'shipped', label: 'Shipped', color: '#00aa00', icon: '', complete: true }
-      ],
       priorities: [
         { id: 'urgent', label: 'Urgent', color: '#ff0000', icon: '' },
         { id: 'later', label: 'Later', color: '#888888', icon: '' }
@@ -1395,7 +1345,12 @@ describe('per-project config', () => {
     const file = vault.getAbstractFileByPath(project.filePath)
     if (!(file instanceof TFile)) throw new Error('project file missing')
     const reloaded = expectDefined(await store2.loadProject(file))
-    expect(reloaded.config).toEqual(project.config)
+    expect(reloaded.config).toEqual({
+      priorities: project.config?.priorities,
+      priorityIcons: project.config?.priorityIcons,
+      defaultView: project.config?.defaultView,
+      autoSchedule: project.config?.autoSchedule
+    })
   })
 
   it('omits the frontmatter key when the project overrides nothing', async () => {
@@ -1411,17 +1366,12 @@ describe('per-project config', () => {
     expect(reloaded.config).toBeUndefined()
   })
 
-  it('stamps completion using the project-defined complete flag', async () => {
+  it('stamps completion for the fixed done status', async () => {
     const { store } = newStore()
     const project = await store.createProject('Flags', 'Projects')
-    project.config = {
-      statuses: [
-        { id: 'idea', label: 'Idea', color: '#888888', icon: '', complete: false },
-        { id: 'shipped', label: 'Shipped', color: '#00aa00', icon: '', complete: true }
-      ]
-    }
+    project.config = {}
     const task = await addNamed(store, project, 'Ship it')
-    await store.updateTask(project, task.id, { status: 'shipped' })
+    await store.updateTask(project, task.id, { status: 'done' })
     expect(expectDefined(findTask(project.tasks, task.id)).completed).not.toBe('')
   })
 
@@ -1486,16 +1436,11 @@ describe('ProjectStore cross-project scheduling', () => {
     expect(expectDefined(findTask(downstream.tasks, c.id)).start).toBe('2026-07-11')
   })
 
-  it('pulls a dependent forward when the blocker finished early under another palette', async () => {
+  it('pulls a dependent forward when the blocker finished early in another project', async () => {
     const { store, index } = newIndexedStore()
     const upstream = await store.createProject('Ships', 'Projects')
     const downstream = await store.createProject('Waits', 'Projects')
-    upstream.config = {
-      statuses: [
-        { id: 'todo', label: 'Todo', color: '#888', icon: 'circle', complete: false },
-        { id: 'shipped', label: 'Shipped', color: '#0a0', icon: 'check', complete: true }
-      ]
-    }
+    upstream.config = {}
     downstream.config = { pullForwardOnEarlyFinish: true }
 
     const blocker = await addNamed(store, upstream, 'Blocker')
@@ -1879,10 +1824,9 @@ describe('ProjectStore.duplicateProject', () => {
     expect(expectDefined(findTask(source.tasks, beta.id)).dependencies).toEqual([alpha.id, 'elsewhere1'])
   })
 
-  it('carries the project settings, people, and descriptions over', async () => {
+  it('carries project settings and descriptions over', async () => {
     const { store, app } = newStore()
     const source = await store.createProject('Roadmap', 'Projects')
-    source.teamMembers = ['Jane']
     source.config = { defaultView: 'kanban' }
     await store.updateProject(source, { description: 'The plan.' })
     const alpha = await addNamed(store, source, 'Alpha')
@@ -1890,7 +1834,6 @@ describe('ProjectStore.duplicateProject', () => {
 
     const copy = await store.duplicateProject(source, 'Roadmap copy')
 
-    expect(copy.teamMembers).toEqual(['Jane'])
     expect(copy.config).toEqual({ defaultView: 'kanban' })
     expect(copy.description).toBe('The plan.')
     const copyAlphaContent = await app.vault.cachedRead(fileAt(app, 'Projects/Roadmap copy/_tasks/alpha.md'))

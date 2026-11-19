@@ -1,14 +1,12 @@
 import type { App } from 'obsidian'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { makeFakeApp } from '#test/fakeVault'
-import { DEFAULT_SETTINGS, makeTask, type PMSettings, type Project, type StatusConfig } from '@dotpm/core'
+import { DEFAULT_SETTINGS, makeTask, type PMSettings, type Project } from '@dotpm/core'
 import { ProjectStore } from './ProjectStore'
 import { ProjectScope, resolveScopePaths, scopeKey, selectionSpec } from './ProjectScope'
 import { VaultIndex } from './VaultIndex'
 
 const SETTINGS: PMSettings = { ...DEFAULT_SETTINGS }
-
-const SHIPPED: StatusConfig[] = [{ id: 'shipped', label: 'Shipped', color: '#0a0', icon: '', complete: true }]
 
 function newStore(): ProjectStore {
   const { app } = makeFakeApp()
@@ -135,21 +133,23 @@ describe('ProjectScope', () => {
     expect(scope.isMulti).toBe(true)
   })
 
-  it('merges palettes across projects, the primary first', async () => {
-    await store.updateProject(beta, { config: { statuses: SHIPPED } })
+  it('keeps the fixed status options across projects', async () => {
     const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta], store)
 
     const ids = scope.config.statuses.map((s) => s.id)
     expect(ids.slice(0, DEFAULT_SETTINGS.statuses.length)).toEqual(DEFAULT_SETTINGS.statuses.map((s) => s.id))
-    expect(ids).toContain('shipped')
+    expect(ids).toEqual(DEFAULT_SETTINGS.statuses.map((s) => s.id))
   })
 
-  it('keeps terminal-status checks on the owning project', async () => {
-    await store.updateProject(beta, { config: { statuses: SHIPPED } })
+  it('uses the fixed status options for every project', async () => {
     const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta], store)
 
-    expect(scope.configOf(beta.tasks[0].id).statuses.some((s) => s.id === 'done')).toBe(false)
-    expect(scope.configOf(alpha.tasks[0].id).statuses.some((s) => s.id === 'done')).toBe(true)
+    expect(scope.configOf(beta.tasks[0].id).statuses.map((s) => s.id)).toEqual(
+      DEFAULT_SETTINGS.statuses.map((s) => s.id)
+    )
+    expect(scope.configOf(alpha.tasks[0].id).statuses.map((s) => s.id)).toEqual(
+      DEFAULT_SETTINGS.statuses.map((s) => s.id)
+    )
   })
 
   it('leaves a single-project scope reading exactly like the project', () => {
@@ -160,19 +160,16 @@ describe('ProjectScope', () => {
     expect(scope.label()).toBe('Alpha')
   })
 
-  it('unions custom fields and team members', async () => {
+  it('unions custom fields', async () => {
     await store.updateProject(alpha, {
-      customFields: [{ id: 'cf1', name: 'Client', type: 'text' }],
-      teamMembers: ['Ana']
+      customFields: [{ id: 'cf1', name: 'Client', type: 'text' }]
     })
     await store.updateProject(beta, {
-      customFields: [{ id: 'cf2', name: 'Risk', type: 'text' }],
-      teamMembers: ['Ana', 'Bo']
+      customFields: [{ id: 'cf2', name: 'Risk', type: 'text' }]
     })
     const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta], store)
 
     expect(scope.customFields().map((f) => f.id)).toEqual(['cf1', 'cf2'])
-    expect(scope.teamMembers()).toEqual(['Ana', 'Bo'])
   })
 })
 

@@ -1,6 +1,5 @@
 import { setIcon } from '#platform'
 import { isIconName } from '#icons'
-import { Avatar } from '#primitives/Avatar'
 
 export interface SelectItem {
   id: string
@@ -32,8 +31,6 @@ export interface OptionRow extends GlyphSpec {
   label: string
   selected?: boolean
   accent?: boolean
-  /** Draws initials from this name instead of a glyph. Used by the assignee picker. */
-  avatar?: string
   /** Faint text before the check, such as how many tasks hold the value. */
   note?: string
   /** A faint icon after the label, such as the mode a saved view opens in. */
@@ -51,7 +48,6 @@ export function renderOptionRow(parent: HTMLElement, row: OptionRow): HTMLButton
   setIcon(check, 'check')
   if (!row.selected) check.addClass('pm-pop-check--hidden')
   if (row.check === 'start') item.appendChild(check)
-  else if (row.avatar) new Avatar(item).setColor(row.color).setName(row.avatar).setSize('sm')
   else renderGlyph(item, row)
   item.createSpan({ cls: 'pm-pop-item-label', text: row.label })
   if (row.trailingIcon) setIcon(item.createSpan('pm-pop-item-trail'), row.trailingIcon)

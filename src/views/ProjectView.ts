@@ -31,7 +31,6 @@ import {
 } from '@dotpm/core'
 import {
   folderOf,
-  personKeyer,
   ProjectScope,
   projectFolderOf,
   type ProjectRef,
@@ -90,11 +89,9 @@ import {
 } from '@dotpm/ui'
 import type { SubView } from './SubView'
 import { TableView } from './table/TableView'
-import type { ExportViewState } from '../export/snapshot'
 import { GanttView } from './gantt/GanttView'
 import { KanbanView } from './KanbanView'
 import { openTaskModal } from '#ui/ModalFactory'
-import { exportViewAsHtml } from '../export/exportView'
 import { collapsedTaskIds, setAllCollapsed } from './collapse'
 
 export const PM_PROJECT_VIEW_TYPE = 'pm-project'
@@ -122,7 +119,6 @@ const sortFields = (config?: ResolvedProjectConfig): SortField[] => [
   { id: 'title', label: `Task` },
   { id: 'status', label: `Status`, ends: config && ends(config.statuses) },
   { id: 'priority', label: `Priority`, ends: config && ends(config.priorities) },
-  { id: 'assignees', label: `Assignees` },
   { id: 'due', label: `Due` },
   { id: 'progress', label: `Progress` }
 ]
@@ -211,18 +207,6 @@ export class ProjectView extends ItemView {
     return this.projectScope?.label() ?? `Project`
   }
 
-  /** The mode, filter, sort and scale a reader of an export starts from. */
-  exportState(): ExportViewState {
-    return {
-      mode: this.currentView,
-      filter: structuredClone(this.query.filter),
-      sort: structuredClone(this.sort),
-      group: structuredClone(this.group),
-      fields: structuredClone(this.fields),
-      ganttGranularity: this.granularity,
-      nonWorkingDays: structuredClone(this.nonWorkingDays)
-    }
-  }
   getIcon(): string {
     return 'chart-gantt'
   }
@@ -233,17 +217,6 @@ export class ProjectView extends ItemView {
     const primary = scope?.primary
     if (!scope || !primary) return
     if (!scope.isMulti) addTabPageItems(menu, this.plugin, this.leaf, primary.filePath, ['note', 'edit'])
-    menu.addItem((item) =>
-      item
-        .setSection('action')
-        .setTitle(`Export current view as HTML`)
-        .setIcon('file-output')
-        .onClick(
-          safeAsync(async () => {
-            await exportViewAsHtml(this.plugin, this)
-          })
-        )
-    )
   }
 
   /** The project a command should act on: the only one, or the group's primary. */
@@ -303,7 +276,6 @@ export class ProjectView extends ItemView {
         if (this.scopeDependsOn(path)) this.redraw()
       })
     )
-    this.register(this.plugin.index.onNoteColorChange(() => this.redraw()))
     // A scope changes when a project joins or leaves it, which for a single-project scope
     // includes the project appearing once the index has caught up with the vault.
     this.register(
@@ -570,7 +542,7 @@ export class ProjectView extends ItemView {
       state.setTitle(`Nothing matches ${this.query.text.trim()}`)
       return
     }
-    const ctx = scope.filterContext(personKeyer(this.plugin.app))
+    const ctx = scope.filterContext()
     const tasks = flattenTasks(scope.tasks()).map((flat) => flat.task)
     const best = bestConditionToDrop(tasks, this.query, ctx)
     const apply = (): void => {
@@ -614,7 +586,7 @@ export class ProjectView extends ItemView {
   private taskCounts(): { shown: number; total: number } {
     const scope = this.projectScope
     if (!scope) return { shown: 0, total: 0 }
-    const ctx = scope.filterContext(personKeyer(this.plugin.app))
+    const ctx = scope.filterContext()
     const all = flattenTasks(scope.tasks())
     const total = all.filter((flat) => this.query.filter.showArchived || !flat.task.archived).length
     const shown = all.filter((flat) => matchesQuery(flat.task, this.query, ctx)).length
@@ -992,7 +964,7 @@ export class ProjectView extends ItemView {
 
   private groupSetup() {
     const scope = this.projectScope
-    return scope ? scope.filterSetup(this.query.filter, personKeyer(this.plugin.app)) : null
+    return scope ? scope.filterSetup(this.query.filter) : null
   }
 
   /** The board's columns as the Group popover lists them: every task the filter lets through. */
@@ -1339,7 +1311,7 @@ export class ProjectView extends ItemView {
     return {
       filter: this.query.filter,
       tasks: flattenTasks(scope.tasks()).map((flat) => flat.task),
-      ctx: scope.filterContext(personKeyer(this.plugin.app)),
+      ctx: scope.filterContext(),
       priorities: config.priorities,
       priorityIcons: config.priorityIcons,
       projects: scope.isMulti

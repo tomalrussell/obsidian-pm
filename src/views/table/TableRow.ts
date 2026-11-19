@@ -6,14 +6,12 @@ import {
   isTerminalStatus,
   stringifyCustomValue,
   type CustomFieldDef,
-  type Project,
-  totalLoggedHours
+  type Project
 } from '@dotpm/core'
 import {
   safeAsync,
   TaskRow,
   ActionsCell,
-  AssigneesCell,
   CustomFieldCell,
   type CustomFieldValue,
   DueDateCell,
@@ -23,7 +21,6 @@ import {
   ProgressCell,
   SelectCell,
   StatusCell,
-  TimeCell,
   TitleCell
 } from '@dotpm/ui'
 import { updateSelectCheckboxes, getVisibleTaskIds } from './TableRenderer'
@@ -124,9 +121,6 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
           })
         })
         break
-      case 'assignees':
-        new AssigneesCell(row, linkedRefs(ctx.plugin.app, task.assignees, task.filePath ?? project.filePath))
-        break
       case 'due':
         new DueDateCell(row, {
           task,
@@ -147,9 +141,6 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
             await ctx.onRefresh()
           }
         })
-        break
-      case 'time':
-        new TimeCell(row, { logged: totalLoggedHours(task), estimate: task.timeEstimate ?? 0 })
         break
       default: {
         const cf = customFields.find((field) => `cf:${field.id}` === column)
@@ -202,10 +193,9 @@ const EMPTY: CustomFieldValue = { kind: 'text', text: '' }
 
 const WIKILINK = /^\[\[.+\]\]$/
 
-/** A person is shown as the avatars assignees get; any other value naming a note, as that note. */
+/** A custom value naming a note is shown as a link. */
 function customFieldValue(app: App, cf: CustomFieldDef, val: unknown, sourcePath: string): CustomFieldValue {
   const values = (Array.isArray(val) ? val : [val]).map(stringifyCustomValue).filter(Boolean)
-  if (cf.type === 'person') return { kind: 'people', people: linkedRefs(app, values, sourcePath) }
   if (cf.type === 'checkbox') return { kind: 'checkbox', checked: Boolean(val) }
   if (cf.type === 'url') return { kind: 'url', url: values.join(', ') }
   if (cf.type === 'date') return { kind: 'text', text: values.map((v) => formatDateLong(v) || v).join(', ') }

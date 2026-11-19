@@ -64,12 +64,6 @@ export interface TaskSource {
   /** A full copy of a project under a new title, every task cloned with a fresh id. */
   duplicateProject(source: Project, title: string): Promise<Project>
   importNoteAsTask(project: Project, file: TFile, opts: ImportNoteOptions): Promise<'imported' | 'skipped'>
-  importTaskForest(
-    project: Project,
-    roots: Task[],
-    sources: Map<string, TFile>,
-    handling: 'move' | 'copy'
-  ): Promise<number>
   updateTask(project: Project, taskId: string, patch: Partial<Task>): Promise<void>
   updateTasks(
     project: Project,

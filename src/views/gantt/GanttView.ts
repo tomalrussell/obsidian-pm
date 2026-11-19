@@ -13,7 +13,7 @@ import {
   Temporal,
   today
 } from '@dotpm/core'
-import { personKeyer, type ProjectScope } from '#store'
+import type { ProjectScope } from '#store'
 import {
   renderAddButton,
   svgEl,
@@ -346,11 +346,7 @@ export class GanttView implements SubView {
   }
 
   private getVisibleTasks(): Task[] {
-    return applyTaskFilterPromote(
-      this.scope.tasks(),
-      this.query,
-      this.scope.filterContext(personKeyer(this.plugin.app))
-    )
+    return applyTaskFilterPromote(this.scope.tasks(), this.query, this.scope.filterContext())
   }
 
   scrollToToday(): void {

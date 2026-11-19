@@ -1,15 +1,7 @@
-import type PMPlugin from '#main'
-import { type Project, type Task, type CustomFieldDef, collectAllAssignees, stringifyCustomValue } from '@dotpm/core'
+import { type Task, type CustomFieldDef, stringifyCustomValue } from '@dotpm/core'
 import { Checkbox, renderDateControl, renderInputControl, renderMultiSelect, renderSelectControl } from '@dotpm/ui'
-import { renderPersonPicker } from '#ui/PersonPicker'
 
-export function renderCustomFieldInput(
-  cf: CustomFieldDef,
-  task: Task,
-  project: Project,
-  plugin: PMPlugin,
-  rerender: () => void
-): HTMLElement {
+export function renderCustomFieldInput(cf: CustomFieldDef, task: Task, rerender: () => void): HTMLElement {
   const value = task.customFields[cf.id]
   const wrap = createDiv('pm-prop-value')
   const commit = (next: unknown): void => {
@@ -68,26 +60,6 @@ export function renderCustomFieldInput(
         },
         remove: (option) => {
           task.customFields[cf.id] = picked().filter((v) => v !== option)
-        }
-      })
-      break
-    }
-    case 'person': {
-      renderPersonPicker({
-        container: wrap,
-        plugin,
-        sourcePath: task.filePath ?? project.filePath,
-        extra: () => [...project.teamMembers, ...collectAllAssignees(project.tasks)],
-        addLabel: `Set person`,
-        selected: () => {
-          const current = task.customFields[cf.id]
-          return typeof current === 'string' && current ? [current] : []
-        },
-        add: (person) => {
-          task.customFields[cf.id] = person
-        },
-        remove: () => {
-          task.customFields[cf.id] = ''
         }
       })
       break

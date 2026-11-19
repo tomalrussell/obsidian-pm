@@ -1,12 +1,4 @@
-import {
-  type GroupState,
-  type Task,
-  filterFieldLabel,
-  filterKind,
-  filterValue,
-  makeDefaultGroup,
-  valueKey
-} from '@dotpm/core'
+import { type GroupState, type Task, filterFieldLabel, filterKind, filterValue, makeDefaultGroup } from '@dotpm/core'
 import { valueOptions, type FilterSetup } from '../composites/ViewHeader/filterPopover'
 
 export interface BoardColumn {
@@ -24,9 +16,9 @@ const ALWAYS_SET = ['status', 'priority', 'type', 'project']
 
 /** The fields a board can put in columns: one value, or several, picked from a list. */
 export function groupableFields(setup: FilterSetup): string[] {
-  const builtins = ['status', 'priority', 'assignee', 'tag', 'type', ...(setup.projects.length > 1 ? ['project'] : [])]
+  const builtins = ['status', 'priority', 'tag', 'type', ...(setup.projects.length > 1 ? ['project'] : [])]
   const custom = setup.ctx.customFields
-    .filter((cf) => cf.type === 'select' || cf.type === 'multiselect' || cf.type === 'person')
+    .filter((cf) => cf.type === 'select' || cf.type === 'multiselect')
     .map((cf) => `cf:${cf.id}`)
   return [...builtins, ...custom]
 }
@@ -54,7 +46,7 @@ export function boardColumns(setup: FilterSetup, group: GroupState, tasks: Task[
   const kind = filterKind(field, setup.ctx.customFields)
   const byKey = new Map<string, BoardColumn>()
   for (const option of valueOptions(setup, field)) {
-    byKey.set(valueKey(field, option.id, setup.ctx), { ...option, tasks: [], hidden: false })
+    byKey.set(option.id, { ...option, tasks: [], hidden: false })
   }
   const none: BoardColumn = {
     id: '',
@@ -66,7 +58,7 @@ export function boardColumns(setup: FilterSetup, group: GroupState, tasks: Task[
     const values = groupValues(task, field, setup)
     if (!values.length) none.tasks.push(task)
     for (const value of values) {
-      const key = valueKey(field, value, setup.ctx)
+      const key = value
       let column = byKey.get(key)
       if (!column) {
         column = { id: value, label: value, tasks: [], hidden: false }

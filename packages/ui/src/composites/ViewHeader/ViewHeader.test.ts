@@ -15,7 +15,7 @@ import {
   type ViewFields
 } from '@dotpm/core'
 import { setPlatform } from '#platform'
-import { domPlatform } from '../../dom-platform'
+import { domPlatform } from '../../../../../test/ui/dom-platform'
 import { ChipButton } from '#primitives/ChipButton'
 import { SplitButton } from '#primitives/SplitButton'
 import { renderBreadcrumb } from './Breadcrumb'
@@ -43,7 +43,7 @@ const FIELDS: CustomFieldDef[] = [
 ]
 
 const TASKS = [
-  makeTask({ id: 'a', status: 'capture', assignees: ['Ada'] }),
+  makeTask({ id: 'a', status: 'capture' }),
   makeTask({ id: 'b', status: 'capture' }),
   makeTask({ id: 'c', status: 'done', archived: true })
 ]
@@ -174,7 +174,6 @@ describe('FilterBar', () => {
     expect(labels).toEqual([
       'Status',
       'Priority',
-      'Assignee',
       'Tag',
       'Due date',
       'Start date',
@@ -565,7 +564,7 @@ describe('fields popover', () => {
 
   it('lists the table columns with their widths, the title locked', () => {
     open({})
-    expect(labels()).toEqual(['Task', 'Status', 'Priority', 'Assignees', 'Due', 'Progress', 'Time', 'Client'])
+    expect(labels()).toEqual(['Task', 'Status', 'Priority', 'Due', 'Progress', 'Client'])
     const first = document.body.find('.pm-vis-row')
     expect(first?.find('.pm-vis-lock')).not.toBeNull()
     expect(first?.find('.pm-vis-detail')?.textContent).toBe('fill')
@@ -580,12 +579,12 @@ describe('fields popover', () => {
     expect(document.body.find('.pm-fields-pop .pm-pop-head.pm-pop-section')).not.toBeNull()
     document.body.find('.pm-vis-row.is-hidden')?.querySelector<HTMLButtonElement>('.pm-vis-eye')?.click()
     expect(fields.table).toBeUndefined()
-    expect(labels()).toEqual(['Task', 'Status', 'Priority', 'Assignees', 'Due', 'Progress', 'Time', 'Client'])
+    expect(labels()).toEqual(['Task', 'Status', 'Priority', 'Due', 'Progress', 'Client'])
     expect(onChange).toHaveBeenCalledTimes(2)
   })
 
   it('forgets a list put back to the defaults', () => {
-    const fields: ViewFields = { kanban: { visible: ['priority', 'time', 'tags', 'progress', 'assignees'] } }
+    const fields: ViewFields = { kanban: { visible: ['priority', 'tags', 'progress'] } }
     open(fields, 'kanban')
     const due = document.body.findAll('.pm-vis-row.is-hidden').find((row) => row.dataset.id === 'due')
     due?.querySelector<HTMLButtonElement>('.pm-vis-eye')?.click()
@@ -688,20 +687,18 @@ describe('project fields popover', () => {
     const onChange = vi.fn<(shown: ProjectListField[]) => void>()
     openProjectFieldsPopover(document.body.createEl('button'), { shown: ['progress', 'tasks', 'due'], onChange })
     expect(ids('.pm-vis-row:not(.is-hidden)')).toEqual(['project', 'progress', 'tasks', 'due'])
-    expect(ids('.pm-vis-row.is-hidden')).toEqual(['members'])
+    expect(ids('.pm-vis-row.is-hidden')).toEqual([])
     expect(document.body.find('.pm-vis-row')?.find('.pm-vis-eye')).toBeNull()
 
     document.body.find('.pm-vis-row[data-id="tasks"]')?.querySelector<HTMLButtonElement>('.pm-vis-eye')?.click()
     expect(onChange).toHaveBeenLastCalledWith(['progress', 'due'])
-    document.body.find('.pm-vis-row[data-id="members"]')?.querySelector<HTMLButtonElement>('.pm-vis-eye')?.click()
-    expect(onChange).toHaveBeenLastCalledWith(['progress', 'members', 'due'])
     document.body.find('.pm-vis-row[data-id="tasks"]')?.querySelector<HTMLButtonElement>('.pm-vis-eye')?.click()
-    expect(onChange).toHaveBeenLastCalledWith(['progress', 'tasks', 'members', 'due'])
+    expect(onChange).toHaveBeenLastCalledWith(['progress', 'tasks', 'due'])
     expect(document.body.querySelector<HTMLButtonElement>('.pm-fields-foot .pm-chip-btn')?.disabled).toBe(true)
 
     document.body.find('.pm-vis-row[data-id="due"]')?.querySelector<HTMLButtonElement>('.pm-vis-eye')?.click()
     document.body.find('.pm-fields-foot .pm-chip-btn')?.click()
-    expect(onChange).toHaveBeenLastCalledWith(['progress', 'tasks', 'members', 'due'])
+    expect(onChange).toHaveBeenLastCalledWith(['progress', 'tasks', 'due'])
   })
 })
 

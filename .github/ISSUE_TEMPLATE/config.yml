@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: Docs
-    url: https://github.com/dotpm/obsidian-pm/tree/main/docs
-    about: The local API, the command line client and the TaskNotes integration
+    url: https://github.com/dotpm/obsidian-pm#readme
+    about: Project and task documentation

@@ -1,6 +1,5 @@
 import type { Task } from '../types'
 import { makeId } from '../types'
-import { dedupePeople } from '../utils'
 
 export interface FlatTask {
   task: Task
@@ -101,11 +100,8 @@ function cloneNode(source: Task, includeSubtasks: boolean, idMap: Map<string, st
     updatedAt: now,
     subtasks: includeSubtasks ? source.subtasks.map((s) => cloneNode(s, true, idMap)) : [],
     dependencies: [...source.dependencies],
-    assignees: [...source.assignees],
     tags: [...source.tags],
-    customFields: { ...source.customFields },
-    timeLogs: source.timeLogs ? source.timeLogs.map((l) => ({ ...l })) : undefined,
-    recurrence: source.recurrence ? { ...source.recurrence } : undefined
+    customFields: { ...source.customFields }
   }
 }
 
@@ -136,18 +132,6 @@ export function filterArchived(tasks: Task[]): Task[] {
     .map((t) => (t.subtasks.length ? { ...t, subtasks: filterArchived(t.subtasks) } : t))
 }
 
-export function collectAllAssignees(tasks: Task[], extra?: string[], keyOf?: (raw: string) => string): string[] {
-  const values: string[] = extra ? [...extra] : []
-  const walk = (list: Task[]) => {
-    for (const t of list) {
-      for (const a of t.assignees) values.push(a)
-      walk(t.subtasks)
-    }
-  }
-  walk(tasks)
-  return dedupePeople(values, keyOf)
-}
-
 export function collectAllTags(tasks: Task[]): string[] {
   const set = new Set<string>()
   const walk = (list: Task[]) => {
@@ -158,9 +142,4 @@ export function collectAllTags(tasks: Task[]): string[] {
   }
   walk(tasks)
   return [...set].filter(Boolean).sort()
-}
-
-export function totalLoggedHours(task: Task): number {
-  if (!task.timeLogs?.length) return 0
-  return task.timeLogs.reduce((sum, log) => sum + log.hours, 0)
 }

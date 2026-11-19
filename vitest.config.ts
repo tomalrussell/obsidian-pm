@@ -4,7 +4,6 @@ import { coverageConfigDefaults, defineConfig } from 'vitest/config'
 export default defineConfig({
   define: {
     __STYLEGUIDE__: 'false',
-    __VIEWER_TEMPLATE__: JSON.stringify(''),
     __CHANGELOG__: JSON.stringify('')
   },
   resolve: {
@@ -13,7 +12,7 @@ export default defineConfig({
     }
   },
   test: {
-    include: ['src/**/*.test.ts', 'packages/*/src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'packages/*/src/**/*.test.ts', 'test/**/*.test.ts'],
     setupFiles: ['test/setup.ts'],
     coverage: {
       include: ['src/**/*.ts', 'packages/*/src/**/*.ts'],

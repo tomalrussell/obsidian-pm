@@ -7,19 +7,16 @@ import {
   type Task,
   collectAllTags,
   flattenTasks,
-  totalLoggedHours,
   Temporal,
   formatDateLong,
   parsePlainDate,
   today,
   dateUrgency,
-  dedupePeople,
   isTerminalStatus
 } from '@dotpm/core'
-import { personKeyer, type ProjectRef } from '#store'
+import type { ProjectRef } from '#store'
 import {
   safeAsync,
-  Avatar,
   Chip,
   EmptyState,
   ProgressBar,
@@ -30,10 +27,8 @@ import {
   renderMilestoneTimeline,
   type MilestonePoint,
   renderTagChip,
-  renderTimeChip,
   renderGlyph
 } from '@dotpm/ui'
-import { linkedRefs } from './linkedRefs'
 
 export const PM_PROJECT_OVERVIEW_VIEW_TYPE = 'pm-project-overview'
 
@@ -48,8 +43,6 @@ interface Rollup {
   total: number
   done: number
   overdue: number
-  logged: number
-  estimate: number
   latestDue: string
 }
 
@@ -108,7 +101,6 @@ export class ProjectOverviewView extends ItemView {
         this.render()
       })
     )
-    this.register(this.plugin.index.onNoteColorChange(() => this.render()))
     this.register(
       this.plugin.index.onChange(() => {
         if (this.project && this.treeSignature !== this.signTree(this.project)) this.render()
@@ -165,7 +157,7 @@ export class ProjectOverviewView extends ItemView {
     this.renderDescription(main, project)
     this.renderMilestones(main, tasks, config)
     this.renderSubProjects(main, project)
-    this.renderProperties(side, project, tasks, rollup)
+    this.renderProperties(side, project, rollup)
   }
 
   private signTree(project: Project): string {
@@ -214,13 +206,6 @@ export class ProjectOverviewView extends ItemView {
         : `${rollup.done} of ${rollup.total} tasks done`
     ]
     if (children) bits.push(children === 1 ? `${children} sub-project` : `${children} sub-projects`)
-    if (project.teamMembers.length) {
-      bits.push(
-        project.teamMembers.length === 1
-          ? `${project.teamMembers.length} member`
-          : `${project.teamMembers.length} members`
-      )
-    }
     identity.createDiv({ cls: 'pm-overview-subline', text: bits.join(' · ') })
 
     if (!this.plugin.index.isArchived(project.filePath)) {
@@ -288,14 +273,6 @@ export class ProjectOverviewView extends ItemView {
         value: String(rollup.overdue),
         sub: `tasks past due`,
         alert: rollup.overdue > 0
-      },
-      {
-        label: `Time`,
-        value: rollup.logged || rollup.estimate ? '' : '—',
-        sub: `logged / estimate`,
-        extra: (el) => {
-          renderTimeChip(el, rollup.logged, rollup.estimate)
-        }
       }
     ]
     renderMetricStrip(parent, stats)
@@ -389,7 +366,7 @@ export class ProjectOverviewView extends ItemView {
     }
   }
 
-  private renderProperties(parent: HTMLElement, project: Project, tasks: Task[], rollup: Rollup): void {
+  private renderProperties(parent: HTMLElement, project: Project, rollup: Rollup): void {
     const section = this.section(parent, `Properties`)
     const list = section.createDiv('pm-overview-props')
     const prop = (label: string, empty: boolean, emptyText: string, fill: (value: HTMLElement) => void): void => {
@@ -400,20 +377,6 @@ export class ProjectOverviewView extends ItemView {
         return value
       })
     }
-
-    const people = (value: HTMLElement, values: string[]): void => {
-      for (const person of linkedRefs(this.app, values, project.filePath)) {
-        const holder = value.createSpan({ cls: 'pm-overview-member' })
-        const avatar = new Avatar(holder).setColor(person.color).setName(person.name).setSize('sm')
-        if (person.unresolved) avatar.setUnresolved(true)
-        if (person.onClick) avatar.onClick(person.onClick)
-        holder.createSpan({ text: person.name })
-      }
-    }
-
-    prop(`Members`, project.teamMembers.length === 0, `No members`, (value) => {
-      people(value, project.teamMembers)
-    })
 
     const tags = collectAllTags(project.tasks)
     prop(`Tags`, tags.length === 0, `No tags`, (value) => {
@@ -427,10 +390,6 @@ export class ProjectOverviewView extends ItemView {
       renderDueChip(value, formatDateLong(rollup.latestDue), dateUrgency(rollup.latestDue, rollup.overdue > 0))
     })
 
-    prop(`Time`, !rollup.logged && !rollup.estimate, `No estimate`, (value) => {
-      renderTimeChip(value, rollup.logged, rollup.estimate)
-    })
-
     const parentRef = this.plugin.index.parentOf(project.filePath)
     prop(`Parent`, !parentRef, `No parent`, (value) => {
       if (!parentRef) return
@@ -439,11 +398,6 @@ export class ProjectOverviewView extends ItemView {
         'click',
         safeAsync(() => this.plugin.router.openProjectOverview(parentRef.path))
       )
-    })
-
-    const assignees = dedupePeople(tasks.flatMap((task) => task.assignees).filter(Boolean), personKeyer(this.app))
-    prop(`Assignees`, assignees.length === 0, `Nobody assigned`, (value) => {
-      people(value, assignees)
     })
 
     const customFields = this.plugin.store.configFor(project).customFields
@@ -462,11 +416,9 @@ export class ProjectOverviewView extends ItemView {
 
 function summarize(tasks: Task[], config: ResolvedProjectConfig): Rollup {
   const now = today()
-  const rollup: Rollup = { total: 0, done: 0, overdue: 0, logged: 0, estimate: 0, latestDue: '' }
+  const rollup: Rollup = { total: 0, done: 0, overdue: 0, latestDue: '' }
   for (const task of tasks) {
     rollup.total++
-    rollup.logged += totalLoggedHours(task)
-    rollup.estimate += task.timeEstimate ?? 0
     const complete = isTerminalStatus(task.status, config.statuses)
     if (complete) rollup.done++
     const due = parsePlainDate(task.due)
@@ -474,7 +426,5 @@ function summarize(tasks: Task[], config: ResolvedProjectConfig): Rollup {
     if (task.due > rollup.latestDue) rollup.latestDue = task.due
     if (!complete && Temporal.PlainDate.compare(due, now) < 0) rollup.overdue++
   }
-  rollup.logged = Math.round(rollup.logged * 10) / 10
-  rollup.estimate = Math.round(rollup.estimate * 10) / 10
   return rollup
 }

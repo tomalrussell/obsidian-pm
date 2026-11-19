@@ -25,7 +25,6 @@ function taskRef(id: string, projectPath: string): TaskRef {
     due: '',
     completed: '',
     dependencies: [],
-    assignees: [],
     archived: false
   }
 }
@@ -37,13 +36,10 @@ function projectRef(id: string, path: string): ProjectRef {
     title: id,
     icon: '',
     color: '',
-    teamMembers: [],
     tags: [],
     customFields: [],
     parentPath: undefined,
     archived: false,
-    ownStatusIds: null,
-    completeStatusIds: null,
     autoArchiveDays: null
   }
 }

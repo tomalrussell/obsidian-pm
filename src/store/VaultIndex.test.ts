@@ -106,7 +106,7 @@ describe('VaultIndex', () => {
     expect(index.taskRefs('Zulu.md').map((r) => r.id)).toEqual(['t1'])
   })
 
-  it('counts tasks per project using the project palette when it defines one', async () => {
+  it('counts completion using the fixed statuses, ignoring project palettes', async () => {
     const config = 'config:\n  statuses:\n    - id: shipped\n      complete: true\n'
     await vault.create('Projects/Roadmap.md', projectNote('p1', 'Roadmap', config))
     await vault.create('Projects/Roadmap_tasks/a.md', taskNote('t1', 'A', 'p1'))
@@ -115,19 +115,17 @@ describe('VaultIndex', () => {
     index.build()
 
     const ref = expectDefined(index.projectRef('Projects/Roadmap.md'))
-    // 'shipped' comes from this project's palette; 'done' keeps its global complete flag
-    // because the project's palette does not redefine it.
-    expect(index.counts(ref)).toEqual({ total: 3, done: 2 })
+    expect(index.counts(ref)).toEqual({ total: 3, done: 1 })
   })
 
-  it('counts a status the project palette redefines as open against its own flag', async () => {
+  it('does not let a project redefine the fixed done status', async () => {
     const config = 'config:\n  statuses:\n    - id: done\n      complete: false\n'
     await vault.create('Projects/Roadmap.md', projectNote('p1', 'Roadmap', config))
     await vault.create('Projects/Roadmap_tasks/a.md', taskNote('t1', 'A', 'p1'))
     await vault.create('Projects/Roadmap_tasks/b.md', taskNote('t2', 'B', 'p1', 'done'))
     index.build()
 
-    expect(index.counts(expectDefined(index.projectRef('Projects/Roadmap.md')))).toEqual({ total: 2, done: 0 })
+    expect(index.counts(expectDefined(index.projectRef('Projects/Roadmap.md')))).toEqual({ total: 2, done: 1 })
   })
 
   it('counts against the global palette when the project defines none', async () => {
@@ -148,14 +146,6 @@ describe('VaultIndex', () => {
     const ref = expectDefined(index.projectRef('Projects/Roadmap.md'))
     expect(index.counts(ref)).toEqual({ total: 1, done: 0 })
     expect(index.dueSummary(ref)).toEqual({ overdue: 1, latestDue: '2020-01-01' })
-  })
-
-  it('reads only the usable names from a hand-edited team member list', async () => {
-    const members = 'teamMembers:\n  - id: m1\n    name: John Doe\n  - Alice\n'
-    await vault.create('Projects/Roadmap.md', projectNote('p1', 'Roadmap', members))
-    index.build()
-
-    expect(expectDefined(index.projectRef('Projects/Roadmap.md')).teamMembers).toEqual(['Alice'])
   })
 
   it('falls back to the default color when a project note holds an invalid one', async () => {
@@ -399,73 +389,12 @@ describe('VaultIndex', () => {
       expect(index.projectPaths()).not.toContain('Later/Side quest.md')
     })
 
-    it('reports a note color change only when the color changes', async () => {
-      let calls = 0
-      index.onNoteColorChange(() => calls++)
-      await vault.create('People/Jane.md', '---\ncolor: "#c47070"\n---\n')
-      expect(calls).toBe(1)
-
-      const jane = expectDefined(vault.getAbstractFileByPath('People/Jane.md') as TFile | null)
-      await vault.modify(jane, '---\ncolor: "#c47070"\nrole: Design\n---\n')
-      expect(calls).toBe(1)
-
-      await vault.modify(jane, '---\ncolor: "#79b58d"\n---\n')
-      expect(calls).toBe(2)
-
-      await vault.trashFile(jane)
-      expect(calls).toBe(3)
-    })
-
     it('reports changes to subscribers', async () => {
       let calls = 0
       index.onChange(() => calls++)
       await vault.create('Later/Side quest.md', projectNote('p2', 'Side quest'))
       expect(calls).toBe(1)
     })
-  })
-})
-
-describe('VaultIndex people queries', () => {
-  let vault: FakeVault
-  let app: App
-  let index: VaultIndex
-
-  const assignedNote = (id: string, projectId: string, assignees: string): string =>
-    `---\npm-task: true\nid: ${id}\nprojectId: ${projectId}\ntitle: T${id}\nstatus: todo\nassignees: ${assignees}\n---\n\n`
-
-  beforeEach(async () => {
-    const fake = makeFakeApp({ liveMetadataCache: true })
-    vault = fake.vault
-    app = fake.app as unknown as App
-    index = new VaultIndex(app, () => ({ ...DEFAULT_SETTINGS }))
-    await vault.create('People/Jane Doe.md', '')
-    await vault.create('Contacts/Jane Doe.md', '')
-    await vault.create('Projects/Roadmap.md', projectNote('p1', 'Roadmap'))
-    await vault.create('Projects/Roadmap_tasks/a.md', assignedNote('a', 'p1', '["[[People/Jane Doe|Jane Doe]]"]'))
-    await vault.create('Projects/Roadmap_tasks/b.md', assignedNote('b', 'p1', '["[[Contacts/Jane Doe|Jane Doe]]"]'))
-    await vault.create('Projects/Roadmap_tasks/c.md', assignedNote('c', 'p1', '["Bob Plain"]'))
-    index.build()
-  })
-
-  it('reads assignees onto the task ref', () => {
-    expect(expectDefined(index.task('c')).assignees).toEqual(['Bob Plain'])
-  })
-
-  it('finds the tasks assigned to one person', () => {
-    const found = index.tasksForPerson('[[People/Jane Doe]]')
-    expect(found.map((ref) => ref.id)).toEqual(['a'])
-  })
-
-  it('keeps two people with the same name apart', () => {
-    expect(index.tasksForPerson('[[Contacts/Jane Doe]]').map((ref) => ref.id)).toEqual(['b'])
-  })
-
-  it('finds a person named as plain text', () => {
-    expect(index.tasksForPerson('Bob Plain').map((ref) => ref.id)).toEqual(['c'])
-  })
-
-  it('lists everyone in the vault once', () => {
-    expect(index.allAssignees()).toHaveLength(3)
   })
 })
 

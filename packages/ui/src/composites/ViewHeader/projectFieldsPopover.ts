@@ -14,7 +14,6 @@ export const projectFieldLabel = (field: ProjectListField): string =>
   ({
     progress: 'Progress',
     tasks: 'Tasks',
-    members: 'Members',
     due: 'Due'
   })[field]
 

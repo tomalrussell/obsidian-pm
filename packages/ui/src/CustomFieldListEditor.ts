@@ -9,7 +9,6 @@ export function customFieldTypeLabels(): Record<CustomFieldDef['type'], string> 
     date: 'Date',
     select: 'Select',
     multiselect: 'Multi-select',
-    person: 'Person',
     checkbox: 'Checkbox',
     url: 'URL'
   }

@@ -63,14 +63,7 @@ export class TitleCell {
         .setColor('var(--color-green)')
         .setTooltip('Subtask')
     }
-    if (task.recurrence) {
-      new Chip(inner)
-        .setLabel('R')
-        .setVariant('solid')
-        .setSize('sm')
-        .setColor('var(--color-blue)')
-        .setTooltip('Recurring')
-    }
+
     if (task.archived) {
       new Chip(inner)
         .setLabel('Archived')

@@ -1,10 +1,8 @@
 import { type Task, formatDateShort } from '@dotpm/core'
-import { AvatarStack, type AvatarPerson } from '#primitives/AvatarStack'
 import { Chip } from '#primitives/Chip'
 import { ProgressBar } from '#primitives/ProgressBar'
 import { renderDueChip } from './dueChip'
 import { renderTagChip } from './tagChip'
-import { renderTimeChip } from './timeChip'
 
 /** A custom field's value as a card shows it. */
 export interface CardFieldValue {
@@ -15,7 +13,6 @@ export interface CardFieldValue {
 export interface KanbanCardProps {
   /** The card fields to show, in order (`priority`, `tags`, `cf:<id>`...). */
   fields: string[]
-  people: AvatarPerson[]
   task: Task
   priorityColor?: string
   descriptionPreview?: string
@@ -24,7 +21,6 @@ export interface KanbanCardProps {
   customValues?: Record<string, CardFieldValue>
   /** Leading slot in the footer, filled when a card has to say where it is from. */
   renderSource?: (parent: HTMLElement) => void
-  loggedHours: number
   overdue: boolean
   showTagColors: boolean
   onClick: () => void
@@ -73,21 +69,11 @@ export class KanbanCard {
         .setColor('var(--color-green)')
         .setTooltip('Subtask')
     }
-    if (task.recurrence) {
-      new Chip(titleRow)
-        .setLabel('R')
-        .setVariant('solid')
-        .setSize('sm')
-        .setColor('var(--color-blue)')
-        .setTooltip('Recurring')
-    }
 
     const footer = body.createDiv('pm-kanban-card-footer')
     for (const field of fields) {
       if (field === 'description' && props.descriptionPreview) {
         body.createDiv({ cls: 'pm-kanban-card-description', text: props.descriptionPreview })
-      } else if (field === 'time') {
-        renderTimeChip(body, props.loggedHours, task.timeEstimate ?? 0, 'sm')
       } else if (field === 'tags' && task.tags.length) {
         const tagsEl = body.createDiv('pm-kanban-card-tags')
         for (const tag of task.tags.slice(0, 3)) {
@@ -97,8 +83,6 @@ export class KanbanCard {
         new ProgressBar(body).setSize('sm').setValue(task.progress)
       } else if (field === 'project') {
         props.renderSource?.(footer)
-      } else if (field === 'assignees') {
-        new AvatarStack(footer).setPeople(props.people).setMax(3).setSize('sm')
       } else if (field === 'due' && task.due) {
         renderDueChip(footer, formatDateShort(task.due), props.overdue ? 'overdue' : 'normal', 'sm')
       } else if (props.customValues?.[field]?.text) {

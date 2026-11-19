@@ -1,4 +1,4 @@
-import { App, Notice, Platform, PluginSettingTab, Setting, debounce } from 'obsidian'
+import { App, Notice, PluginSettingTab, Setting, debounce } from 'obsidian'
 import type { SettingDefinitionItem, SettingDefinitionPage } from 'obsidian'
 import type PMPlugin from './main'
 import {
@@ -12,15 +12,7 @@ import {
 } from '@dotpm/core'
 import { saveShortcutLabel } from './utils'
 import { renderCustomFieldFields, renderCustomFieldOptions } from '@dotpm/ui'
-import {
-  countTaskNotesPaletteChanges,
-  getTaskNotesApi,
-  importTaskNotesPalettes,
-  isTaskNotesInstalled
-} from './integrations/tasknotes'
-import { renderPaletteFields, renderStatusDoneToggle } from './ui/PaletteListEditor'
-import { renderPersonPicker } from './ui/PersonPicker'
-import { generateToken } from './api/LocalApiServer'
+import { renderPaletteFields } from './ui/PaletteListEditor'
 
 export type { PMSettings }
 export { DEFAULT_SETTINGS }
@@ -263,17 +255,10 @@ export class PMSettingTab extends PluginSettingTab {
           }
         ]
       },
-      this.localApiGroup(),
       {
         type: 'group',
         heading: `Task fields`,
-        items: [this.statusesPage(), this.prioritiesPage(), this.customFieldsPage(), this.teamMembersPage()]
-      },
-      {
-        type: 'group',
-        heading: `Integrations`,
-        visible: () => isTaskNotesInstalled(this.app),
-        items: [this.taskNotesPage()]
+        items: [this.prioritiesPage(), this.customFieldsPage()]
       }
     ]
   }
@@ -285,112 +270,9 @@ export class PMSettingTab extends PluginSettingTab {
       this.plugin.settings.lastAutoArchiveDate = ''
       await this.plugin.autoArchiver.check()
     }
-    if (key.startsWith('localApi')) await this.plugin.syncLocalApi()
     if (key === 'dateFormat') setDateFormat(this.plugin.settings.dateFormat)
     this.plugin.refreshViews()
     this.refreshDomState()
-  }
-
-  private async regenerateLocalApiToken(): Promise<void> {
-    this.plugin.settings.localApiToken = generateToken()
-    await this.plugin.saveSettings()
-    this.update()
-  }
-
-  private localApiGroup(): SettingDefinitionItem {
-    const enabled = (): boolean => this.plugin.settings.localApiEnabled
-    return {
-      type: 'group',
-      heading: `Local API`,
-      visible: () => Platform.isDesktopApp,
-      items: [
-        {
-          name: `Serve projects to other apps`,
-          desc: `Allow tools on this computer to read and edit tasks over HTTP and MCP at http://127.0.0.1:${String(this.plugin.settings.localApiPort)}. Only this computer can connect, and every request needs the token. The MCP endpoint is /mcp.`,
-          aliases: ['api', 'mcp', 'server', 'agent', 'local'],
-          control: { type: 'toggle', key: 'localApiEnabled' }
-        },
-        {
-          name: `Port`,
-          desc: `Set the port the server listens on. The default comes from the vault name, so two open vaults use different ports.`,
-          aliases: ['api', 'mcp'],
-          control: {
-            type: 'number',
-            key: 'localApiPort',
-            min: 1024,
-            max: 65535,
-            step: 1,
-            validate: (value) =>
-              Number.isInteger(value) && value >= 1024 && value <= 65535 ? undefined : `Use a port from 1024 to 65535.`,
-            disabled: () => !enabled()
-          }
-        },
-        {
-          name: `Token`,
-          desc: `Set the bearer token clients send with every request.`,
-          aliases: ['api', 'mcp', 'secret'],
-          control: {
-            type: 'text',
-            key: 'localApiToken',
-            validate: (value) => (value.trim().length >= 16 ? undefined : `Use at least 16 characters.`),
-            disabled: () => !enabled()
-          }
-        },
-        {
-          name: `Regenerate token`,
-          desc: `Replace the token with a new random one. Every connected client will need the new one.`,
-          aliases: ['api', 'mcp', 'secret'],
-          action: () => {
-            void this.regenerateLocalApiToken()
-          },
-          disabled: () => !enabled()
-        }
-      ]
-    }
-  }
-
-  private statusesPage(): SettingDefinitionPage {
-    const statuses = this.plugin.settings.statuses
-    return {
-      type: 'page',
-      name: `Statuses`,
-      desc: `Manage the labels, colors, and icons of task statuses.`,
-      displayValue: () =>
-        this.plugin.settings.statuses.length === 1
-          ? `${this.plugin.settings.statuses.length} status`
-          : `${this.plugin.settings.statuses.length} statuses`,
-      items: [
-        {
-          type: 'list',
-          heading: `Statuses`,
-          emptyState: `No statuses.`,
-          items: statuses.map((status) => ({
-            name: status.label,
-            render: (setting: Setting) => {
-              setting.setClass('pm-palette-row')
-              renderPaletteFields(setting.controlEl, status, () => this.persist())
-              renderStatusDoneToggle(setting.controlEl, status, () => this.persist())
-            }
-          })),
-          onReorder: (from, to) => this.reorder(statuses, from, to),
-          onDelete: (index) => this.deleteEntry('status', index),
-          addItem: {
-            name: `Add status`,
-            action: () => {
-              statuses.push({
-                id: 'status-' + makeId().slice(0, 6),
-                label: `New status`,
-                color: DEFAULT_PALETTE_COLOR,
-                icon: '',
-                complete: false
-              })
-              this.persist()
-              this.update()
-            }
-          }
-        }
-      ]
-    }
   }
 
   private customFieldsPage(): SettingDefinitionPage {
@@ -483,48 +365,6 @@ export class PMSettingTab extends PluginSettingTab {
     }
   }
 
-  private taskNotesPage(): SettingDefinitionPage {
-    const connected = (): boolean => getTaskNotesApi(this.app) !== null
-    return {
-      type: 'page',
-      name: `TaskNotes`,
-      desc: `Share statuses and priorities with the TaskNotes plugin.`,
-      displayValue: () => this.taskNotesStatus(),
-      status: () => (connected() ? null : 'warning'),
-      items: [
-        {
-          type: 'list',
-          extraButtons: [
-            (button) =>
-              button
-                .setIcon('refresh-cw')
-                .setTooltip(`Import from TaskNotes`)
-                .setDisabled(!connected())
-                .onClick(() => this.importFromTaskNotes())
-          ],
-          items: [
-            {
-              name: `Statuses and priorities`,
-              desc: `Copy labels, colors, and completion from TaskNotes 4.10 or newer.`,
-              render: (setting: Setting) => {
-                setting.controlEl.createDiv({ cls: 'setting-item-value', text: this.taskNotesStatus() })
-              }
-            }
-          ]
-        }
-      ]
-    }
-  }
-
-  /** Whether an import would change anything right now. */
-  private taskNotesStatus(): string {
-    const api = getTaskNotesApi(this.app)
-    if (!api) return `Update required`
-    const { added, updated } = countTaskNotesPaletteChanges(api, this.plugin.settings)
-    const total = added + updated
-    return total === 0 ? `Up to date` : total === 1 ? `${total} change` : `${total} changes`
-  }
-
   private excludedFoldersPage(): SettingDefinitionPage {
     const folders = this.plugin.settings.excludedFolders
     return {
@@ -575,54 +415,6 @@ export class PMSettingTab extends PluginSettingTab {
     }
   }
 
-  private teamMembersPage(): SettingDefinitionPage {
-    const members = this.plugin.settings.globalTeamMembers
-    return {
-      type: 'page',
-      name: `Team members`,
-      desc: `Manage the people available as assignees across all projects.`,
-      displayValue: () =>
-        this.plugin.settings.globalTeamMembers.length === 1
-          ? `${this.plugin.settings.globalTeamMembers.length} person`
-          : `${this.plugin.settings.globalTeamMembers.length} people`,
-      items: [
-        {
-          name: `People folder`,
-          desc: `Find and create person notes in this folder. Leave it empty to search the whole vault.`,
-          aliases: ['people', 'person notes'],
-          control: {
-            type: 'folder',
-            key: 'peopleFolder',
-            defaultValue: 'People',
-            placeholder: `Whole vault`
-          }
-        },
-        {
-          name: `Team members`,
-          desc: `Offer these people as assignees and members in every project.`,
-          render: (setting: Setting) => {
-            renderPersonPicker({
-              container: setting.controlEl,
-              plugin: this.plugin,
-              sourcePath: '',
-              addLabel: `Add member`,
-              selected: () => this.plugin.settings.globalTeamMembers,
-              add: (value) => {
-                members.push(value)
-                this.persist()
-              },
-              remove: (value) => {
-                const index = members.indexOf(value)
-                if (index >= 0) members.splice(index, 1)
-                this.persist()
-              }
-            })
-          }
-        }
-      ]
-    }
-  }
-
   private persist(): void {
     void this.plugin.saveSettings()
     this.plugin.refreshViews()
@@ -635,10 +427,10 @@ export class PMSettingTab extends PluginSettingTab {
     this.update()
   }
 
-  private deleteEntry(field: 'status' | 'priority', index: number): void {
-    const entries = field === 'status' ? this.plugin.settings.statuses : this.plugin.settings.priorities
+  private deleteEntry(field: 'priority', index: number): void {
+    const entries = this.plugin.settings.priorities
     if (entries.length <= 1) {
-      new Notice(field === 'status' ? `You must have at least one status.` : `You must have at least one priority.`)
+      new Notice(`You must have at least one priority.`)
       return
     }
     const [removed] = entries.splice(index, 1)
@@ -647,24 +439,8 @@ export class PMSettingTab extends PluginSettingTab {
     void this.remapOrphanTasks(field, removed.id, removed.label)
   }
 
-  private importFromTaskNotes(): void {
-    const api = getTaskNotesApi(this.app)
-    if (!api) {
-      new Notice(`TaskNotes 4.10 or newer is required.`)
-      return
-    }
-    const { added, updated } = importTaskNotesPalettes(api, this.plugin.settings)
-    this.persist()
-    this.update()
-    new Notice(
-      added || updated
-        ? `Imported from TaskNotes: ${added} added, ${updated} updated.`
-        : `Statuses and priorities already match TaskNotes.`
-    )
-  }
-
-  private async remapOrphanTasks(field: 'status' | 'priority', deletedId: string, deletedLabel: string): Promise<void> {
-    const configs = field === 'status' ? this.plugin.settings.statuses : this.plugin.settings.priorities
+  private async remapOrphanTasks(field: 'priority', deletedId: string, deletedLabel: string): Promise<void> {
+    const configs = this.plugin.settings.priorities
     if (configs.length === 0) return
     const fallback = configs[0]
     // Only projects the index says still use the deleted value are worth loading.
@@ -676,7 +452,7 @@ export class PMSettingTab extends PluginSettingTab {
     let remapped = 0
     for (const project of projects) {
       // A project defining this status or priority itself is unaffected by a global delete.
-      const own = field === 'status' ? project.config?.statuses : project.config?.priorities
+      const own = project.config?.priorities
       if (own?.some((entry) => entry.id === deletedId)) continue
       const ids = flattenTasks(project.tasks)
         .filter(({ task }) => task[field] === deletedId)

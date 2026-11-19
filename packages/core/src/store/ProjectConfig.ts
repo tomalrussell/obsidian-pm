@@ -1,15 +1,11 @@
 import type { CustomFieldDef, PMSettings, Project, ResolvedProjectConfig, Task } from '../types'
-import { DEFAULT_PALETTE_COLOR } from '../types'
+import { DEFAULT_PALETTE_COLOR, DEFAULT_STATUSES } from '../types'
 import { flattenTasks } from './TaskTreeOps'
 
 /**
- * The project's own overrides where defined, the global settings everywhere else. Values
- * tasks still use but neither list defines are appended, so nothing vanishes from a board
- * or picker. Read every palette through this, terminal-status checks included: an
- * overridden status carries its own `complete` flag.
- *
- * `ancestorFields` runs root-most first: custom fields resolve down that chain rather
- * than by a single override.
+ * Status options are fixed. Other settings use project overrides or global defaults.
+ * In-use priorities missing from both palettes remain available as placeholder entries.
+ * Custom fields inherit down the ancestor chain, root-most first.
  */
 export function resolveProjectConfig(
   project: Project,
@@ -19,13 +15,7 @@ export function resolveProjectConfig(
   const config = project.config
   return {
     customFields: resolveCustomFields(project, settings, ancestorFields),
-    statuses: withInUseExtras(
-      config?.statuses?.length ? config.statuses : settings.statuses,
-      settings.statuses,
-      project,
-      (task) => task.status,
-      (id) => ({ id, label: id, color: DEFAULT_PALETTE_COLOR, icon: '', complete: false })
-    ),
+    statuses: DEFAULT_STATUSES,
     priorities: withInUseExtras(
       config?.priorities?.length ? config.priorities : settings.priorities,
       settings.priorities,

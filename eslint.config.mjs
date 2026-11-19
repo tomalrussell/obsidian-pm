@@ -5,22 +5,14 @@ import obsidianmd from 'eslint-plugin-obsidianmd'
 export default defineConfig([
   ...obsidianmd.configs.recommended,
   {
-    ignores: [
-      '**/*.test.ts',
-      'packages/*/test/**',
-      'packages/*/dist/**',
-      'packages/*/tsdown.config.ts',
-      'packages/ui/src/dom-shim.ts',
-      'packages/ui/src/dom-platform.ts',
-      'packages/viewer/**'
-    ]
+    ignores: ['**/*.test.ts', 'packages/*/test/**', 'packages/*/dist/**', 'packages/*/tsdown.config.ts']
   },
   {
     files: ['src/**/*.ts', 'packages/*/src/**/*.ts'],
     languageOptions: {
       parser: tsparser,
       parserOptions: { project: './tsconfig.json' },
-      globals: { __STYLEGUIDE__: 'readonly', __VIEWER_TEMPLATE__: 'readonly', __CHANGELOG__: 'readonly' }
+      globals: { __STYLEGUIDE__: 'readonly', __CHANGELOG__: 'readonly' }
     }
   },
   {
@@ -32,7 +24,7 @@ export default defineConfig([
   {
     files: ['src/**/*.ts', 'packages/*/src/**/*.ts'],
     rules: {
-      'obsidianmd/ui/sentence-case': ['error', { ignoreWords: ['TaskNotes'] }]
+      'obsidianmd/ui/sentence-case': 'error'
     }
   }
 ])

@@ -125,12 +125,12 @@ describe('project helpers', () => {
 
 describe('tidyProjectFields', () => {
   it('drops the list once every column shows in the default order', () => {
-    expect(tidyProjectFields(['progress', 'tasks', 'members', 'due'])).toBeUndefined()
+    expect(tidyProjectFields(['progress', 'tasks', 'due'])).toBeUndefined()
     expect(tidyProjectFields(undefined)).toBeUndefined()
   })
 
   it('keeps a reordered or shortened list', () => {
-    expect(tidyProjectFields(['due', 'progress', 'tasks', 'members'])).toEqual(['due', 'progress', 'tasks', 'members'])
+    expect(tidyProjectFields(['due', 'progress', 'tasks'])).toEqual(['due', 'progress', 'tasks'])
     expect(tidyProjectFields(['progress', 'due'])).toEqual(['progress', 'due'])
     expect(tidyProjectFields([])).toEqual([])
   })

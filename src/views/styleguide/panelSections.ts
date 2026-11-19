@@ -40,7 +40,7 @@ const noop = (): void => undefined
 const noopAsync = (): Promise<void> => Promise.resolve()
 
 const TASKS = [
-  makeTask({ id: 'a', status: 'capture', priority: 'high', tags: ['design'], assignees: ['Ada Lovelace'] }),
+  makeTask({ id: 'a', status: 'capture', priority: 'high', tags: ['design'] }),
   makeTask({ id: 'b', status: 'capture', priority: 'medium', tags: ['web'] }),
   makeTask({ id: 'c', status: 'in-progress', priority: 'high', customFields: { client: 'Acme' } }),
   makeTask({ id: 'd', status: 'done', priority: 'low', due: '2030-01-01', customFields: { estimate: 3 } })
@@ -285,9 +285,9 @@ export function renderPanelSections({ section, row }: GalleryLayout): void {
   })
 
   const projectFields = section('Project list fields panel', 'panel-project-fields')
-  const projectFieldsRow = row(projectFields, 'every column / due first, members hidden')
+  const projectFieldsRow = row(projectFields, 'every column / due first')
   renderProjectFieldsPanel(frame(projectFieldsRow, 260), {
-    shown: ['progress', 'tasks', 'members', 'due'],
+    shown: ['progress', 'tasks', 'due'],
     onChange: noop
   })
   renderProjectFieldsPanel(frame(projectFieldsRow, 260), { shown: ['due', 'progress', 'tasks'], onChange: noop })

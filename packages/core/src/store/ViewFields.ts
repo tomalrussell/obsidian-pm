@@ -7,15 +7,15 @@ import type { CustomFieldDef, FieldList, ViewFields, ViewMode } from '../types'
  * `subtasks` puts each subtask on a card of its own.
  */
 const BUILT_IN: Record<ViewMode, string[]> = {
-  table: ['title', 'project', 'status', 'priority', 'assignees', 'due', 'progress', 'time'],
-  kanban: ['priority', 'description', 'time', 'tags', 'progress', 'project', 'assignees', 'due', 'subtasks'],
-  gantt: ['title', 'assignees', 'progress', 'dates', 'status', 'priority']
+  table: ['title', 'project', 'status', 'priority', 'due', 'progress'],
+  kanban: ['priority', 'description', 'tags', 'progress', 'project', 'due', 'subtasks'],
+  gantt: ['title', 'progress', 'dates', 'status', 'priority']
 }
 
 const HIDDEN_BY_DEFAULT: Record<ViewMode, ReadonlySet<string>> = {
   table: new Set(),
   kanban: new Set(['description', 'subtasks']),
-  gantt: new Set(['assignees', 'progress', 'dates', 'status', 'priority'])
+  gantt: new Set(['progress', 'dates', 'status', 'priority'])
 }
 
 /** A table shows custom fields until told otherwise; a card or a bar label only once asked. */
@@ -25,10 +25,8 @@ export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   project: 130,
   status: 130,
   priority: 110,
-  assignees: 140,
   due: 110,
-  progress: 120,
-  time: 90
+  progress: 120
 }
 export const CUSTOM_COLUMN_WIDTH = 120
 
@@ -126,14 +124,10 @@ export function viewFieldLabel(id: string, customFields: CustomFieldDef[]): stri
       return 'Status'
     case 'priority':
       return 'Priority'
-    case 'assignees':
-      return 'Assignees'
     case 'due':
       return 'Due'
     case 'progress':
       return 'Progress'
-    case 'time':
-      return 'Time'
     case 'tags':
       return 'Tags'
     case 'description':

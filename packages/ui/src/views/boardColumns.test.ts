@@ -4,8 +4,8 @@ import type { FilterSetup } from '../composites/ViewHeader/filterPopover'
 import { boardColumns, boardField, groupableFields } from './boardColumns'
 
 const tasks = [
-  makeTask({ id: 'a', status: 'capture', priority: 'high', assignees: ['Ada'], tags: ['web'] }),
-  makeTask({ id: 'b', status: 'capture', priority: 'low', assignees: ['Ada', 'Bo'] }),
+  makeTask({ id: 'a', status: 'capture', priority: 'high', tags: ['web'] }),
+  makeTask({ id: 'b', status: 'capture', priority: 'low' }),
   makeTask({ id: 'c', status: 'done', priority: 'high', customFields: { client: 'Acme' } })
 ]
 
@@ -33,14 +33,6 @@ describe('boardColumns', () => {
     expect(columns.map((c) => c.id)).toEqual(DEFAULT_STATUSES.map((s) => s.id))
     expect(columns[0].tasks.map((t) => t.id)).toEqual(['a', 'b'])
     expect(columns[0].color).toBe(DEFAULT_STATUSES[0].color)
-  })
-
-  it('puts a task with several values in each of their columns, and the rest under none', () => {
-    expect(ids({ field: 'assignee' })).toEqual([
-      ['Ada', 'ab', false],
-      ['Bo', 'b', false],
-      ['', 'c', false]
-    ])
   })
 
   it('falls back to status columns when the field is a custom field this scope no longer has', () => {
@@ -75,6 +67,6 @@ describe('boardColumns', () => {
   })
 
   it('groups only by fields with a list of values', () => {
-    expect(groupableFields(setup)).toEqual(['status', 'priority', 'assignee', 'tag', 'type', 'cf:client'])
+    expect(groupableFields(setup)).toEqual(['status', 'priority', 'tag', 'type', 'cf:client'])
   })
 })

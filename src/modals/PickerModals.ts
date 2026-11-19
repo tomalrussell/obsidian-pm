@@ -1,5 +1,5 @@
 import { SuggestModal, App } from 'obsidian'
-import { type Task, displayName } from '@dotpm/core'
+import type { Task } from '@dotpm/core'
 import type { ProjectRef } from '#store'
 import { renderGlyph } from '@dotpm/ui'
 
@@ -52,30 +52,5 @@ export class TaskPickerModal extends SuggestModal<Task> {
 
   onChooseSuggestion(task: Task): void {
     this.onChoose(task)
-  }
-}
-
-/** Lists the people already assigned somewhere, for the command that shows their tasks. */
-export class PersonLookupModal extends SuggestModal<string> {
-  constructor(
-    app: App,
-    private people: string[],
-    private onChoose: (person: string) => void
-  ) {
-    super(app)
-    this.setPlaceholder(`Pick a person…`)
-  }
-
-  getSuggestions(query: string): string[] {
-    const q = query.toLowerCase()
-    return this.people.filter((person) => displayName(person).toLowerCase().includes(q))
-  }
-
-  renderSuggestion(person: string, el: HTMLElement): void {
-    el.createSpan({ text: displayName(person) })
-  }
-
-  onChooseSuggestion(person: string): void {
-    this.onChoose(person)
   }
 }

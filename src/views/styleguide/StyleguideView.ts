@@ -11,19 +11,16 @@ import {
   PROJECT_LIST_FIELDS,
   priorityIconSetLabels,
   makeDefaultFilter,
-  makeTask,
-  displayName
+  makeTask
 } from '@dotpm/core'
 import {
   renderDueChip,
   renderTagChip,
-  renderTimeChip,
   renderMetricStrip,
   renderMilestoneTimeline,
   renderNoteLink,
   renderProjectChip,
   ActionsCell,
-  AssigneesCell,
   CustomFieldCell,
   type CustomFieldValue,
   DueDateCell,
@@ -33,7 +30,6 @@ import {
   ProgressCell,
   SelectCell,
   StatusCell,
-  TimeCell,
   TitleCell,
   KanbanCard,
   ProjectRow,
@@ -50,9 +46,6 @@ import {
   renderMultiSelect,
   renderSelectControl,
   renderPropRow,
-  Avatar,
-  AvatarStack,
-  type AvatarPerson,
   Chip,
   Checkbox,
   CollapseToggle,
@@ -81,17 +74,10 @@ export const PM_STYLEGUIDE_VIEW_TYPE = 'pm-styleguide'
 
 const noop = (): void => undefined
 const noopAsync = (): Promise<void> => Promise.resolve()
-const PEOPLE = ['Ada Lovelace', 'Grace Hopper', 'Alan Turing', 'Margaret Hamilton', 'Edsger Dijkstra']
 /** Five ranks, so every icon of a set shows. */
 const FIVE_PRIORITIES: PriorityConfig[] = [
   ...DEFAULT_PRIORITIES,
   { id: 'trivial', label: 'Trivial', color: '#6ba8a0', icon: '' }
-]
-const WIKILINK_PERSON = '[[People/Alan Turing|Alan]]'
-const SAMPLE_PEOPLE: AvatarPerson[] = [
-  { name: 'Ada Lovelace' },
-  { name: 'Alan', onClick: noop },
-  { name: 'Ghost', unresolved: true }
 ]
 
 /**
@@ -122,7 +108,6 @@ export class StyleguideView extends ItemView {
     this.group('Primitives')
     this.renderChips()
     this.renderChipButtons()
-    this.renderAvatars()
     this.renderIconButtons()
     this.renderProgress()
     this.renderCollapse()
@@ -208,17 +193,6 @@ export class StyleguideView extends ItemView {
     new ChipButton(outline).setVariant('outline').setLabel('is any of').setActive(true)
     new ChipButton(outline).setVariant('outline').setLabel('is none of')
     new ChipButton(outline).setVariant('outline').setLabel('is empty').setDisabled(true)
-  }
-
-  private renderAvatars(): void {
-    const sec = this.section('Avatar', 'avatar')
-    const row = this.row(sec, 'md / sm / wikilink alias / color from the person note')
-    new Avatar(row).setName(PEOPLE[0])
-    new Avatar(row).setName(PEOPLE[1]).setSize('sm')
-    new Avatar(row).setName(WIKILINK_PERSON)
-    new Avatar(row).setColor('#c47070').setName(PEOPLE[2])
-    const stack = this.row(sec, 'AvatarStack with overflow (max 3)')
-    new AvatarStack(stack).setNames(PEOPLE)
   }
 
   private renderIconButtons(): void {
@@ -431,36 +405,6 @@ export class StyleguideView extends ItemView {
     renderGlyph(glyphRow, { icon: 'circle-play', color: DEFAULT_STATUSES[1].color })
     renderGlyph(glyphRow, { icon: '🚀' })
     renderGlyph(glyphRow, { color: DEFAULT_STATUSES[2].color })
-    const peopleRow = this.row(sec, 'renderMultiSelect: avatarStack, as the people picker uses it')
-    const assigned = [PEOPLE[0], WIKILINK_PERSON]
-    renderMultiSelect({
-      container: peopleRow,
-      avatarStack: true,
-      search: true,
-      addLabel: 'Assign',
-      placeholder: 'Search people…',
-      labelFor: displayName,
-      keyOf: displayName,
-      selected: () => assigned,
-      options: () => PEOPLE.map((person) => ({ id: person, label: person })),
-      moreOptions: (query) =>
-        PEOPLE.filter((person) => person.toLowerCase().includes(query.toLowerCase())).map((person) => ({
-          id: `[[People/${person}]]`,
-          label: person
-        })),
-      moreHeading: 'People in your vault',
-      add: (id) => {
-        assigned.push(id)
-      },
-      remove: (id) => {
-        assigned.splice(assigned.indexOf(id), 1)
-      },
-      createLabel: (name) => `Add "${name}"`,
-      create: (name) => {
-        assigned.push(name)
-      },
-      createAlt: { label: (name) => `Create person note "${name}"`, icon: 'user-plus', run: noopAsync }
-    })
     const depsRow = this.row(sec, 'renderMultiSelect: depsList with linked titles')
     const depTitles: Record<string, string> = { 'task-1a2b': 'Draft the launch plan', 'task-9f8e': 'Sign off on copy' }
     renderMultiSelect({
@@ -491,16 +435,12 @@ export class StyleguideView extends ItemView {
       cls: 'pm-subtask-title pm-subtask-title--done'
     })
     const addRow = this.row(sec, 'renderAddButton / renderAddProperty')
-    renderAddButton(addRow, 'Add member', noop)
+    renderAddButton(addRow, 'Add task', noop)
     renderAddProperty(addRow, [{ id: 'due', label: 'Due date', icon: 'calendar' }], noop)
   }
 
   private renderDerivedChips(): void {
-    const sec = this.section('Time and due chips', 'time-due')
-    const timeRow = this.row(sec, 'renderTimeChip: logged only / within estimate / over estimate')
-    renderTimeChip(timeRow, 3, 0)
-    renderTimeChip(timeRow, 5, 10)
-    renderTimeChip(timeRow, 6, 4)
+    const sec = this.section('Due chips', 'due')
     const dueRow = this.row(sec, 'renderDueChip: normal / near / overdue')
     renderDueChip(dueRow, 'Jul 20, 2026', 'normal')
     renderDueChip(dueRow, 'Jul 6, 2026', 'near')
@@ -518,7 +458,7 @@ export class StyleguideView extends ItemView {
     })
     const table = sec.createEl('table', { cls: 'pm-table pm-project-table' })
     const head = table.createEl('thead').createEl('tr')
-    for (const column of ['', 'Project', 'Progress', 'Tasks', 'Members', 'Due', '']) {
+    for (const column of ['', 'Project', 'Progress', 'Tasks', 'Due', '']) {
       head.createEl('th', { text: column })
     }
     const tbody = table.createEl('tbody')
@@ -536,7 +476,6 @@ export class StyleguideView extends ItemView {
       tasksDone: 12,
       tasksTotal: 40,
       overdue: 0,
-      members: SAMPLE_PEOPLE,
       dueLabel: 'Oct 30',
       dueUrgency: 'normal',
       onToggleCollapsed: noop,
@@ -558,7 +497,6 @@ export class StyleguideView extends ItemView {
       tasksDone: 4,
       tasksTotal: 10,
       overdue: 3,
-      members: [SAMPLE_PEOPLE[0]],
       dueLabel: 'Jun 20',
       dueUrgency: 'overdue',
       onToggleCollapsed: noop,
@@ -580,7 +518,6 @@ export class StyleguideView extends ItemView {
       tasksDone: 31,
       tasksTotal: 38,
       overdue: 0,
-      members: [],
       dueLabel: '',
       dueUrgency: 'normal',
       onToggleCollapsed: noop,
@@ -602,7 +539,6 @@ export class StyleguideView extends ItemView {
       tasksDone: 8,
       tasksTotal: 8,
       overdue: 0,
-      members: [],
       dueLabel: '',
       dueUrgency: 'normal',
       onToggleCollapsed: noop,
@@ -616,10 +552,8 @@ export class StyleguideView extends ItemView {
     const sec = this.section('Cards', 'cards')
     const kanbanRow = this.row(sec, 'KanbanCard: default fields / overdue milestone with every field')
     new KanbanCard(kanbanRow, {
-      fields: ['priority', 'time', 'tags', 'progress', 'assignees', 'due'],
+      fields: ['priority', 'tags', 'progress', 'due'],
       task: makeTask({ title: 'Write the launch announcement' }),
-      people: [],
-      loggedHours: 0,
       overdue: false,
       showTagColors: true,
       onClick: noop,
@@ -628,22 +562,19 @@ export class StyleguideView extends ItemView {
       onDragEnd: noop
     })
     new KanbanCard(kanbanRow, {
-      fields: ['priority', 'description', 'time', 'tags', 'progress', 'cf:client', 'project', 'assignees', 'due'],
+      fields: ['priority', 'description', 'tags', 'progress', 'cf:client', 'project', 'due'],
       task: makeTask({
         title: 'Ship the redesign',
         type: 'milestone',
         priority: 'critical',
         due: '2026-06-20',
-        assignees: ['Ada Lovelace', 'Grace Hopper'],
         tags: ['design', 'frontend']
       }),
-      people: SAMPLE_PEOPLE,
       priorityColor: '#c47070',
       descriptionPreview: 'Everything that must land before the announcement goes out.',
       parentTitle: 'Website relaunch',
       customValues: { 'cf:client': { name: 'Client', text: 'Acme' } },
       renderSource: (el) => renderProjectChip(el, { title: 'Platform', color: '#7a9ec4', onClick: noop }),
-      loggedHours: 11,
       overdue: true,
       showTagColors: true,
       onClick: noop,
@@ -666,15 +597,7 @@ export class StyleguideView extends ItemView {
         }
       },
       { label: 'Tasks', value: '30 of 48', sub: 'done' },
-      { label: 'Overdue', value: '4', sub: 'tasks past due', alert: true },
-      {
-        label: 'Time',
-        value: '',
-        sub: 'logged / estimate',
-        extra: (el) => {
-          renderTimeChip(el, 96, 140)
-        }
-      }
+      { label: 'Overdue', value: '4', sub: 'tasks past due', alert: true }
     ])
   }
 
@@ -749,7 +672,7 @@ export class StyleguideView extends ItemView {
           { field: 'tag', op: 'none', value: ['design'] }
         ]
       },
-      tasks: [makeTask({ assignees: PEOPLE, tags: ['design'] })],
+      tasks: [makeTask({ tags: ['design'] })],
       ctx: { statuses: DEFAULT_STATUSES, customFields: [{ id: 'estimate', name: 'Estimate', type: 'number' }] },
       priorities: DEFAULT_PRIORITIES,
       priorityIcons: 'chevrons',
@@ -770,7 +693,6 @@ export class StyleguideView extends ItemView {
         { id: 'title', label: 'Task', hidden: false, locked: true, detail: 'fill' },
         { id: 'status', label: 'Status', hidden: false, detail: '130' },
         { id: 'due', label: 'Due', hidden: false, detail: '110' },
-        { id: 'time', label: 'Time', hidden: true },
         { id: 'empty', label: 'someday', hidden: false, detail: 'empty', quiet: true }
       ],
       showLabel: 'Show field',
@@ -794,7 +716,6 @@ export class StyleguideView extends ItemView {
       props: { depth: number; isDone: boolean; isSelected: boolean }
       tree: { guides: boolean[]; isLastChild: boolean }
       urgency: 'normal' | 'near' | 'overdue'
-      time: { logged: number; estimate: number }
       custom: CustomFieldValue
     }[] = [
       {
@@ -804,14 +725,12 @@ export class StyleguideView extends ItemView {
           priority: 'high',
           due: '2026-07-20',
           progress: 60,
-          assignees: ['Ada Lovelace', 'Grace Hopper'],
           subtasks: [makeTask({ title: 'Pick a layout' })]
         }),
         props: { depth: 0, isDone: false, isSelected: false },
         tree: { guides: [], isLastChild: false },
         urgency: 'normal',
-        time: { logged: 5, estimate: 10 },
-        custom: { kind: 'people', people: [{ name: 'Ada Lovelace', onClick: noop }] }
+        custom: { kind: 'links', links: [{ name: 'Ada Lovelace', onClick: noop }] }
       },
       {
         task: makeTask({
@@ -819,13 +738,11 @@ export class StyleguideView extends ItemView {
           status: 'next',
           priority: 'critical',
           due: '2026-06-20',
-          progress: 20,
-          assignees: ['Alan Turing']
+          progress: 20
         }),
         props: { depth: 1, isDone: false, isSelected: true },
         tree: { guides: [false], isLastChild: false },
         urgency: 'overdue',
-        time: { logged: 6, estimate: 4 },
         custom: { kind: 'links', links: [{ name: 'Missing Person', unresolved: true }] }
       },
       {
@@ -833,7 +750,6 @@ export class StyleguideView extends ItemView {
         props: { depth: 2, isDone: false, isSelected: false },
         tree: { guides: [true, false], isLastChild: true },
         urgency: 'normal',
-        time: { logged: 1, estimate: 2 },
         custom: { kind: 'text', text: 'Rim road' }
       },
       {
@@ -841,11 +757,10 @@ export class StyleguideView extends ItemView {
         props: { depth: 1, isDone: true, isSelected: false },
         tree: { guides: [false], isLastChild: true },
         urgency: 'normal',
-        time: { logged: 0, estimate: 0 },
         custom: { kind: 'checkbox', checked: true }
       }
     ]
-    for (const { task, props, tree, urgency, time, custom } of rows) {
+    for (const { task, props, tree, urgency, custom } of rows) {
       const tr = new TaskRow(tbody, {
         taskId: task.id,
         depth: props.depth,
@@ -869,9 +784,7 @@ export class StyleguideView extends ItemView {
       new StatusCell(tr.el, { task, statuses: DEFAULT_STATUSES, onChange: noop })
       new PriorityCell(tr.el, { task, priorities: DEFAULT_PRIORITIES, priorityIcons: 'chevrons', onChange: noop })
       new DueDateCell(tr.el, { task, urgency, onSave: noopAsync })
-      new TimeCell(tr.el, time)
       new ProgressCell(tr.el, { value: task.progress, color: 'var(--interactive-accent)', onSave: noopAsync })
-      new AssigneesCell(tr.el, SAMPLE_PEOPLE)
       new CustomFieldCell(tr.el, custom)
       new ActionsCell(tr.el, { onClick: noop })
     }

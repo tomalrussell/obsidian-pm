@@ -27,7 +27,6 @@ import { safeAsync, renderGlyph } from '@dotpm/ui'
 import { saveShortcutLabel } from '../utils'
 import { confirmDialog, openTaskByPath } from '#ui/ModalFactory'
 import { renderTaskFormFields } from './TaskFormFields'
-import { renderTimeTrackingPanel } from './TimeTrackingPanel'
 import { renderSubtasksPanel } from './SubtasksPanel'
 import { NoteLinkSuggest } from './NoteLinkSuggest'
 
@@ -610,8 +609,6 @@ export class TaskEditor {
     renderSubtasksPanel(body, this.task, this.plugin.store.configFor(this.project).statuses, (path) =>
       this.openLinkedTask(path)
     )
-
-    renderTimeTrackingPanel(body, this.task)
 
     const footer = contentEl.createDiv('pm-te-footer')
 

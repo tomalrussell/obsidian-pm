@@ -3,8 +3,6 @@ import {
   type Project,
   type Task,
   type TaskType,
-  type Recurrence,
-  collectAllAssignees,
   collectAllTags,
   flattenTasks,
   reaches,
@@ -26,7 +24,6 @@ import {
   type HiddenProperty
 } from '@dotpm/ui'
 import { renderCustomFieldInput } from './CustomFieldInputs'
-import { renderPersonPicker } from '#ui/PersonPicker'
 
 export interface TaskFormFieldsContext {
   task: Task
@@ -44,14 +41,6 @@ const typeOptions = (): SelectItem[] => [
   { id: 'task', label: `Task`, icon: 'square-check-big' },
   { id: 'subtask', label: `Subtask`, icon: 'git-branch' },
   { id: 'milestone', label: `Milestone`, icon: 'diamond' }
-]
-
-const repeatOptions = (): SelectItem[] => [
-  { id: 'none', label: `Does not repeat`, icon: 'repeat' },
-  { id: 'daily', label: `Daily`, icon: 'repeat' },
-  { id: 'weekly', label: `Weekly`, icon: 'repeat' },
-  { id: 'monthly', label: `Monthly`, icon: 'repeat' },
-  { id: 'yearly', label: `Yearly`, icon: 'repeat' }
 ]
 
 /**
@@ -184,7 +173,7 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
   )
 
   // Start shares the dates row with Due. Milestones have no start, so an empty cell holds
-  // the slot and Assignees still leads the next row.
+  // the slot before the next row.
   if (task.type !== 'milestone') {
     renderPropRow(
       grid,
@@ -207,30 +196,6 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
   } else {
     grid.createDiv()
   }
-
-  renderPropRow(
-    grid,
-    `Assignees`,
-    () => {
-      const cell = createDiv('pm-prop-value')
-      renderPersonPicker({
-        container: cell,
-        plugin,
-        sourcePath: task.filePath ?? project.filePath,
-        extra: () => [...project.teamMembers, ...collectAllAssignees(project.tasks)],
-        addLabel: `Assign`,
-        selected: () => task.assignees,
-        add: (value) => {
-          if (!task.assignees.includes(value)) task.assignees.push(value)
-        },
-        remove: (value) => {
-          task.assignees = task.assignees.filter((a) => a !== value)
-        }
-      })
-      return cell
-    },
-    'users'
-  )
 
   if (task.completed || isTerminalStatus(task.status, statuses)) {
     renderPropRow(
@@ -274,35 +239,6 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
         return cell
       },
       'percent'
-    )
-  }
-
-  if (task.recurrence || shownExtras.has('repeat')) {
-    renderPropRow(
-      grid,
-      `Repeat`,
-      () => {
-        const cell = createDiv('pm-prop-value')
-        renderSelectControl({
-          container: cell,
-          value: task.recurrence?.interval ?? 'none',
-          options: repeatOptions(),
-          onChange: (id) => {
-            if (id === 'none') {
-              task.recurrence = undefined
-            } else {
-              task.recurrence = {
-                interval: id as Recurrence['interval'],
-                every: task.recurrence?.every ?? 1,
-                endDate: task.recurrence?.endDate
-              }
-            }
-            rerender()
-          }
-        })
-        return cell
-      },
-      'repeat'
     )
   }
 
@@ -425,9 +361,6 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
   }
 
   const hidden: HiddenProperty[] = []
-  if (!task.recurrence && !shownExtras.has('repeat')) {
-    hidden.push({ id: 'repeat', label: `Repeat`, icon: 'repeat' })
-  }
   if (task.dependencies.length === 0 && !shownExtras.has('depends')) {
     hidden.push({ id: 'depends', label: `Depends on`, icon: 'link-2' })
   }
@@ -444,7 +377,7 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
     cfSection.createEl('h4', { text: `Custom fields`, cls: 'pm-modal-section-title' })
     const cfGrid = cfSection.createDiv('pm-prop-grid')
     for (const cf of customFields) {
-      renderPropRow(cfGrid, cf.name, () => renderCustomFieldInput(cf, task, project, plugin, rerender))
+      renderPropRow(cfGrid, cf.name, () => renderCustomFieldInput(cf, task, rerender))
     }
   }
 }

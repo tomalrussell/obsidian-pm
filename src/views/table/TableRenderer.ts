@@ -19,7 +19,7 @@ import {
   applyTaskFilterFlat,
   isQueryActive
 } from '@dotpm/core'
-import { personKeyer, type ProjectScope } from '#store'
+import type { ProjectScope } from '#store'
 import { renderAddButton, childTreeGuides, compareTasks } from '@dotpm/ui'
 import { openTaskModal } from '#ui/ModalFactory'
 import { openAddTask } from '../addTask'
@@ -258,7 +258,7 @@ function fillTableBody(ctx: TableContext): void {
 
   let flat = flattenTasks(ctx.scope.tasks(), ctx.collapsedIds)
   const hasActiveFilter = isQueryActive(ctx.state.query)
-  flat = applyTaskFilterFlat(flat, ctx.state.query, ctx.scope.filterContext(personKeyer(ctx.plugin.app)))
+  flat = applyTaskFilterFlat(flat, ctx.state.query, ctx.scope.filterContext())
 
   const filteredIds = new Set(flat.map((f) => f.task.id))
 

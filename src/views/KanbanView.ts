@@ -11,14 +11,12 @@ import {
   type ViewFields,
   customFieldOf,
   shownFields,
-  valueKey,
   flattenTasks,
-  totalLoggedHours,
   matchesQuery,
   dueUrgency,
   getPriorityConfig
 } from '@dotpm/core'
-import { personKeyer, type ProjectScope } from '#store'
+import type { ProjectScope } from '#store'
 import {
   safeAsync,
   boardCandidates,
@@ -36,7 +34,6 @@ import {
 } from '@dotpm/ui'
 import { openTaskModal } from '#ui/ModalFactory'
 import { buildTaskContextMenu } from '#ui/TaskContextMenu'
-import { linkedRefs } from './linkedRefs'
 import type { SubView } from './SubView'
 
 /**
@@ -82,7 +79,7 @@ export class KanbanView implements SubView {
 
   private renderBoard(): void {
     this.config = this.scope.config
-    this.setup = this.scope.filterSetup(this.query.filter, personKeyer(this.plugin.app))
+    this.setup = this.scope.filterSetup(this.query.filter)
     this.filterContext = this.setup.ctx
     this.cardFields = shownFields(this.fields, 'kanban', this.scope.fieldCatalog())
     this.container.empty()
@@ -152,7 +149,6 @@ export class KanbanView implements SubView {
 
     return {
       task,
-      people: linkedRefs(this.plugin.app, task.assignees, task.filePath ?? ''),
       priorityColor,
       descriptionPreview: this.cardFields.includes('description') ? descriptionPreview(task.description) : undefined,
       parentTitle,
@@ -165,7 +161,6 @@ export class KanbanView implements SubView {
               onClick: safeAsync(() => this.plugin.router.openProjectLink(owner.filePath))
             })
         : undefined,
-      loggedHours: totalLoggedHours(task),
       overdue: dueUrgency(task, this.config.statuses) === 'overdue',
       showTagColors: this.plugin.settings.showTagColors
     }
@@ -212,7 +207,7 @@ export class KanbanView implements SubView {
   /** What moving a card from one column to another changes on its task. Null where a move means nothing. */
   private dropPatch(task: Task, from: string, to: string): Partial<Task> | null {
     const field = boardField(this.setup, this.group)
-    const keyOf = (value: string): string => valueKey(field, value, this.filterContext)
+    const keyOf = (value: string): string => value
     switch (field) {
       case 'status':
         return { status: to }
@@ -220,8 +215,6 @@ export class KanbanView implements SubView {
         return { priority: to }
       case 'type':
         return to ? { type: to as TaskType } : null
-      case 'assignee':
-        return { assignees: moveValue(task.assignees, from, to, keyOf) }
       case 'tag':
         return { tags: moveValue(task.tags, from, to, keyOf) }
     }

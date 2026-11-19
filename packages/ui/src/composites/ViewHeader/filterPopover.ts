@@ -13,15 +13,13 @@ import {
   BUILTIN_FILTER_FIELDS,
   OPS_BY_KIND,
   customFilterField,
-  displayName,
   filterFieldIcon,
   filterFieldLabel,
   filterKind,
   filterValue,
   formatDate,
   isConditionComplete,
-  priorityIcon,
-  valueKey
+  priorityIcon
 } from '@dotpm/core'
 import { renderPopHead, renderPopSearch } from '../popoverParts'
 import { renderOptionRow } from '../properties/optionList'
@@ -91,12 +89,11 @@ export function valueOptions(setup: FilterSetup, field: string): ValueOption[] {
   const seen = new Map<string, ValueOption>()
   const custom = ctx.customFields.find((cf) => customFilterField(cf.id) === field)
   for (const option of custom?.options ?? []) seen.set(option, { id: option, label: option })
-  const isPerson = field === 'assignee' || custom?.type === 'person'
   for (const task of setup.tasks) {
     const value = filterValue(task, field, ctx)
     for (const v of Array.isArray(value) ? value : typeof value === 'string' && value ? [value] : []) {
-      const key = valueKey(field, v, ctx)
-      if (!seen.has(key)) seen.set(key, { id: v, label: isPerson ? displayName(v) : v })
+      const key = v
+      if (!seen.has(key)) seen.set(key, { id: v, label: v })
     }
   }
   const options = [...seen.values()]
@@ -153,11 +150,7 @@ export function describeCondition(setup: FilterSetup, condition: FilterCondition
     case 'none':
     case 'all': {
       const options = valueOptions(setup, condition.field)
-      const labels = values.map(
-        (id) =>
-          options.find((o) => valueKey(condition.field, o.id, setup.ctx) === valueKey(condition.field, id, setup.ctx))
-            ?.label ?? id
-      )
+      const labels = values.map((id) => options.find((o) => o.id === id)?.label ?? id)
       return { op, value: labels.join(', ') }
     }
     case 'contains':
@@ -181,13 +174,13 @@ export function describeCondition(setup: FilterSetup, condition: FilterCondition
 }
 
 function countFor(setup: FilterSetup, field: string, id: string): number {
-  const key = valueKey(field, id, setup.ctx)
+  const key = id
   let count = 0
   for (const task of setup.tasks) {
     if (task.archived && !setup.filter.showArchived) continue
     const value = filterValue(task, field, setup.ctx)
     const held = Array.isArray(value) ? value : typeof value === 'string' ? [value] : []
-    if (held.some((v) => valueKey(field, v, setup.ctx) === key)) count++
+    if (held.some((v) => v === key)) count++
   }
   return count
 }
@@ -472,7 +465,7 @@ function renderChecklist(
   const search = options.length > 8 ? renderPopSearch(parent, 'Find value...', () => render()) : null
   const list = parent.createDiv('pm-pop-list')
   const selected = (): string[] => (Array.isArray(draft.value) ? draft.value.map(String) : [])
-  const keyOf = (id: string): string => valueKey(field, id, setup.ctx)
+  const keyOf = (id: string): string => id
   const render = (): void => {
     list.empty()
     if (!options.length) {

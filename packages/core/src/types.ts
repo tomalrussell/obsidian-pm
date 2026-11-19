@@ -13,30 +13,9 @@ export type SortDir = 'asc' | 'desc'
 export type DueUrgency = 'normal' | 'near' | 'overdue'
 export type TaskType = 'task' | 'milestone' | 'subtask'
 
-export interface Recurrence {
-  interval: 'daily' | 'weekly' | 'monthly' | 'yearly'
-  every: number // e.g. every 2 weeks
-  endDate?: string // YYYY-MM-DD
-}
+export const CUSTOM_FIELD_TYPES = ['text', 'number', 'date', 'select', 'multiselect', 'checkbox', 'url'] as const
 
-export interface TimeLog {
-  date: string // YYYY-MM-DD
-  hours: number
-  note: string
-}
-
-export const CUSTOM_FIELD_TYPES = [
-  'text',
-  'number',
-  'date',
-  'select',
-  'multiselect',
-  'person',
-  'checkbox',
-  'url'
-] as const
-
-export const SORT_KEYS = ['title', 'status', 'priority', 'due', 'assignees', 'progress'] as const
+export const SORT_KEYS = ['title', 'status', 'priority', 'due', 'progress'] as const
 export type SortKey = (typeof SORT_KEYS)[number]
 
 /** One key of a sort; a view sorts by up to `MAX_SORT_RULES` of them, first rule first. */
@@ -68,13 +47,9 @@ export interface Task {
   due: string // YYYY-MM-DD, empty string = unset
   progress: number // 0-100
   completed: string // YYYY-MM-DD, empty string = not completed; stamped when status becomes complete
-  assignees: string[]
   tags: string[]
   subtasks: Task[]
   dependencies: string[] // task IDs
-  recurrence?: Recurrence
-  timeEstimate?: number // hours
-  timeLogs?: TimeLog[]
   customFields: Record<string, unknown>
   createdAt: string
   updatedAt: string
@@ -90,7 +65,6 @@ export interface Project {
   icon: string // emoji
   tasks: Task[]
   customFields: CustomFieldDef[]
-  teamMembers: string[]
   createdAt: string
   updatedAt: string
   filePath: string // resolved vault path
@@ -109,16 +83,7 @@ export interface Project {
 export type ProjectPatch = Partial<
   Pick<
     Project,
-    | 'title'
-    | 'description'
-    | 'color'
-    | 'icon'
-    | 'customFields'
-    | 'teamMembers'
-    | 'savedViews'
-    | 'config'
-    | 'parentPath'
-    | 'archived'
+    'title' | 'description' | 'color' | 'icon' | 'customFields' | 'savedViews' | 'config' | 'parentPath' | 'archived'
   >
 >
 
@@ -173,7 +138,7 @@ export interface GroupColumns {
 }
 
 /**
- * What board columns stand for. `field` is a filter field id (`status`, `assignee`,
+ * What board columns stand for. `field` is a filter field id (`status`,
  * `cf:<id>`...). Column order and hidden columns are kept per field, so hiding a status
  * column leaves the priority columns alone.
  */
@@ -212,7 +177,7 @@ export interface ProjectListFilter {
 export type ProjectGroupBy = 'none' | 'folder' | 'tag'
 
 /** The project list's columns after the title, in their default order. */
-export const PROJECT_LIST_FIELDS = ['progress', 'tasks', 'members', 'due'] as const
+export const PROJECT_LIST_FIELDS = ['progress', 'tasks', 'due'] as const
 export type ProjectListField = (typeof PROJECT_LIST_FIELDS)[number]
 
 /** What the project list shows. Archived projects follow `PMSettings.showArchivedProjects`. */
@@ -283,7 +248,6 @@ export interface StatusConfig {
 
 /** Overrides a project may set in its own file. An absent field falls back to the global settings. */
 export interface ProjectConfig {
-  statuses?: StatusConfig[]
   priorities?: PriorityConfig[]
   priorityIcons?: PriorityIconSet
   /** Inherited field ids this project leaves out. Its own fields are never listed. */
@@ -344,7 +308,6 @@ export function priorityIconSetLabels(): Record<PriorityIconSet, string> {
 export interface PMSettings {
   /** Where new projects are created. Projects are discovered vault-wide, wherever they live. */
   projectsFolder: string
-  peopleFolder: string
   /** Folders discovery skips, for templates and archives holding pm-project notes. */
   excludedFolders: string[]
   defaultView: ViewMode
@@ -358,7 +321,6 @@ export interface PMSettings {
   priorityIcons: PriorityIconSet
   /** Task properties every project starts with. A project adds to these, or overrides one by id. */
   customFields: CustomFieldDef[]
-  globalTeamMembers: string[]
   notificationsEnabled: boolean
   notificationLeadDays: number
   /** Days after completion before a task moves to its project's archive. 0 turns it off. */
@@ -392,10 +354,6 @@ export interface PMSettings {
   showArchivedProjects: boolean
   projectList: ProjectListState
   projectListViews: ProjectListView[]
-  /** A localhost HTTP and MCP server for other tools on this machine. Desktop only. */
-  localApiEnabled: boolean
-  localApiPort: number
-  localApiToken: string
   /** Open the release notes in a tab after the plugin updates. */
   showReleaseNotes: boolean
   /** The plugin version that last ran, so an update can be told apart from a restart. */
@@ -432,17 +390,8 @@ export function defaultPriorities(): PriorityConfig[] {
   return DEFAULT_PRIORITIES.map((priority) => ({ ...priority, label: labels[priority.id] ?? priority.label }))
 }
 
-/**
- * The band a vault's default local API port is drawn from. It sits clear of the numbers
- * other Obsidian plugins take by default, and below every operating system's ephemeral
- * range, so an outgoing connection can never be holding the port when the server starts.
- */
-export const LOCAL_API_PORT_BASE = 27140
-export const LOCAL_API_PORT_SPAN = 100
-
 export const DEFAULT_SETTINGS: PMSettings = {
   projectsFolder: 'Projects',
-  peopleFolder: 'People',
   excludedFolders: [],
   defaultView: 'table',
   ganttGranularity: 'week',
@@ -452,7 +401,6 @@ export const DEFAULT_SETTINGS: PMSettings = {
   priorities: DEFAULT_PRIORITIES,
   priorityIcons: 'chevrons',
   customFields: [],
-  globalTeamMembers: [],
   showSubtreeConnections: true,
   lineBorders: 'none',
   showTagColors: true,
@@ -475,9 +423,6 @@ export const DEFAULT_SETTINGS: PMSettings = {
   showArchivedProjects: false,
   projectList: makeDefaultProjectList(),
   projectListViews: [],
-  localApiEnabled: false,
-  localApiPort: LOCAL_API_PORT_BASE,
-  localApiToken: '',
   showReleaseNotes: true,
   lastSeenVersion: ''
 }
@@ -499,7 +444,6 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     due: '',
     progress: 0,
     completed: '',
-    assignees: [],
     tags: [],
     subtasks: [],
     dependencies: [],
@@ -525,7 +469,6 @@ export function makeProject(title: string, filePath: string): Project {
     icon: DEFAULT_PROJECT_ICON,
     tasks: [],
     customFields: [],
-    teamMembers: [],
     createdAt: now,
     updatedAt: now,
     filePath,

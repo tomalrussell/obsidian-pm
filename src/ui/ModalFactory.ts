@@ -3,7 +3,7 @@ import type PMPlugin from '#main'
 import { type Project, type Task, flattenTasks } from '@dotpm/core'
 import type { ProjectRef } from '#store'
 import { TaskModal } from '#modals/TaskModal'
-import { PersonLookupModal, ProjectPickerModal, TaskPickerModal } from '#modals/PickerModals'
+import { ProjectPickerModal, TaskPickerModal } from '#modals/PickerModals'
 import { ImportModal } from '#modals/ImportModal'
 import { ProjectCreateModal } from '#modals/ProjectCreateModal'
 
@@ -282,11 +282,6 @@ export function openProjectPicker(
 
 export function openTaskPicker(plugin: PMPlugin, tasks: Task[], onChoose: (task: Task) => void): void {
   new TaskPickerModal(plugin.app, tasks, onChoose).open()
-}
-
-/** Picks from the people already assigned somewhere, for looking up their tasks. */
-export function openPersonLookup(plugin: PMPlugin, people: string[], onChoose: (person: string) => void): void {
-  new PersonLookupModal(plugin.app, people, onChoose).open()
 }
 
 export function openImportModal(

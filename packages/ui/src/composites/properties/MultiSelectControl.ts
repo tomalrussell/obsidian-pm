@@ -1,8 +1,6 @@
 import { setIcon } from '#platform'
-import { safeAsync } from '#dom'
 import { Popover } from '#primitives/Popover'
 import { Chip } from '#primitives/Chip'
-import { Avatar } from '#primitives/Avatar'
 import { renderDepRow, type DepLink } from './depRow'
 import { renderOptionRow } from './optionList'
 
@@ -24,21 +22,12 @@ export interface MultiSelectOpts {
   addLabelMore?: string
   labelFor?: (id: string) => string
   colorFor?: (id: string) => string | undefined
-  /** Identity a selected value is matched by, so the same person written two ways is one row. */
-  keyOf?: (id: string) => string
   search?: boolean
   placeholder?: string
-  /** A second tier, searched only once the user types: vault notes behind the known values. */
-  moreOptions?: (query: string) => PickerItem[]
-  moreHeading?: string
   create?: (label: string) => void
   /** Row label for the create option; defaults to `Create "<name>"`. */
   createLabel?: (name: string) => string
-  /** A second create row, e.g. creating the note a person links to. Awaited before repaint. */
-  createAlt?: { label: (name: string) => string; icon: string; run: (name: string) => Promise<void> }
   tag?: boolean
-  /** One trigger holding an overlapping avatar stack. Backs Assignees. */
-  avatarStack?: boolean
   /** A vertical list of id + title-link rows. Backs Depends on. */
   depsList?: boolean
   /** The note a deps-list value stands for, turning its title into a link that opens it. */
@@ -46,44 +35,18 @@ export interface MultiSelectOpts {
 }
 
 /**
- * Backs Tags, Assignees, and Depends on. The picker popover stays open across toggles so
+ * Backs Tags and Depends on. The picker popover stays open across toggles so
  * several values can be added at once.
  */
 export function renderMultiSelect(opts: MultiSelectOpts): void {
   const labelOf = (id: string) => (opts.labelFor ? opts.labelFor(id) : id)
-  const keyOf = (id: string) => (opts.keyOf ? opts.keyOf(id) : id)
-  const stackMode = !!opts.avatarStack
   const listMode = !!opts.depsList
 
-  // In stack mode the trigger is both the anchor and the value display; otherwise the values
-  // sit in their own row above a trailing ghost that anchors the picker.
-  const chipsEl = stackMode || listMode ? null : opts.container.createDiv('pm-prop-chips')
+  const chipsEl = listMode ? null : opts.container.createDiv('pm-prop-chips')
   const depsEl = listMode ? opts.container.createDiv('pm-prop-deps') : null
-  const anchorBtn = stackMode
-    ? opts.container.createEl('button')
-    : opts.container.createEl('button', { cls: 'pm-prop-add' })
-  let addLabelEl: HTMLElement | null = null
-  if (!stackMode) {
-    setIcon(anchorBtn.createSpan({ cls: 'pm-glyph-icon' }), 'plus')
-    addLabelEl = anchorBtn.createSpan({ cls: 'pm-prop-add-label', text: opts.addLabel })
-  }
-
-  const renderStackTrigger = () => {
-    anchorBtn.empty()
-    const ids = opts.selected()
-    if (ids.length === 0) {
-      anchorBtn.className = 'pm-prop-add'
-      setIcon(anchorBtn.createSpan({ cls: 'pm-glyph-icon' }), 'plus')
-      anchorBtn.createSpan({ cls: 'pm-prop-add-label', text: opts.addLabel })
-      return
-    }
-    anchorBtn.className = 'pm-prop-inline pm-assignees-trigger'
-    const stack = anchorBtn.createSpan({ cls: 'pm-avatar-stack' })
-    for (const id of ids) new Avatar(stack).setColor(opts.colorFor?.(id)).setName(labelOf(id)).setSize('sm')
-    if (ids.length === 1) {
-      anchorBtn.createSpan({ cls: 'pm-assignees-label', text: labelOf(ids[0]) })
-    }
-  }
+  const anchorBtn = opts.container.createEl('button', { cls: 'pm-prop-add' })
+  setIcon(anchorBtn.createSpan({ cls: 'pm-glyph-icon' }), 'plus')
+  const addLabelEl = anchorBtn.createSpan({ cls: 'pm-prop-add-label', text: opts.addLabel })
 
   const renderChips = () => {
     if (!chipsEl) return
@@ -120,8 +83,7 @@ export function renderMultiSelect(opts: MultiSelectOpts): void {
   }
 
   const renderValues = () => {
-    if (stackMode) renderStackTrigger()
-    else if (listMode) renderDepsList()
+    if (listMode) renderDepsList()
     else renderChips()
     if (addLabelEl) {
       addLabelEl.setText(opts.selected().length && opts.addLabelMore ? opts.addLabelMore : opts.addLabel)
@@ -149,10 +111,10 @@ export function renderMultiSelect(opts: MultiSelectOpts): void {
     const renderList = () => {
       listEl.empty()
       const q = query.trim().toLowerCase()
-      const picked = new Map(opts.selected().map((value) => [keyOf(value), value]))
+      const picked = new Map(opts.selected().map((value) => [value, value]))
       const items = opts.options().filter((it) => !q || it.label.toLowerCase().includes(q))
       const toggle = (id: string) => {
-        const current = picked.get(keyOf(id))
+        const current = picked.get(id)
         if (current !== undefined) opts.remove(current)
         else opts.add(id)
         renderValues()
@@ -163,30 +125,12 @@ export function renderMultiSelect(opts: MultiSelectOpts): void {
           label: it.label,
           color: it.color ?? opts.colorFor?.(it.id),
           icon: it.icon,
-          avatar: stackMode ? it.label : undefined,
-          selected: picked.has(keyOf(it.id)),
+          selected: picked.has(it.id),
           onPick: () => toggle(it.id)
         })
       }
-      const more = q ? (opts.moreOptions?.(query.trim()) ?? []) : []
-      const known = new Set(items.map((it) => keyOf(it.id)))
-      const extra = more.filter((it) => !known.has(keyOf(it.id)))
-      if (extra.length && opts.moreHeading) {
-        listEl.createDiv({ cls: 'pm-pop-heading', text: opts.moreHeading })
-      }
-      for (const it of extra) {
-        renderOptionRow(listEl, {
-          label: it.label,
-          color: it.color ?? opts.colorFor?.(it.id),
-          icon: it.icon,
-          avatar: stackMode ? it.label : undefined,
-          selected: picked.has(keyOf(it.id)),
-          onPick: () => toggle(it.id)
-        })
-      }
-
       const create = opts.create
-      const matched = [...items, ...extra].some((it) => it.label.toLowerCase() === q)
+      const matched = items.some((it) => it.label.toLowerCase() === q)
       if (create && q && !matched) {
         const label = query.trim()
         renderOptionRow(listEl, {
@@ -200,23 +144,6 @@ export function renderMultiSelect(opts: MultiSelectOpts): void {
             renderValues()
             renderList()
           }
-        })
-      }
-
-      const createAlt = opts.createAlt
-      if (createAlt && q && !matched) {
-        const label = query.trim()
-        renderOptionRow(listEl, {
-          label: createAlt.label(label),
-          icon: createAlt.icon,
-          accent: true,
-          onPick: safeAsync(async () => {
-            await createAlt.run(label)
-            query = ''
-            if (searchInput) searchInput.value = ''
-            renderValues()
-            renderList()
-          })
         })
       }
     }

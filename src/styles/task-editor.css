@@ -177,17 +177,6 @@ button.pm-prop-add {
   display: none;
 }
 
-/* Two classes beat the element-prefixed .pm-prop-inline base for the gap. */
-.pm-prop-inline.pm-assignees-trigger {
-  gap: 8px;
-}
-.pm-assignees-label {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--text-normal);
-}
-
 /* Each row is a full-height control like every other value, so the label lines up with
    the first one. An empty list reserves no space. */
 .pm-prop-deps {

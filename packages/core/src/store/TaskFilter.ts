@@ -1,7 +1,7 @@
 import { parsePlainDate, Temporal, today } from '../dates'
 import type { DateBucket, FilterCondition, FilterState, StatusConfig, Task, TaskQuery } from '../types'
-import { displayName, isTerminalStatus, stringifyCustomValue } from '../utils'
-import { filterKind, filterValue, valueKey, type FilterContext } from './FilterFields'
+import { isTerminalStatus, stringifyCustomValue } from '../utils'
+import { filterKind, filterValue, type FilterContext } from './FilterFields'
 import type { FlatTask } from './TaskTreeOps'
 
 /** Whether anything narrows the view. Showing archived tasks widens it, so it doesn't count. */
@@ -20,14 +20,13 @@ export function matchesQuery(task: Task, query: TaskQuery, ctx: FilterContext): 
   return matchesSearch(task, query.text, ctx)
 }
 
-/** Matches the task id, title, tags, assignees and custom field values. */
+/** Matches the task id, title, tags and custom field values. */
 export function matchesSearch(task: Task, text: string, ctx: FilterContext): boolean {
   const q = text.trim().toLowerCase()
   if (!q) return true
   if (task.id.toLowerCase() === q) return true
   if (task.title.toLowerCase().includes(q)) return true
   if (task.tags.some((tag) => tag.toLowerCase().includes(q))) return true
-  if (task.assignees.some((a) => a.toLowerCase().includes(q) || displayName(a).toLowerCase().includes(q))) return true
   return ctx.customFields.some((cf) => stringifyCustomValue(task.customFields[cf.id]).toLowerCase().includes(q))
 }
 
@@ -39,12 +38,10 @@ export function matchesCondition(task: Task, condition: FilterCondition, ctx: Fi
   switch (kind) {
     case 'list':
     case 'multi': {
-      const held = (Array.isArray(value) ? value : value ? [String(value)] : []).map((v) =>
-        valueKey(condition.field, v, ctx)
-      )
+      const held = Array.isArray(value) ? value : value ? [String(value)] : []
       if (op === 'empty') return held.length === 0
       if (op === 'not-empty') return held.length > 0
-      const wanted = stringValues(condition).map((v) => valueKey(condition.field, v, ctx))
+      const wanted = stringValues(condition)
       if (!wanted.length) return true
       if (op === 'none') return !held.some((v) => wanted.includes(v))
       if (op === 'all') return wanted.every((v) => held.includes(v))

@@ -10,9 +10,7 @@
     "#primitives/*": "./src/primitives/*.ts"
   },
   "exports": {
-    ".": "./src/index.ts",
-    "./dom-shim": "./src/dom-shim.ts",
-    "./dom-platform": "./src/dom-platform.ts"
+    ".": "./src/index.ts"
   },
   "dependencies": {
     "@dotpm/core": "workspace:*"

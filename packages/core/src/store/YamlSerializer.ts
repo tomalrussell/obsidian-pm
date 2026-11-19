@@ -23,8 +23,6 @@ export const PROJECT_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
   'taskIds',
   'parent',
   'archived',
-  'customFields',
-  'teamMembers',
   'savedViews',
   'createdAt',
   'updatedAt',
@@ -45,16 +43,12 @@ export const TASK_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
   'start',
   'due',
   'progress',
-  'assignees',
   'tags',
   'subtaskIds',
   'dependencies',
   'createdAt',
   'updatedAt',
   'completed',
-  'recurrence',
-  'timeEstimate',
-  'timeLogs',
   'customFields',
   // Written by older versions; owned so a save drops it.
   'collapsed'
@@ -80,7 +74,6 @@ function appendForeignYaml(lines: string[], foreign: Record<string, unknown>): v
 function serializeProjectConfig(config: ProjectConfig | undefined): Record<string, unknown> | null {
   if (!config) return null
   const out: Record<string, unknown> = {}
-  if (config.statuses?.length) out.statuses = config.statuses
   if (config.priorities?.length) out.priorities = config.priorities
   if (config.priorityIcons) out.priorityIcons = config.priorityIcons
   if (config.hiddenCustomFields?.length) out.hiddenCustomFields = config.hiddenCustomFields
@@ -108,6 +101,12 @@ export function serializeProject(
   }
   const taskIds = tasks.map((t) => refs.task(t) ?? t.id)
 
+  const legacyPersonFields: unknown[] = Array.isArray(foreign.customFields)
+    ? (foreign.customFields as unknown[]).filter(
+        (field) => field && typeof field === 'object' && (field as { type?: unknown }).type === 'person'
+      )
+    : []
+  const customFields = [...project.customFields, ...legacyPersonFields]
   const fm: Record<string, unknown> = {
     [FRONTMATTER_KEY]: true,
     id: project.id,
@@ -117,8 +116,7 @@ export function serializeProject(
     taskIds,
     ...(project.parentPath ? { parent: `[[${project.parentPath.replace(/\.md$/, '')}]]` } : {}),
     ...(project.archived ? { archived: true } : {}),
-    customFields: project.customFields,
-    teamMembers: project.teamMembers,
+    ...(customFields.length ? { customFields } : {}),
     savedViews: project.savedViews.length ? project.savedViews : [],
     createdAt: project.createdAt,
     updatedAt: project.updatedAt
@@ -128,7 +126,9 @@ export function serializeProject(
 
   const yamlLines: string[] = ['---']
   appendYaml(yamlLines, fm, 0)
-  appendForeignYaml(yamlLines, foreign)
+  const foreignWithoutCustomFields = { ...foreign }
+  delete foreignWithoutCustomFields.customFields
+  appendForeignYaml(yamlLines, foreignWithoutCustomFields)
   yamlLines.push('---')
   yamlLines.push('')
   yamlLines.push(`# ${project.icon} ${project.title}`)
@@ -169,7 +169,6 @@ export function buildTaskFrontmatter(
     start: task.start,
     due: task.due,
     progress: task.progress,
-    assignees: task.assignees,
     tags: task.tags,
     subtaskIds: task.subtasks.map((s) => refs.task(s) ?? s.id),
     dependencies: task.dependencies.map((id) => refs.dependency(id) ?? id),
@@ -177,9 +176,6 @@ export function buildTaskFrontmatter(
     updatedAt: task.updatedAt
   }
   if (task.completed) fm.completed = task.completed
-  if (task.recurrence) fm.recurrence = task.recurrence
-  if (task.timeEstimate !== undefined) fm.timeEstimate = task.timeEstimate
-  if (task.timeLogs?.length) fm.timeLogs = task.timeLogs
   if (Object.keys(task.customFields).length) fm.customFields = task.customFields
   return fm
 }

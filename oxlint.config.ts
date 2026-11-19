@@ -32,18 +32,13 @@ export default defineConfig({
     'obsidianmd/regex-lookbehind': 'error',
     'obsidianmd/settings-tab/no-manual-html-headings': 'error',
     'obsidianmd/settings-tab/no-problematic-settings-headings': 'error',
-    'obsidianmd/ui/sentence-case': ['error', { ignoreWords: ['TaskNotes'] }],
+    'obsidianmd/ui/sentence-case': 'error',
     'obsidianmd/ui/sentence-case-json': 'warn',
     'obsidianmd/vault/iterate': 'error'
   },
   overrides: [
     {
-      files: [
-        'packages/ui/src/dom-shim.ts',
-        'packages/ui/src/dom-platform.ts',
-        'packages/ui/src/**/*.test.ts',
-        'packages/viewer/src/**/*.ts'
-      ],
+      files: ['packages/ui/src/**/*.test.ts', 'test/ui/**/*.ts'],
       rules: {
         'obsidianmd/prefer-active-doc': 'off',
         'obsidianmd/no-static-styles-assignment': 'off',
@@ -53,7 +48,10 @@ export default defineConfig({
     {
       files: ['packages/**/*.ts'],
       rules: {
-        'no-restricted-imports': ['error', { paths: [{ name: 'obsidian', message: 'packages must stay free of the Obsidian API' }] }]
+        'no-restricted-imports': [
+          'error',
+          { paths: [{ name: 'obsidian', message: 'packages must stay free of the Obsidian API' }] }
+        ]
       }
     },
     {

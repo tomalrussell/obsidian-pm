@@ -12,12 +12,10 @@ describe('KanbanCard outside Obsidian', () => {
     const onClick = vi.fn<() => void>()
     const card = new KanbanCard(host, {
       fields: ['priority', 'tags', 'due', 'cf:sprint'],
-      people: [],
       task: makeTask({ id: 't1', title: 'Write the spec', due: '2030-01-01', tags: ['docs'] }),
       priorityColor: 'red',
       parentTitle: 'Launch',
       customValues: { 'cf:sprint': { name: 'Sprint', text: 'S1' } },
-      loggedHours: 0,
       overdue: false,
       showTagColors: false,
       onClick,
@@ -38,10 +36,8 @@ describe('KanbanCard outside Obsidian', () => {
     const host = document.body.createDiv()
     const card = new KanbanCard(host, {
       fields: [],
-      people: [],
       task: makeTask({ title: 'Bare', due: '2030-01-01', tags: ['docs'], progress: 50 }),
       priorityColor: 'red',
-      loggedHours: 0,
       overdue: false,
       showTagColors: false,
       onClick: noop,

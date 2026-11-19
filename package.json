@@ -1,7 +1,7 @@
 {
   "name": "project-manager",
   "version": "2.6.0",
-  "description": "Project management inside Obsidian. Table, Gantt and Kanban over plain Markdown notes, with a local API for agents and scripts.",
+  "description": "Project management inside Obsidian. Table, Gantt and Kanban over plain Markdown notes.",
   "repository": "github:dotpm/obsidian-pm",
   "type": "module",
   "main": "main.js",
@@ -15,10 +15,10 @@
   },
   "scripts": {
     "dev": "run-p dev:js dev:css",
-    "dev:js": "pnpm build:viewer && tsdown --watch",
+    "dev:js": "tsdown --watch",
     "dev:css": "node scripts/build-styles.mjs --watch",
     "build": "run-p build:js build:css",
-    "build:js": "pnpm build:viewer && PRODUCTION=1 tsdown",
+    "build:js": "PRODUCTION=1 tsdown",
     "build:css": "PRODUCTION=1 node scripts/build-styles.mjs",
     "check": "run-p check:**",
     "check:code": "oxlint ./src ./packages ./test",
@@ -31,14 +31,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "build:viewer": "node scripts/build-viewer.mjs",
-    "build:packages": "pnpm --filter @dotpm/core --filter @dotpm/api --filter @dotpm/viewer build"
+    "build:packages": "pnpm --filter @dotpm/core build"
   },
   "devDependencies": {
     "@2bad/axiom": "2.1.0",
     "@2bad/tsconfig": "4.0.0",
     "@arethetypeswrong/cli": "0.18.5",
-    "@dotpm/api": "workspace:*",
     "@dotpm/core": "workspace:*",
     "@dotpm/ui": "workspace:*",
     "@types/node": "26.6.5",

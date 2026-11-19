@@ -1,5 +1,5 @@
 import type { CustomFieldDef, FilterOp, StatusConfig, Task } from '../types'
-import { displayName, stringifyCustomValue } from '../utils'
+import { stringifyCustomValue } from '../utils'
 
 /** How a field's values compare, which decides the operators it offers. */
 export type FilterKind = 'list' | 'multi' | 'text' | 'number' | 'date' | 'checkbox'
@@ -13,23 +13,12 @@ export const OPS_BY_KIND: Record<FilterKind, FilterOp[]> = {
   checkbox: ['checked', 'unchecked']
 }
 
-export const BUILTIN_FILTER_FIELDS = [
-  'status',
-  'priority',
-  'assignee',
-  'tag',
-  'due',
-  'start',
-  'type',
-  'project',
-  'title'
-] as const
+export const BUILTIN_FILTER_FIELDS = ['status', 'priority', 'tag', 'due', 'start', 'type', 'project', 'title'] as const
 type BuiltinField = (typeof BUILTIN_FILTER_FIELDS)[number]
 
 const BUILTIN_KINDS: Record<BuiltinField, FilterKind> = {
   status: 'list',
   priority: 'list',
-  assignee: 'multi',
   tag: 'multi',
   due: 'date',
   start: 'date',
@@ -45,7 +34,6 @@ const CUSTOM_KINDS: Record<CustomFieldDef['type'], FilterKind> = {
   date: 'date',
   select: 'list',
   multiselect: 'multi',
-  person: 'multi',
   checkbox: 'checkbox'
 }
 
@@ -59,8 +47,6 @@ export function customFilterField(id: string): string {
 export interface FilterContext {
   statuses: StatusConfig[]
   customFields: CustomFieldDef[]
-  /** Decides who counts as the same person. Defaults to the display name. */
-  keyOf?: (raw: string) => string
   /** The id of the project a task belongs to, for the project field. */
   projectOf?: (task: Task) => string | undefined
 }
@@ -90,8 +76,6 @@ export function filterFieldLabel(field: string, customFields: CustomFieldDef[]):
       return 'Status'
     case 'priority':
       return 'Priority'
-    case 'assignee':
-      return 'Assignee'
     case 'tag':
       return 'Tag'
     case 'due':
@@ -121,7 +105,6 @@ const KIND_ICONS: Record<FilterKind, string> = {
 const BUILTIN_ICONS: Record<BuiltinField, string> = {
   status: 'circle-dot',
   priority: 'flag',
-  assignee: 'user',
   tag: 'tag',
   due: 'calendar',
   start: 'calendar-arrow-up',
@@ -151,8 +134,6 @@ export function filterValue(
       return task.status
     case 'priority':
       return task.priority
-    case 'assignee':
-      return task.assignees
     case 'tag':
       return task.tags
     case 'due':
@@ -181,10 +162,4 @@ export function filterValue(
     default:
       return stringifyCustomValue(raw)
   }
-}
-
-/** People compare by who they are, so a name and a link to that person's note match. */
-export function valueKey(field: string, value: string, ctx: FilterContext): string {
-  const isPerson = field === 'assignee' || customFieldOf(field, ctx.customFields)?.type === 'person'
-  return isPerson ? (ctx.keyOf ?? displayName)(value) : value
 }

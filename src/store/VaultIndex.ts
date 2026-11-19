@@ -3,20 +3,18 @@ import { TFile, normalizePath } from 'obsidian'
 import {
   type CustomFieldDef,
   type PMSettings,
-  type StatusConfig,
+  DEFAULT_STATUSES,
   today,
   reaches,
   FRONTMATTER_KEY,
   TASK_FRONTMATTER_KEY,
   customFieldList,
   stringList,
-  dedupePeople,
   DEFAULT_PROJECT_COLOR,
   readColor
 } from '@dotpm/core'
 import { projectPathForTaskPath, resolveVaultLink } from './vaultFs'
 import { isRefLink, refToId, refToPath } from './refs'
-import { personKeyer } from './people'
 
 export interface ProjectRef {
   path: string
@@ -24,7 +22,6 @@ export interface ProjectRef {
   title: string
   icon: string
   color: string
-  teamMembers: string[]
   /** The note's `tags` property, without the leading `#`. */
   tags: string[]
   /** The fields this project declares itself, before anything is inherited. */
@@ -33,10 +30,6 @@ export interface ProjectRef {
   parentPath: string | undefined
   /** The flag the note carries itself. A sub-project inherits its parent's; use `isArchived`. */
   archived: boolean
-  /** Status ids the project's own palette defines. Null inherits the global palette. */
-  ownStatusIds: string[] | null
-  /** Which of those its own palette marks complete. Null inherits the global palette. */
-  completeStatusIds: string[] | null
   /** Days before a completed task is archived. Null inherits the global setting. */
   autoArchiveDays: number | null
 }
@@ -53,7 +46,6 @@ export interface TaskRef {
   due: string
   completed: string
   dependencies: string[]
-  assignees: string[]
   archived: boolean
 }
 
@@ -80,12 +72,6 @@ function projectConfigOf(frontmatter: Record<string, unknown>): Record<string, u
   return config && typeof config === 'object' ? (config as Record<string, unknown>) : null
 }
 
-function ownStatusesOf(frontmatter: Record<string, unknown>): Partial<StatusConfig>[] | null {
-  const statuses = projectConfigOf(frontmatter)?.statuses
-  if (!Array.isArray(statuses) || statuses.length === 0) return null
-  return (statuses as Partial<StatusConfig>[]).filter((entry) => typeof entry?.id === 'string')
-}
-
 function ownAutoArchiveDays(frontmatter: Record<string, unknown>): number | null {
   const days = projectConfigOf(frontmatter)?.autoArchiveDays
   return typeof days === 'number' && Number.isFinite(days) && days >= 0 ? Math.floor(days) : null
@@ -107,8 +93,6 @@ export class VaultIndex {
   private taskById = new Map<string, TaskRef>()
   private tasksByProject = new Map<string, Set<string>>()
   private changeHandlers = new Set<() => void>()
-  private noteColors = new Map<string, string>()
-  private colorHandlers = new Set<() => void>()
   private cachedTree: ProjectTree = { parents: new Map(), children: new Map(), archived: new Set() }
   private treeDirty = true
   private cachedDependents = new Map<string, string[]>()
@@ -124,7 +108,6 @@ export class VaultIndex {
   /** Call once, after the layout is ready. Safe to call again to recover from a bad state. */
   build(): void {
     this.projects.clear()
-    this.noteColors.clear()
     this.projectPathById.clear()
     this.tasks.clear()
     this.taskById.clear()
@@ -150,26 +133,18 @@ export class VaultIndex {
 
     plugin.registerEvent(
       this.app.metadataCache.on('changed', (file) => {
-        const color = this.noteColors.get(normalizePath(file.path))
         this.read(file)
         this.resolveUnowned()
         this.emitChange()
-        if (this.noteColors.get(normalizePath(file.path)) !== color) this.emitColorChange()
       })
     )
     plugin.registerEvent(
       this.app.metadataCache.on('deleted', (file) => {
         if (this.forget(file.path)) this.emitChange()
-        if (this.noteColors.delete(normalizePath(file.path))) this.emitColorChange()
       })
     )
     plugin.registerEvent(
       this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
-        const color = this.noteColors.get(normalizePath(oldPath))
-        if (color !== undefined && file instanceof TFile) {
-          this.noteColors.delete(normalizePath(oldPath))
-          this.noteColors.set(normalizePath(file.path), color)
-        }
         // The metadata cache is not keyed by the new path yet when this fires, and a
         // renamed folder reports nothing about the notes inside it, so whatever is already
         // indexed moves by path here rather than being read back from the cache.
@@ -192,12 +167,6 @@ export class VaultIndex {
   onChange(handler: () => void): () => void {
     this.changeHandlers.add(handler)
     return () => this.changeHandlers.delete(handler)
-  }
-
-  /** Fires when a note's `color` property changes, which is how a person's avatar color is set. */
-  onNoteColorChange(handler: () => void): () => void {
-    this.colorHandlers.add(handler)
-    return () => this.colorHandlers.delete(handler)
   }
 
   /** Archived projects are left out unless asked for, so a list that forgets shows less, not more. */
@@ -258,7 +227,7 @@ export class VaultIndex {
 
   /** Tasks past due and the last date anything is due, without loading the project. */
   dueSummary(ref: ProjectRef): { overdue: number; latestDue: string } {
-    const complete = this.completeStatuses(ref)
+    const complete = this.completeStatuses()
     const now = today().toString()
     let overdue = 0
     let latestDue = ''
@@ -314,18 +283,9 @@ export class VaultIndex {
     return refs
   }
 
-  /**
-   * Status ids that count as finished for a project. A project palette overrides the
-   * global one entry by entry rather than wholesale, so a status it does not redefine
-   * keeps the global palette's complete flag, matching what the project's views resolve.
-   */
-  completeStatuses(ref: ProjectRef): Set<string> {
-    const global = this.getSettings()
-      .statuses.filter((s) => s.complete)
-      .map((s) => s.id)
-    if (!ref.completeStatusIds) return new Set(global)
-    const own = new Set(ref.ownStatusIds)
-    return new Set([...ref.completeStatusIds, ...global.filter((id) => !own.has(id))])
+  /** The fixed statuses that count as finished. */
+  completeStatuses(): Set<string> {
+    return new Set(DEFAULT_STATUSES.filter((status) => status.complete).map((status) => status.id))
   }
 
   /** One task per id, archived ones left out, so counts match what the project's views show. */
@@ -342,7 +302,7 @@ export class VaultIndex {
 
   /** Task totals for a project row, without loading the project. */
   counts(ref: ProjectRef): { total: number; done: number } {
-    const complete = this.completeStatuses(ref)
+    const complete = this.completeStatuses()
     let total = 0
     let done = 0
     for (const task of this.countableTasks(ref)) {
@@ -362,23 +322,6 @@ export class VaultIndex {
 
   allTaskRefs(): TaskRef[] {
     return [...this.tasks.values()]
-  }
-
-  /**
-   * Tasks anywhere in the vault assigned to one person, keyed the way the assignee filter
-   * keys them, so a person written as a link, an alias, or plain text all count once.
-   */
-  tasksForPerson(person: string): TaskRef[] {
-    const keyOf = personKeyer(this.app)
-    const wanted = keyOf(person)
-    return [...this.tasks.values()].filter((ref) => ref.assignees.some((a) => keyOf(a) === wanted))
-  }
-
-  /** Everyone named by a task anywhere in the vault, one entry per person. */
-  allAssignees(): string[] {
-    const values: string[] = []
-    for (const ref of this.tasks.values()) values.push(...ref.assignees)
-    return dedupePeople(values, personKeyer(this.app))
   }
 
   /**
@@ -458,9 +401,6 @@ export class VaultIndex {
     // where a rename leaves it. Keep what is indexed rather than dropping the note.
     if (!cache) return
     this.forget(path)
-    const color = readColor(cache.frontmatter?.color)
-    if (color) this.noteColors.set(path, color)
-    else this.noteColors.delete(path)
     if (this.isExcluded(path)) return
     const frontmatter = cache.frontmatter
     if (!frontmatter) return
@@ -469,22 +409,18 @@ export class VaultIndex {
   }
 
   private addProject(path: string, file: TFile, frontmatter: Record<string, unknown>): void {
-    const own = ownStatusesOf(frontmatter)
     const ref: ProjectRef = {
       path,
       id: str(frontmatter.id, file.basename),
       title: str(frontmatter.title, file.basename),
       icon: str(frontmatter.icon, '\u{1F4CB}'),
       color: readColor(frontmatter.color) ?? DEFAULT_PROJECT_COLOR,
-      teamMembers: stringList(frontmatter.teamMembers),
       tags: (typeof frontmatter.tags === 'string' ? frontmatter.tags.split(/[\s,]+/) : stringList(frontmatter.tags))
         .map((tag) => tag.replace(/^#/, ''))
         .filter(Boolean),
       customFields: customFieldList(frontmatter.customFields),
       parentPath: resolveVaultLink(this.app, frontmatter.parent, path),
       archived: frontmatter.archived === true,
-      ownStatusIds: own ? own.map((entry) => entry.id as string) : null,
-      completeStatusIds: own ? own.filter((entry) => entry.complete === true).map((entry) => entry.id as string) : null,
       autoArchiveDays: ownAutoArchiveDays(frontmatter)
     }
     this.projects.set(path, ref)
@@ -506,7 +442,6 @@ export class VaultIndex {
       due: str(frontmatter.due),
       completed: str(frontmatter.completed),
       dependencies: stringList(frontmatter.dependencies).map((raw) => refToId(this.app, raw, path)),
-      assignees: stringList(frontmatter.assignees),
       archived: path.split('/').at(-2) === 'Archive'
     }
     this.tasks.set(path, ref)
@@ -698,9 +633,5 @@ export class VaultIndex {
 
   private emitChange(): void {
     for (const handler of this.changeHandlers) handler()
-  }
-
-  private emitColorChange(): void {
-    for (const handler of this.colorHandlers) handler()
   }
 }

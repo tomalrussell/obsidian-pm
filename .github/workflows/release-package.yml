@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - "core/[0-9]*"
-      - "api/[0-9]*"
 
 permissions:
   contents: read

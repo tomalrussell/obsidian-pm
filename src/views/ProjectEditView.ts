@@ -8,11 +8,9 @@ import {
   type Project,
   type ProjectConfig,
   type ProjectPatch,
-  type StatusConfig,
   DEFAULT_PALETTE_COLOR,
   makeId,
   priorityIconSetLabels,
-  collectAllAssignees,
   flattenTasks,
   mergeById
 } from '@dotpm/core'
@@ -30,8 +28,7 @@ import {
   IconButton
 } from '@dotpm/ui'
 import { confirmDialog } from '#ui/ModalFactory'
-import { renderPersonPicker } from '#ui/PersonPicker'
-import { renderPriorityListEditor, renderStatusListEditor } from '#ui/PaletteListEditor'
+import { renderPriorityListEditor } from '#ui/PaletteListEditor'
 
 export const PM_PROJECT_EDIT_VIEW_TYPE = 'pm-project-edit'
 
@@ -135,8 +132,6 @@ export class ProjectEditView extends ItemView {
 
     this.renderHeader(project)
     this.renderGeneral(project)
-    this.renderMembers(project)
-    this.renderStatuses(project)
     this.renderPriorities(project)
     this.renderBehavior(project)
     this.renderCustomFields(project)
@@ -260,44 +255,6 @@ export class ProjectEditView extends ItemView {
     area.value = project.description
     area.addEventListener('change', () => {
       this.save({ description: area.value })
-    })
-  }
-
-  private renderMembers(project: Project): void {
-    const section = this.section(`Members`, `Who is on this project`)
-    renderPersonPicker({
-      container: section.createDiv('pm-prop-value'),
-      plugin: this.plugin,
-      sourcePath: project.filePath,
-      extra: () => collectAllAssignees(project.tasks),
-      addLabel: `Add member`,
-      selected: () => project.teamMembers,
-      add: (value) => this.save({ teamMembers: [...project.teamMembers, value] }),
-      remove: (value) => this.save({ teamMembers: project.teamMembers.filter((name) => name !== value) })
-    })
-  }
-
-  private renderStatuses(project: Project): void {
-    this.renderPaletteOverride<StatusConfig>({
-      heading: `Statuses`,
-      hint: `The workflow for this project`,
-      toggleLabel: `Use custom statuses instead of the global ones`,
-      addLabel: `Add status`,
-      get: () => project.config?.statuses,
-      set: (statuses) => this.patchConfig('statuses', statuses),
-      copyGlobal: () => this.plugin.settings.statuses.map((status) => ({ ...status })),
-      makeEntry: () => ({
-        id: 'status-' + makeId().slice(0, 6),
-        label: `New status`,
-        color: DEFAULT_PALETTE_COLOR,
-        icon: '',
-        complete: false
-      }),
-      renderEditor: (container, statuses) =>
-        renderStatusListEditor(container, {
-          statuses,
-          onChanged: () => this.save({ config: project.config })
-        })
     })
   }
 

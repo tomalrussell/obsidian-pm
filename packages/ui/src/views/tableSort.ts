@@ -4,7 +4,6 @@ import {
   type StatusConfig,
   type PriorityConfig,
   type SortRule,
-  displayName,
   statusSortOrder
 } from '@dotpm/core'
 
@@ -34,8 +33,6 @@ function compareBy(a: Task, b: Task, rule: SortRule, statuses: StatusConfig[], p
       return dir * (priorityOrder(a.priority, priorities) - priorityOrder(b.priority, priorities))
     case 'due':
       return dir * compareText(a.due || 'zzz', b.due || 'zzz')
-    case 'assignees':
-      return dir * compareText(displayName(a.assignees[0] ?? ''), displayName(b.assignees[0] ?? ''))
     case 'progress':
       return dir * (a.progress - b.progress)
     default:

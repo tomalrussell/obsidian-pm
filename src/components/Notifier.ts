@@ -34,7 +34,7 @@ export class Notifier {
     const threshold = now.add({ days: leadDays })
 
     for (const project of this.plugin.index.projectRefs()) {
-      const complete = this.plugin.index.completeStatuses(project)
+      const complete = this.plugin.index.completeStatuses()
       for (const task of this.plugin.index.taskRefs(project.path)) {
         const due = parsePlainDate(task.due)
         if (!due) continue

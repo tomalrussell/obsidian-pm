@@ -1,42 +1,6 @@
 import type { DueUrgency, Task, StatusConfig, PriorityConfig, TaskPriority, PriorityIconSet } from './types'
-import { HEX_COLOR, LOCAL_API_PORT_BASE, LOCAL_API_PORT_SPAN, PRIORITY_ICON_SETS } from './types'
+import { HEX_COLOR, PRIORITY_ICON_SETS } from './types'
 import { today, parsePlainDate } from './dates'
-
-export function displayName(raw: string): string {
-  // Values come from frontmatter, where anything YAML allows can turn up in a list of names.
-  const trimmed = typeof raw === 'string' ? raw.trim() : ''
-  const m = trimmed.match(/^\[\[([^\]]+)\]\]$/)
-  if (!m) return trimmed
-  const inner = m[1]
-  const pipe = inner.indexOf('|')
-  if (pipe >= 0) {
-    const alias = inner.slice(pipe + 1).trim()
-    if (alias) return alias
-  }
-  const target = pipe >= 0 ? inner.slice(0, pipe) : inner
-  const hash = target.indexOf('#')
-  const path = hash < 0 ? target : target.slice(0, hash)
-  const base = path.split('/').pop() ?? path
-  return (base.endsWith('.md') ? base.slice(0, -3) : base).trim()
-}
-
-/**
- * One entry per person, keeping the wikilink spelling so the vault link is preserved.
- * `keyOf` decides who counts as the same person; pass `personKeyer(app)` to tell two people
- * with the same name apart by the notes they point at.
- */
-export function dedupePeople(values: string[], keyOf: (raw: string) => string = displayName): string[] {
-  const byKey = new Map<string, string>()
-  for (const value of values) {
-    if (!value) continue
-    const key = keyOf(value)
-    const kept = byKey.get(key)
-    if (kept === undefined || (!kept.startsWith('[[') && value.startsWith('[['))) byKey.set(key, value)
-  }
-  return [...byKey.values()].sort((a, b) => compareText(displayName(a), displayName(b)))
-}
-
-const compareText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
 
 /** A hand-edited color as `#rrggbb`, the only form a color input accepts; `#rgb` is expanded. */
 export function readColor(raw: unknown): string | null {
@@ -51,17 +15,6 @@ export function stringToColor(s: string): string {
   let hash = 0
   for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash)
   return `hsl(${Math.abs(hash) % 360}, 55%, 45%)`
-}
-
-/**
- * The port a vault's local API listens on until the user picks another. Two vaults open at
- * once would otherwise want the same one, and deriving it from the name gives each the same
- * port on every restart, so a client configured once keeps reaching it.
- */
-export function localApiPortFor(vaultName: string): number {
-  let hash = 0
-  for (let i = 0; i < vaultName.length; i++) hash = vaultName.charCodeAt(i) + ((hash << 5) - hash)
-  return LOCAL_API_PORT_BASE + (Math.abs(hash) % LOCAL_API_PORT_SPAN)
 }
 
 export function isTerminalStatus(status: string, statuses: StatusConfig[]): boolean {

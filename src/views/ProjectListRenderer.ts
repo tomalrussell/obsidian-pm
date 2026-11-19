@@ -11,7 +11,6 @@ import {
   dateUrgency
 } from '@dotpm/core'
 import { safeAsync, CollapseToggle, ProjectRow, projectFieldLabel } from '@dotpm/ui'
-import { linkedRefs } from './linkedRefs'
 
 const columns = (fields: ProjectListField[]): { label: string; cls?: string }[] => [
   { label: '' },
@@ -114,7 +113,6 @@ function renderRow(ctx: ProjectListContext, tbody: HTMLElement, row: ProjectList
     tasksDone: item.done,
     tasksTotal: item.total,
     overdue: item.overdue,
-    members: linkedRefs(ctx.plugin.app, ref.teamMembers, ref.path),
     dueLabel: formatDateShort(item.latestDue),
     dueUrgency: dateUrgency(item.latestDue, item.overdue > 0),
     onToggleCollapsed: row.collapsible

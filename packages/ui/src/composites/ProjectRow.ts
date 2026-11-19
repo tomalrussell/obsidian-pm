@@ -1,5 +1,4 @@
 import { type ProjectListField } from '@dotpm/core'
-import { AvatarStack, type AvatarPerson } from '#primitives/AvatarStack'
 import { Chip } from '#primitives/Chip'
 import { CollapseToggle } from '#primitives/CollapseToggle'
 import { IconButton } from '#primitives/IconButton'
@@ -25,7 +24,6 @@ export interface ProjectRowProps {
   tasksDone: number
   tasksTotal: number
   overdue: number
-  members: AvatarPerson[]
   /** Formatted by the caller; empty when nothing in the project has a date. */
   dueLabel: string
   dueUrgency: DueUrgency
@@ -101,10 +99,6 @@ function renderCell(cell: HTMLElement, field: ProjectListField, props: ProjectRo
           .setSize('sm')
           .setStrong()
       }
-      return
-    case 'members':
-      cell.addClass('pm-table-cell-assignees')
-      new AvatarStack(cell).setPeople(props.members).setMax(3).setSize('sm')
       return
     case 'due':
       if (props.dueLabel) renderDueChip(cell, props.dueLabel, props.dueUrgency, 'sm')

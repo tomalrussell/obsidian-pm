@@ -231,13 +231,6 @@
   overflow-wrap: break-word;
 }
 
-.pm-overview-member {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-ui-smaller);
-}
-
 .pm-timeline-scroll {
   overflow-x: auto;
   padding-bottom: 4px;

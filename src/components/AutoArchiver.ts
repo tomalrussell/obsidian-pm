@@ -73,7 +73,7 @@ export class AutoArchiver {
       if (days === 0 && !includeDisabled) continue
       const cutoff = today().subtract({ days }).toString()
 
-      const complete = this.plugin.index.completeStatuses(ref)
+      const complete = this.plugin.index.completeStatuses()
       const anyOldEnough = this.plugin.index
         .taskRefs(path)
         .some((task) => !task.archived && complete.has(task.status) && !!task.completed && task.completed <= cutoff)

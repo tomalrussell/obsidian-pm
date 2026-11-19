@@ -4,15 +4,12 @@ import {
   type TaskStatus,
   type TaskPriority,
   flattenTasks,
-  collectAllAssignees,
   collectAllTags,
-  displayName,
   priorityIcon,
   today
 } from '@dotpm/core'
 import { addPaletteMenuItem } from '@dotpm/ui'
 import { promptText } from '#ui/ModalFactory'
-import { peopleSource } from '#ui/PersonPicker'
 import { TaskPickerModal } from '#modals/PickerModals'
 import type { TableContext } from './TableRenderer'
 import { updateSelectAllCheckbox } from './TableRow'
@@ -20,7 +17,6 @@ import { updateSelectAllCheckbox } from './TableRow'
 export type BulkAction =
   | { type: 'set-status'; status: TaskStatus }
   | { type: 'set-priority'; priority: TaskPriority }
-  | { type: 'set-assignee'; assignee: string }
   | { type: 'set-tag'; tag: string }
   | { type: 'set-due-date'; due: string }
   | { type: 'set-progress'; progress: number }
@@ -78,24 +74,6 @@ function updateBarContent(bar: HTMLElement, ctx: TableContext, onAction: (a: Bul
         { onClick: () => onAction({ type: 'set-priority', priority: p.id }) }
       )
     }
-    menu.showAtMouseEvent(e)
-  })
-
-  new ButtonComponent(left).setButtonText(`Set assignee`).onClick((e) => {
-    const menu = new Menu()
-    const source = peopleSource(ctx.plugin, ctx.scope.primary?.filePath ?? '', () => [
-      ...ctx.scope.teamMembers(),
-      ...collectAllAssignees(ctx.scope.tasks())
-    ])
-    for (const member of source.known()) {
-      menu.addItem((item) =>
-        item.setTitle(displayName(member)).onClick(() => onAction({ type: 'set-assignee', assignee: member }))
-      )
-    }
-    menu.addSeparator()
-    menu.addItem((item) =>
-      item.setTitle(`Clear assignees`).onClick(() => onAction({ type: 'set-assignee', assignee: '' }))
-    )
     menu.showAtMouseEvent(e)
   })
 

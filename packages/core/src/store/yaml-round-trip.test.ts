@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  DEFAULT_PALETTE_COLOR,
   DEFAULT_PROJECT_COLOR,
   makeProject,
   makeTask,
@@ -61,7 +60,6 @@ describe('task round-trip', () => {
       start: '2026-04-01',
       due: '2026-04-10',
       progress: 50,
-      assignees: ['Alice', 'Bob'],
       tags: ['api', 'design'],
       dependencies: ['dep-1']
     })
@@ -75,7 +73,6 @@ describe('task round-trip', () => {
     expect(task.start).toBe(original.start)
     expect(task.due).toBe(original.due)
     expect(task.progress).toBe(original.progress)
-    expect(task.assignees).toEqual(original.assignees)
     expect(task.tags).toEqual(original.tags)
     expect(task.dependencies).toEqual(original.dependencies)
     expect(subtaskIds).toEqual([])
@@ -94,22 +91,6 @@ describe('task round-trip', () => {
     const nested = roundTripTask(child, project, parent)
     expect(nested.subtaskIds).toEqual([])
     expect(nested.parentId).toBe('parent-1')
-  })
-
-  it('preserves recurrence, timeEstimate, and timeLogs', () => {
-    const original = makeTask({
-      id: 'task-2',
-      recurrence: { interval: 'weekly', every: 2 },
-      timeEstimate: 8,
-      timeLogs: [
-        { date: '2026-04-01', hours: 2, note: 'setup' },
-        { date: '2026-04-02', hours: 3.5, note: 'review' }
-      ]
-    })
-    const { task } = roundTripTask(original)
-    expect(task.recurrence).toEqual(original.recurrence)
-    expect(task.timeEstimate).toBe(8)
-    expect(task.timeLogs).toEqual(original.timeLogs)
   })
 
   it('preserves a milestone type and empty start', () => {
@@ -153,20 +134,17 @@ describe('task round-trip', () => {
     expect(task.status).toBe('capture')
     expect(task.priority).toBe('medium')
     expect(task.progress).toBe(0)
-    expect(task.assignees).toEqual([])
     expect(task.dependencies).toEqual([])
     expect(task.customFields).toEqual({})
   })
 
-  it('keeps only the usable names in assignees, tags, and dependencies', () => {
+  it('keeps only the usable values in tags and dependencies', () => {
     const frontmatter: Record<string, unknown> = {
       id: 't-x',
-      assignees: [{ id: 'm1', name: 'John Doe' }, '[[Jane Doe]]', ''],
       tags: ['api', 2026, { name: 'design' }],
       dependencies: ['dep-1', null]
     }
     const { task } = hydrateTaskFromFile(frontmatter, '', 'path.md')
-    expect(task.assignees).toEqual(['[[Jane Doe]]'])
     expect(task.tags).toEqual(['api', '2026'])
     expect(task.dependencies).toEqual(['dep-1'])
   })
@@ -178,14 +156,12 @@ describe('project round-trip', () => {
     p.description = 'A great project.'
     p.color = '#ff0000'
     p.icon = '\u{1F680}'
-    p.teamMembers = ['Alice', 'Bob']
 
     const { project } = roundTripProject(p)
     expect(project.title).toBe('My Project')
     expect(project.description).toBe('A great project.')
     expect(project.color).toBe('#ff0000')
     expect(project.icon).toBe('\u{1F680}')
-    expect(project.teamMembers).toEqual(['Alice', 'Bob'])
   })
 
   it('keeps the description out of the properties and reads it back from the note', () => {
@@ -205,13 +181,13 @@ describe('project round-trip', () => {
     }
   })
 
-  it('falls back to the default color for a status or priority override with an invalid one', () => {
+  it('ignores project status palettes and falls back to the default color for invalid priorities', () => {
     const config = {
       statuses: [{ id: 'todo', label: 'To do', color: 'red' }],
       priorities: [{ id: 'high', label: 'High', color: '#f80' }]
     }
     const project = hydrateProjectFromFrontmatter({ config }, '# P', 'Projects/P.md', 'P')
-    expect(project.config?.statuses?.[0].color).toBe(DEFAULT_PALETTE_COLOR)
+    expect(project.config).not.toHaveProperty('statuses')
     expect(project.config?.priorities?.[0].color).toBe('#ff8800')
   })
 
@@ -314,7 +290,6 @@ describe('project round-trip', () => {
             text: ' api ',
             statuses: ['todo'],
             priorities: [],
-            assignees: ['Alice'],
             tags: [],
             dueDateFilter: 'no-date',
             showArchived: true
@@ -326,7 +301,6 @@ describe('project round-trip', () => {
     expect(project.savedViews[0].filter).toEqual({
       conditions: [
         { field: 'status', op: 'any', value: ['todo'] },
-        { field: 'assignee', op: 'any', value: ['Alice'] },
         { field: 'due', op: 'empty' },
         { field: 'title', op: 'contains', value: 'api' }
       ],
@@ -436,78 +410,103 @@ describe('project round-trip', () => {
 // The store passes Obsidian's live frontmatter object straight into these hydrators, so
 // sharing a container reference with the input would let an edit corrupt the cache.
 describe('hydration does not alias the source frontmatter', () => {
-  it('copies task array and object containers', () => {
+  it('copies task object containers', () => {
     const fm: Record<string, unknown> = {
       id: 't1',
       title: 'Task',
-      assignees: ['Alice'],
       tags: ['api'],
       dependencies: ['dep-1'],
-      customFields: { sprint: 'S1' },
-      recurrence: { interval: 'weekly', every: 1 },
-      timeLogs: [{ date: '2026-04-01', hours: 2, note: 'init' }]
+      customFields: { sprint: 'S1' }
     }
 
     const { task } = hydrateTaskFromFile(fm, '', 'Projects/P_tasks/task.md')
-    const logs = task.timeLogs
-    if (!logs) throw new Error('timeLogs missing')
-    const srcLogs = fm.timeLogs as { hours: number }[]
 
-    expect(task.assignees).not.toBe(fm.assignees)
     expect(task.tags).not.toBe(fm.tags)
     expect(task.dependencies).not.toBe(fm.dependencies)
     expect(task.customFields).not.toBe(fm.customFields)
-    expect(task.recurrence).not.toBe(fm.recurrence)
-    expect(logs).not.toBe(fm.timeLogs)
-    expect(logs[0]).not.toBe(srcLogs[0])
 
-    task.assignees.push('Bob')
     task.tags.push('design')
     task.dependencies.push('dep-2')
     task.customFields.priority = 'high'
-    logs[0].hours = 99
 
-    expect(fm.assignees).toEqual(['Alice'])
     expect(fm.tags).toEqual(['api'])
     expect(fm.dependencies).toEqual(['dep-1'])
     expect(fm.customFields).toEqual({ sprint: 'S1' })
-    expect(srcLogs[0].hours).toBe(2)
   })
 
-  it('drops team members written as mappings instead of names', () => {
+  it('copies project custom field containers', () => {
     const fm: Record<string, unknown> = {
       id: 'p1',
       title: 'Project',
-      teamMembers: [{ id: 'm1', name: 'John Doe' }, 'Alice', null]
-    }
-
-    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-
-    expect(project.teamMembers).toEqual(['Alice'])
-  })
-
-  it('copies project array containers', () => {
-    const fm: Record<string, unknown> = {
-      id: 'p1',
-      title: 'Project',
-      customFields: [{ id: 'cf1', name: 'Sprint', type: 'text' }],
-      teamMembers: ['Alice']
+      customFields: [{ id: 'cf1', name: 'Sprint', type: 'text' }]
     }
 
     const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
 
     expect(project.customFields).not.toBe(fm.customFields)
-    expect(project.teamMembers).not.toBe(fm.teamMembers)
 
     project.customFields.push({ id: 'cf2', name: 'Points', type: 'number' })
-    project.teamMembers.push('Bob')
 
     expect((fm.customFields as unknown[]).length).toBe(1)
-    expect(fm.teamMembers).toEqual(['Alice'])
   })
 })
 
 describe('foreign frontmatter', () => {
+  it('preserves removed recurrence and time tracking as foreign frontmatter', () => {
+    const legacy = {
+      recurrence: { interval: 'weekly', every: 2 },
+      timeEstimate: 8,
+      timeLogs: [{ date: '2026-04-01', hours: 2, note: 'setup' }]
+    }
+    const fm = { id: 'legacy-task', title: 'Legacy', ...legacy }
+    const { task } = hydrateTaskFromFile(fm, '', 'Projects/P_tasks/legacy.md')
+    for (const key of Object.keys(legacy)) expect(task).not.toHaveProperty(key)
+    const foreign = foreignFrontmatter(fm, TASK_FRONTMATTER_KEYS)
+    const parsed = parseFrontmatter(serializeTask(task, makeProject('P', 'Projects/P.md'), null, [], refs, foreign))
+    if (parsed.kind !== 'frontmatter') throw new Error('frontmatter missing')
+    expect(parsed.frontmatter).toMatchObject(legacy)
+  })
+
+  it('leaves removed task assignees in frontmatter without hydrating them', () => {
+    const fm: Record<string, unknown> = {
+      id: 'legacy-task',
+      title: 'Legacy task',
+      assignees: ['[[People/Ada]]']
+    }
+    const { task } = hydrateTaskFromFile(fm, '', 'Projects/P_tasks/legacy.md')
+    expect(task).not.toHaveProperty('assignees')
+
+    const foreign = foreignFrontmatter(fm, TASK_FRONTMATTER_KEYS)
+    const parsed = parseFrontmatter(serializeTask(task, makeProject('P', 'Projects/P.md'), null, [], refs, foreign))
+    if (parsed.kind !== 'frontmatter') throw new Error('frontmatter missing')
+    expect(parsed.frontmatter.assignees).toEqual(['[[People/Ada]]'])
+  })
+
+  it('leaves removed project members and person field definitions untouched', () => {
+    const legacyFields = [
+      { id: 'owner', name: 'Owner', type: 'person' },
+      { id: 'estimate', name: 'Estimate', type: 'number' }
+    ]
+    const fm: Record<string, unknown> = {
+      id: 'legacy-project',
+      title: 'Legacy project',
+      teamMembers: ['Ada'],
+      customFields: legacyFields
+    }
+    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
+    expect(project).not.toHaveProperty('teamMembers')
+    expect(project.customFields).toEqual([{ id: 'estimate', name: 'Estimate', type: 'number' }])
+
+    const foreign = foreignFrontmatter(fm, PROJECT_FRONTMATTER_KEYS)
+    const parsed = parseFrontmatter(serializeProject(project, [], refs, foreign))
+    if (parsed.kind !== 'frontmatter') throw new Error('frontmatter missing')
+    expect(parsed.frontmatter.teamMembers).toEqual(['Ada'])
+    expect(parsed.frontmatter.customFields).toEqual([
+      { id: 'estimate', name: 'Estimate', type: 'number' },
+      { id: 'owner', name: 'Owner', type: 'person' }
+    ])
+  })
+
   it('owns every key the serializers write', () => {
     const project = makeProject('P', 'Projects/P.md')
     project.parentPath = 'Projects/Parent.md'
@@ -516,9 +515,6 @@ describe('foreign frontmatter', () => {
       id: 't-full',
       title: 'Full',
       completed: '2026-04-01',
-      recurrence: { interval: 'weekly', every: 1 },
-      timeEstimate: 4,
-      timeLogs: [{ date: '2026-04-01', hours: 2, note: 'init' }],
       customFields: { sprint: 'S1' }
     })
 

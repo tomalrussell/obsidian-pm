@@ -221,18 +221,6 @@
 .pm-settings-row--dragging {
   opacity: 0.4;
 }
-.pm-settings-complete-toggle {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-.pm-settings-complete-text {
-  font-size: 12px;
-  color: var(--text-muted);
-}
 
 .pm-status-toggle {
   display: flex;

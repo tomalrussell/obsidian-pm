@@ -28,7 +28,6 @@ function ref(id: string, dependencies: string[], archived = false): TaskRef {
     due: '',
     completed: '',
     dependencies,
-    assignees: [],
     archived
   }
 }

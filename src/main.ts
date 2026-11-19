@@ -1,12 +1,10 @@
-import { MarkdownView, Notice, Platform, Plugin, WorkspaceLeaf, type ViewState } from 'obsidian'
+import { MarkdownView, Notice, Plugin, WorkspaceLeaf, type ViewState } from 'obsidian'
 import {
   DEFAULT_PALETTE_COLOR,
   DEFAULT_SETTINGS,
   defaultPriorities,
   defaultStatuses,
-  makeDefaultFilter,
   makeDefaultGroup,
-  makeDefaultSort,
   hydrateFilter,
   hydrateSort,
   legacyBoardFields,
@@ -14,24 +12,12 @@ import {
   type Project,
   type Task,
   flattenTasks,
-  dedupePeople,
-  displayName,
-  localApiPortFor,
   readColor,
   compareVersions,
   releaseNotesSince,
   setDateFormat
 } from '@dotpm/core'
-import {
-  matchPersonNotes,
-  personLink,
-  ProjectStore,
-  scopeKey,
-  VaultIndex,
-  type ProjectRef,
-  type TaskSource
-} from './store'
-import { tokenMatches } from '@dotpm/api'
+import { ProjectStore, VaultIndex, type ProjectRef, type TaskSource } from './store'
 import { safeAsync } from '@dotpm/ui'
 import { around } from 'monkey-around'
 import { installObsidianPlatform } from './platform'
@@ -47,7 +33,6 @@ import { PMViewRouter } from './views/PMViewRouter'
 import {
   openTaskModal,
   openProjectCreate,
-  openPersonLookup,
   openProjectPicker,
   openTaskPicker,
   openImportModal,
@@ -58,9 +43,6 @@ import { Notifier } from './components/Notifier'
 import { AutoArchiver } from './components/AutoArchiver'
 import { IdRepair } from './components/IdRepair'
 import { migrateBoardCardConfig, migrateProjects, migrateProjectLayout, migrateTaskRefs } from './migration'
-import { LocalApi } from './api/LocalApi'
-import { exportViewAsHtml } from './export/exportView'
-import { generateToken, LocalApiServer } from './api/LocalApiServer'
 
 export default class PMPlugin extends Plugin {
   settings: PMSettings = { ...DEFAULT_SETTINGS }
@@ -70,7 +52,6 @@ export default class PMPlugin extends Plugin {
   autoArchiver!: AutoArchiver
   idRepair!: IdRepair
   router!: PMViewRouter
-  localApi!: LocalApiServer
   /** Leaves sent to the markdown editor for a note, which the swap leaves alone while they show it. */
   private markdownEscapes = new WeakMap<WorkspaceLeaf, string>()
   private viewRefreshScheduled = false
@@ -115,16 +96,6 @@ export default class PMPlugin extends Plugin {
     this.autoArchiver = new AutoArchiver(this)
     this.idRepair = new IdRepair(this)
     this.router = new PMViewRouter(this)
-    const api = new LocalApi(this)
-    this.register(api.attach())
-    this.localApi = new LocalApiServer(
-      {
-        info: { name: 'dotpm', version: this.manifest.version },
-        authorize: (token) => (tokenMatches(token, this.settings.localApiToken) ? api : null)
-      },
-      () => this.settings.localApiPort
-    )
-
     this.registerView(PM_PROJECT_VIEW_TYPE, (leaf) => new ProjectView(leaf, this))
     this.registerView(PM_PROJECT_OVERVIEW_VIEW_TYPE, (leaf) => new ProjectOverviewView(leaf, this))
     this.registerView(PM_PROJECT_EDIT_VIEW_TYPE, (leaf) => new ProjectEditView(leaf, this))
@@ -139,7 +110,6 @@ export default class PMPlugin extends Plugin {
         await this.openReleaseNotesAfterUpdate()
         this.index.build()
         await this.startupSweep()
-        await this.syncLocalApi()
       })
     )
 
@@ -277,20 +247,6 @@ export default class PMPlugin extends Plugin {
     )
 
     this.addCommand({
-      id: 'export-view-html',
-      name: `Export current view as HTML`,
-      checkCallback: (checking: boolean) => {
-        const view = this.app.workspace.getActiveViewOfType(ProjectView)
-        if (!view?.projectScope?.primary) return false
-        if (checking) return true
-        safeAsync(async () => {
-          await exportViewAsHtml(this, view)
-        })()
-        return true
-      }
-    })
-
-    this.addCommand({
       id: 'open-current-as-project',
       name: `Open current file as project`,
       checkCallback: (checking: boolean) => {
@@ -305,41 +261,6 @@ export default class PMPlugin extends Plugin {
       }
     })
 
-    this.addCommand({
-      id: 'person-tasks',
-      name: `Show tasks assigned to a person`,
-      callback: () => {
-        openPersonLookup(
-          this,
-          this.index.allAssignees(),
-          safeAsync((value) => this.showTasksForPerson(value))
-        )
-      }
-    })
-
-    this.addCommand({
-      id: 'person-tasks-this-note',
-      name: `Show tasks assigned to this note`,
-      checkCallback: (checking: boolean) => {
-        const md = this.app.workspace.getActiveViewOfType(MarkdownView)
-        const file = md?.file
-        if (!file) return false
-        const cache = this.app.metadataCache.getFileCache(file)
-        if (cache?.frontmatter?.['pm-task'] === true || cache?.frontmatter?.['pm-project'] === true) return false
-        if (checking) return true
-        void this.showTasksForPerson(personLink(this.app, file, ''))
-        return true
-      }
-    })
-
-    this.addCommand({
-      id: 'link-people-to-notes',
-      name: `Link assignees to their person notes`,
-      callback: () => {
-        void this.linkPeopleToNotes()
-      }
-    })
-
     this.addSettingTab(new PMSettingTab(this.app, this))
     this.notifier.start()
     this.autoArchiver.start()
@@ -348,22 +269,6 @@ export default class PMPlugin extends Plugin {
 
   onunload(): void {
     this.notifier.stop()
-    void this.localApi.stop()
-  }
-
-  /** Brings the local API in line with the settings. Mobile has nothing to run. */
-  async syncLocalApi(): Promise<void> {
-    if (!Platform.isDesktopApp) return
-    if (!this.settings.localApiEnabled) {
-      await this.localApi.stop()
-      return
-    }
-    try {
-      await this.localApi.restart()
-    } catch (err: unknown) {
-      console.error('[PM] local API failed to start', err)
-      new Notice(`The local API could not listen on port ${this.settings.localApiPort}.`)
-    }
   }
 
   /** Records the running version, and after an update opens the notes for every release since the last run. */
@@ -420,7 +325,10 @@ export default class PMPlugin extends Plugin {
     // Cloned: a shallow merge would hand the live settings the very arrays and objects
     // DEFAULT_SETTINGS holds, and the first edit would write into the defaults.
     this.settings = Object.assign(structuredClone(DEFAULT_SETTINGS), saved ?? {})
-    if (!saved?.statuses?.length) this.settings.statuses = defaultStatuses()
+    Reflect.deleteProperty(this.settings, 'peopleFolder')
+    Reflect.deleteProperty(this.settings, 'globalTeamMembers')
+    for (const key of ['localApiEnabled', 'localApiPort', 'localApiToken']) Reflect.deleteProperty(this.settings, key)
+    this.settings.statuses = defaultStatuses()
     if (!saved?.priorities?.length) this.settings.priorities = defaultPriorities()
     if (!this.settings.projectFilters) this.settings.projectFilters = {}
     if (!this.settings.scopeViews) this.settings.scopeViews = {}
@@ -428,7 +336,7 @@ export default class PMPlugin extends Plugin {
     if (!this.settings.collapsedProjects) this.settings.collapsedProjects = []
     if (!this.settings.excludedFolders) this.settings.excludedFolders = []
 
-    let migrated = false
+    let migrated = ['localApiEnabled', 'localApiPort', 'localApiToken'].some((key) => saved && key in saved)
     // Filters were keyed by project path before a view could cover several projects.
     for (const key of Object.keys(this.settings.projectFilters)) {
       if (key.includes(':')) continue
@@ -492,14 +400,7 @@ export default class PMPlugin extends Plugin {
       }
     }
 
-    for (const s of this.settings.statuses) {
-      if (s.complete === undefined) {
-        s.complete = s.id === 'done' || s.id === 'cancelled'
-        migrated = true
-      }
-    }
-
-    for (const entry of [...this.settings.statuses, ...this.settings.priorities]) {
+    for (const entry of this.settings.priorities) {
       const color = readColor(entry.color) ?? DEFAULT_PALETTE_COLOR
       if (color === entry.color) continue
       entry.color = color
@@ -515,16 +416,6 @@ export default class PMPlugin extends Plugin {
           entry.filter.conditions.push({ field: 'status', op: 'any', value: nonTerminal })
         }
       }
-      migrated = true
-    }
-
-    if (saved?.localApiPort === undefined) {
-      this.settings.localApiPort = localApiPortFor(this.app.vault.getName())
-      migrated = true
-    }
-
-    if (!this.settings.localApiToken) {
-      this.settings.localApiToken = generateToken()
       migrated = true
     }
 
@@ -719,110 +610,6 @@ export default class PMPlugin extends Plugin {
     }
     if (autoSelectSingle && refs.length === 1) choose(refs[0])
     else openProjectPicker(this, refs, choose)
-  }
-
-  /**
-   * Rewrites plain-text assignees and members as links to the notes of the same name, so
-   * existing vaults get the graph edges without retyping every task. Names matching no note,
-   * or more than one, are left alone and reported.
-   */
-  private async linkPeopleToNotes(): Promise<void> {
-    const plain: string[] = []
-    for (const ref of this.index.allTaskRefs()) plain.push(...ref.assignees)
-    for (const ref of this.index.projectRefs(true)) plain.push(...ref.teamMembers)
-    const names = dedupePeople(plain.filter((value) => !value.trim().startsWith('[[')))
-    if (names.length === 0) {
-      this.showNotice(`Every assignee already links to a note.`)
-      return
-    }
-
-    const matches = matchPersonNotes(this.app, this.settings.peopleFolder, names)
-    const linkable = matches.filter((match) => match.link !== null)
-    const ambiguous = matches.filter((match) => match.ambiguous)
-    if (linkable.length === 0) {
-      this.showNotice(
-        names.length === 1
-          ? `No note matches the ${names.length} name in use.`
-          : `No note matches any of the ${names.length} names in use.`
-      )
-      return
-    }
-
-    const linkFor = new Map<string, string>()
-    for (const match of linkable) if (match.link) linkFor.set(match.name.trim().toLowerCase(), match.link)
-    const mapValue = (value: string): string =>
-      value.trim().startsWith('[[') ? value : (linkFor.get(value.trim().toLowerCase()) ?? value)
-
-    const preview = linkable
-      .slice(0, 5)
-      .map((match) => match.name)
-      .join(', ')
-    const listed =
-      linkable.length > 5
-        ? linkable.length - 5 === 1
-          ? `${preview}, and ${linkable.length - 5} more`
-          : `${preview}, and ${linkable.length - 5} more`
-        : preview
-    const question =
-      linkable.length === 1
-        ? `Link ${linkable.length} name to its note: ${listed}.`
-        : `Link ${linkable.length} names to their notes: ${listed}.`
-    const warn = ambiguous.length
-      ? ` ${ambiguous.length === 1 ? `${ambiguous.length} name matches several notes and is left alone.` : `${ambiguous.length} names match several notes and are left alone.`}`
-      : ''
-    const ok = await confirmDialog(this.app, question + warn, `Link`)
-    if (!ok) return
-
-    let tasksChanged = 0
-    let projectsChanged = 0
-    const byProject = new Map<string, string[]>()
-    for (const ref of this.index.allTaskRefs()) {
-      if (!ref.projectPath) continue
-      if (!ref.assignees.some((value) => linkFor.has(value.trim().toLowerCase()))) continue
-      const bucket = byProject.get(ref.projectPath)
-      if (bucket) bucket.push(ref.id)
-      else byProject.set(ref.projectPath, [ref.id])
-    }
-
-    for (const [path, taskIds] of byProject) {
-      const project = await this.store.loadProjectByPath(path)
-      if (!project) continue
-      await this.store.updateTasks(project, taskIds, (task) => ({ assignees: task.assignees.map(mapValue) }))
-      tasksChanged += taskIds.length
-    }
-
-    for (const ref of this.index.projectRefs(true)) {
-      if (!ref.teamMembers.some((value) => linkFor.has(value.trim().toLowerCase()))) continue
-      const project = await this.store.loadProjectByPath(ref.path)
-      if (!project) continue
-      await this.store.updateProject(project, { teamMembers: project.teamMembers.map(mapValue) })
-      projectsChanged++
-    }
-
-    this.refreshViews()
-    this.showNotice(
-      `Linked ${tasksChanged === 1 ? `${tasksChanged} task` : `${tasksChanged} tasks`} and ${projectsChanged === 1 ? `${projectsChanged} project` : `${projectsChanged} projects`}.`
-    )
-  }
-
-  /** Opens the whole vault filtered to one person, the way the assignee filter would. */
-  private async showTasksForPerson(person: string): Promise<void> {
-    const name = displayName(person)
-    if (this.index.tasksForPerson(person).length === 0) {
-      new Notice(`No tasks assigned to ${name}`)
-      return
-    }
-    this.settings.projectFilters[scopeKey({ kind: 'vault' })] = {
-      filter: { ...makeDefaultFilter(), conditions: [{ field: 'assignee', op: 'any', value: [person] }] },
-      activeSavedViewId: null,
-      sort: makeDefaultSort(),
-      group: makeDefaultGroup(),
-      fields: structuredClone(this.settings.defaultFields),
-      ganttGranularity: this.settings.ganttGranularity,
-      nonWorkingDays: {}
-    }
-    await this.saveSettings()
-    await this.router.openScope({ kind: 'vault' })
   }
 
   /** Picks a project, then a parent when creating a subtask, before opening the editor. */

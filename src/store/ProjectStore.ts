@@ -1075,62 +1075,6 @@ export class ProjectStore implements TaskSource {
     return 'imported'
   }
 
-  /**
-   * Persist a converted task forest as task files. 'move' turns each source note into
-   * the task file, 'copy' leaves sources untouched. The project file isn't rewritten:
-   * the next load recovers order and parenting from the written parentId/subtaskIds.
-   */
-  async importTaskForest(
-    project: Project,
-    roots: Task[],
-    sources: Map<string, TFile>,
-    handling: 'move' | 'copy'
-  ): Promise<number> {
-    const baseFolder = projectTaskFolder(this.app, project.filePath)
-    await this.ensureFolder(baseFolder)
-    let imported = 0
-
-    const writeNode = async (task: Task, parent: Task | null): Promise<void> => {
-      const folder = task.archived ? normalizePath(baseFolder + '/Archive') : baseFolder
-      if (task.archived) await this.ensureFolder(folder)
-      const source = sources.get(task.id)
-      let foreign: Record<string, unknown> = {}
-      if (source) {
-        const parsed = parseFrontmatter(await this.app.vault.read(source))
-        if (parsed.kind === 'malformed') throw new UnreadableNoteError(source.path)
-        task.description = parsed.body
-        foreign = foreignFrontmatter(parsed.kind === 'frontmatter' ? parsed.frontmatter : null, TASK_FRONTMATTER_KEYS)
-      }
-      const dest = this.uniqueChildPath(folder, taskFileName(task.title))
-      const content = serializeTask(
-        task,
-        project,
-        parent,
-        this.statusesFor(project),
-        this.refsFor(project, dest),
-        foreign
-      )
-      if (handling === 'move' && source) {
-        await this.app.fileManager.renameFile(source, dest)
-        const moved = this.app.vault.getAbstractFileByPath(dest)
-        if (moved instanceof TFile) {
-          await this.app.vault.process(moved, () => content)
-        }
-      } else {
-        await this.app.vault.create(dest, content)
-      }
-      imported++
-      for (const child of task.subtasks) {
-        await writeNode(child, task)
-      }
-    }
-
-    for (const root of roots) {
-      await writeNode(root, null)
-    }
-    return imported
-  }
-
   async duplicateTask(project: Project, sourceId: string, includeSubtasks: boolean): Promise<Task | null> {
     const source = findTaskById(project, sourceId)
     if (!source) return null
@@ -1183,7 +1127,6 @@ export class ProjectStore implements TaskSource {
     project.color = source.color
     project.icon = source.icon
     project.customFields = structuredClone(source.customFields)
-    project.teamMembers = [...source.teamMembers]
     project.savedViews = structuredClone(source.savedViews)
     project.parentPath = source.parentPath
     if (source.config) project.config = structuredClone(source.config)

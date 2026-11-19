@@ -6,7 +6,6 @@ import {
   type PriorityConfig,
   type Project,
   type ResolvedProjectConfig,
-  type StatusConfig,
   type Task,
   findTaskById,
   flattenTasks
@@ -172,11 +171,7 @@ export class ProjectScope {
     return [...groups].map(([project, ids]) => ({ project, taskIds: ids }))
   }
 
-  /**
-   * Display palettes only: statuses and priorities every project in scope contributes,
-   * the primary project's first. Terminal-status checks must use `configOf` instead,
-   * because an overridden status carries its own `complete` flag.
-   */
+  /** Fixed statuses and merged priorities for displaying all projects in scope. */
   get config(): ResolvedProjectConfig {
     const primary = this.primary
     if (!primary) throw new Error('ProjectScope.config on an empty scope')
@@ -185,7 +180,6 @@ export class ProjectScope {
     const configs = this.projects.map((project) => this.configOfProject(project))
     return {
       ...base,
-      statuses: unionById<StatusConfig>(configs.map((c) => c.statuses)),
       priorities: unionById<PriorityConfig>(configs.map((c) => c.priorities))
     }
   }
@@ -211,31 +205,25 @@ export class ProjectScope {
   }
 
   /** What a filter condition needs to match the tasks in scope. */
-  filterContext(keyOf: (raw: string) => string): FilterContext {
+  filterContext(): FilterContext {
     return {
       statuses: this.config.statuses,
       customFields: this.customFields(),
-      keyOf,
       projectOf: (task) => this.projectOf(task.id)?.id
     }
   }
 
   /** What the filter picker and the board's columns read: every task in scope and how to name its values. */
-  filterSetup(filter: FilterState, keyOf: (raw: string) => string) {
+  filterSetup(filter: FilterState) {
     return {
       filter,
       tasks: flattenTasks(this.tasks()).map((flat) => flat.task),
-      ctx: this.filterContext(keyOf),
+      ctx: this.filterContext(),
       priorities: this.config.priorities,
       priorityIcons: this.config.priorityIcons,
       projects: this.isMulti
         ? this.projects.map((project) => ({ id: project.id, title: project.title, color: project.color }))
         : []
     }
-  }
-
-  teamMembers(): string[] {
-    if (!this.isMulti) return this.primary?.teamMembers ?? []
-    return [...new Set(this.projects.flatMap((project) => project.teamMembers))]
   }
 }

@@ -3,7 +3,6 @@ import {
   type PriorityConfig,
   type StatusConfig,
   type Task,
-  displayName,
   formatDateShort,
   getPriorityConfig,
   getStatusConfig,
@@ -60,8 +59,6 @@ export function barAsideText(task: Task, fields: string[], source: LabelSource):
   const custom = cardCustomValues(task, source.customFields, fields)
   const parts = fields.map((field) => {
     switch (field) {
-      case 'assignees':
-        return task.assignees.map(displayName).join(', ')
       case 'progress':
         return task.progress > 0 ? `${task.progress}%` : ''
       case 'dates':
@@ -78,7 +75,7 @@ export function barAsideText(task: Task, fields: string[], source: LabelSource):
 }
 
 /**
- * The bar itself: fill, progress, recurrence mark, label, the `aside` text past its end,
+ * The bar itself: fill, progress, label, the `aside` text past its end,
  * and tooltip. Nothing interactive.
  */
 export function drawTaskBar(
@@ -135,13 +132,8 @@ export function drawTaskBar(
     )
   }
 
-  let asideX = x + width + 6
-  if (task.recurrence) {
-    const icon = svgEl('text', { x: x + width + 4, y: y + height / 2 + 5, class: 'pm-gantt-bar-icon' })
-    icon.textContent = 'R'
-    barGroup.appendChild(icon)
-    asideX += 20
-  }
+  const asideX = x + width + 6
+
   if (aside) {
     const text = svgEl('text', { x: asideX, y: y + height / 2, class: 'pm-gantt-bar-aside' })
     text.textContent = aside
@@ -163,9 +155,6 @@ export function drawTaskBar(
     `${`Start: ${task.start || '—'}`}  ${`Due: ${task.due || '—'}`}`,
     `Progress: ${task.progress}%`
   ]
-  if (task.assignees.length) {
-    lines.push(`Assignees: ${task.assignees.map(displayName).join(', ')}`)
-  }
   tooltip.textContent = lines.join('\n')
   rect.appendChild(tooltip)
 

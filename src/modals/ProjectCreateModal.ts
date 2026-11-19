@@ -4,14 +4,12 @@ import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from '@dotpm/core'
 import { findIgnoringCase, newProjectFolder, projectFilePath } from '#store'
 import { safeAsync, renderPropRow, renderIconControl, renderSelectControl } from '@dotpm/ui'
 import { saveShortcutLabel } from '../utils'
-import { renderPersonPicker } from '#ui/PersonPicker'
 
 interface Draft {
   title: string
   icon: string
   color: string
   parentPath: string
-  teamMembers: string[]
   description: string
 }
 
@@ -22,7 +20,6 @@ export class ProjectCreateModal extends Modal {
     icon: DEFAULT_PROJECT_ICON,
     color: DEFAULT_PROJECT_COLOR,
     parentPath: '',
-    teamMembers: [],
     description: ''
   }
   private header!: HTMLElement
@@ -55,7 +52,6 @@ export class ProjectCreateModal extends Modal {
     this.renderIcon(grid)
     this.renderColor(grid)
     this.renderParent(grid)
-    this.renderMembers(grid)
 
     this.renderDescription(body)
 
@@ -193,32 +189,6 @@ export class ProjectCreateModal extends Modal {
     )
   }
 
-  private renderMembers(parent: HTMLElement): void {
-    renderPropRow(
-      parent,
-      `Members`,
-      () => {
-        const cell = createDiv('pm-prop-value')
-        renderPersonPicker({
-          container: cell,
-          plugin: this.plugin,
-          // The note doesn't exist yet, so links are resolved from the vault root.
-          sourcePath: '',
-          addLabel: `Add member`,
-          selected: () => this.draft.teamMembers,
-          add: (value) => {
-            this.draft.teamMembers.push(value)
-          },
-          remove: (value) => {
-            this.draft.teamMembers = this.draft.teamMembers.filter((name) => name !== value)
-          }
-        })
-        return cell
-      },
-      'users'
-    )
-  }
-
   private renderDescription(parent: HTMLElement): void {
     const section = parent.createDiv('pm-modal-section pm-modal-desc-section')
     section.createEl('h4', { text: `Description`, cls: 'pm-modal-section-title' })
@@ -286,7 +256,6 @@ export class ProjectCreateModal extends Modal {
       icon: this.draft.icon,
       color: this.draft.color,
       description: this.draft.description,
-      teamMembers: this.draft.teamMembers,
       parentPath: this.draft.parentPath || undefined
     })
     this.close()

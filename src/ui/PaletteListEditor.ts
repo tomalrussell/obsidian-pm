@@ -1,5 +1,5 @@
 import { Notice } from 'obsidian'
-import { type PriorityConfig, type StatusConfig } from '@dotpm/core'
+import { type PriorityConfig } from '@dotpm/core'
 import { IconButton, renderIconControl } from '@dotpm/ui'
 
 /** On drop, moves the dragged item to this row's index. */
@@ -59,17 +59,6 @@ export function renderPaletteFields(parent: HTMLElement, item: PaletteEntry, onC
   })
 }
 
-export function renderStatusDoneToggle(parent: HTMLElement, status: StatusConfig, onChanged: () => void): void {
-  const wrapper = parent.createEl('label', { cls: 'pm-settings-complete-toggle' })
-  const checkbox = wrapper.createEl('input', { type: 'checkbox' })
-  checkbox.checked = status.complete
-  wrapper.createSpan({ text: `Done`, cls: 'pm-settings-complete-text' })
-  checkbox.addEventListener('change', () => {
-    status.complete = checkbox.checked
-    onChanged()
-  })
-}
-
 interface PaletteListEditorOpts<T extends PaletteEntry> {
   items: T[]
   /** Called after every mutation, so the owner can persist. */
@@ -110,22 +99,6 @@ function renderPaletteListEditor<T extends PaletteEntry>(container: HTMLElement,
         rerender()
         opts.onDeleted?.(item)
       })
-  })
-}
-
-export interface StatusListEditorOpts {
-  statuses: StatusConfig[]
-  onChanged: () => void
-  onDeleted?: (deleted: StatusConfig) => void
-}
-
-export function renderStatusListEditor(container: HTMLElement, opts: StatusListEditorOpts): void {
-  renderPaletteListEditor<StatusConfig>(container, {
-    items: opts.statuses,
-    onChanged: opts.onChanged,
-    onDeleted: opts.onDeleted,
-    minOneMessage: `You must have at least one status.`,
-    renderExtra: (row, status) => renderStatusDoneToggle(row, status, opts.onChanged)
   })
 }
 

@@ -7,20 +7,6 @@ export type { ScopeSpec } from './ProjectScope'
 export { VaultIndex } from './VaultIndex'
 export type { ProjectRef, TaskRef } from './VaultIndex'
 export {
-  createPersonLink,
-  createPersonNote,
-  matchPersonNotes,
-  personCandidates,
-  personColor,
-  personKey,
-  personKeyer,
-  personLink,
-  personNotes,
-  resolvePeople,
-  resolvePerson
-} from './people'
-export type { PersonCandidate, PersonLinkState, PersonMatch, PersonRef } from './people'
-export {
   findIgnoringCase,
   folderOf,
   newProjectFolder,

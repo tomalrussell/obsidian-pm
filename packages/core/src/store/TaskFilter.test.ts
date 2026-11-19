@@ -185,17 +185,16 @@ describe('date fields', () => {
 })
 
 describe('search', () => {
-  it('matches title, tags, assignees and custom values', () => {
+  it('matches title, tags and custom values', () => {
     const t = task({
       id: 'abc123',
       title: 'Payment errors',
       tags: ['billing'],
-      assignees: ['[[People/Ada Lovelace]]'],
       customFields: { sprint: 'S14' }
     })
     expect(matchesSearch(t, 'payment', ctx)).toBe(true)
     expect(matchesSearch(t, 'BILL', ctx)).toBe(true)
-    expect(matchesSearch(t, 'ada', ctx)).toBe(true)
+    expect(matchesSearch(t, 'ada', ctx)).toBe(false)
     expect(matchesSearch(t, 's14', ctx)).toBe(true)
     expect(matchesSearch(t, 'abc123', ctx)).toBe(true)
     expect(matchesSearch(t, 'abc', ctx)).toBe(false)
@@ -251,39 +250,6 @@ describe('applying to trees', () => {
   it('filters a flat list', () => {
     const flat = flattenTasks([task({ id: 'a', status: 'todo' }), task({ id: 'b', status: 'done' })])
     expect(applyTaskFilterFlat(flat, query(todo), ctx).map((f) => f.task.id)).toEqual(['a'])
-  })
-})
-
-describe('people', () => {
-  // Stands in for personKeyer: two Janes in different folders, one Bob with no note.
-  const keyOf = (raw: string): string => {
-    const inner = /^\[\[(.+?)\]\]$/.exec(raw.trim())?.[1] ?? raw.trim()
-    const path = inner.split('|')[0].trim()
-    if (path === 'People/Jane' || path === 'Jane') return 'People/Jane.md'
-    if (path === 'Contacts/Jane') return 'Contacts/Jane.md'
-    return path
-  }
-  const keyed: FilterContext = { ...ctx, keyOf }
-  const assignee = (value: string): FilterCondition => ({ field: 'assignee', op: 'any', value: [value] })
-
-  it('matches a wikilink against a plain name through the display name by default', () => {
-    expect(matches(task({ id: 'a', assignees: ['[[People/John Doe]]'] }), assignee('John Doe'))).toBe(true)
-    expect(matches(task({ id: 'a', assignees: ['[[People/jdoe|John Doe]]'] }), assignee('John Doe'))).toBe(true)
-    expect(matches(task({ id: 'a', assignees: ['[[People/John Doe]]'] }), assignee('Anna Reid'))).toBe(false)
-  })
-
-  it('separates two people who share a name but not a note', () => {
-    const t = task({ id: 'a', assignees: ['[[People/Jane]]'] })
-    expect(matches(t, assignee('[[Contacts/Jane]]'), keyed)).toBe(false)
-    expect(matches(t, assignee('Jane'), keyed)).toBe(true)
-  })
-
-  it('compares a person custom field the same way', () => {
-    const fields: CustomFieldDef[] = [{ id: 'owner', name: 'Owner', type: 'person' }]
-    const t = task({ id: 'a', customFields: { owner: '[[People/Jane|JD]]' } })
-    expect(
-      matches(t, { field: 'cf:owner', op: 'any', value: ['[[People/Jane]]'] }, { ...keyed, customFields: fields })
-    ).toBe(true)
   })
 })
 

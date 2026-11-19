@@ -1,15 +1,18 @@
 import { setIcon } from '#platform'
-import { AvatarStack, type AvatarPerson } from '#primitives/AvatarStack'
 import { makeActivatable } from '#dom'
+
+export interface NoteLink {
+  name: string
+  unresolved?: boolean
+  onClick?: () => void
+}
 
 export type CustomFieldValue =
   | { kind: 'text'; text: string }
   | { kind: 'checkbox'; checked: boolean }
   | { kind: 'url'; url: string }
-  /** A person field: the same avatars assignees get, opening the person's note. */
-  | { kind: 'people'; people: AvatarPerson[] }
-  /** Any other value naming a note, shown as the note's name. */
-  | { kind: 'links'; links: AvatarPerson[] }
+  /** A value naming a note, shown as a clickable note name when it resolves. */
+  | { kind: 'links'; links: NoteLink[] }
 
 export class CustomFieldCell {
   el: HTMLTableCellElement
@@ -34,10 +37,6 @@ export class CustomFieldCell {
         link.setAttr('rel', 'noopener')
         return
       }
-      case 'people':
-        if (value.people.length === 0) this.empty('')
-        else new AvatarStack(this.el).setPeople(value.people).setMax(3)
-        return
       case 'links':
         this.renderLinks(value.links)
     }
@@ -47,7 +46,7 @@ export class CustomFieldCell {
     this.el.createSpan({ text: text || '—', cls: 'pm-cf-value' })
   }
 
-  private renderLinks(links: AvatarPerson[]): void {
+  private renderLinks(links: NoteLink[]): void {
     const value = this.el.createSpan({ cls: 'pm-cf-value' })
     links.forEach((link, i) => {
       if (i > 0) value.createSpan({ text: ', ' })
