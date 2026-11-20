@@ -157,6 +157,8 @@ export function drawTaskBar(
   return { barGroup, rect, x, y, width, height }
 }
 
+export const MILESTONE_RADIUS = 9
+
 export function drawMilestoneDiamond(
   g: SVGGElement,
   canvas: GanttCanvas,
@@ -168,7 +170,7 @@ export function drawMilestoneDiamond(
   if (!date) return null
   const cx = dateToX(canvas.cfg, date) + canvas.cfg.dayWidth / 2
   const cy = HEADER_HEIGHT + row * ROW_HEIGHT + ROW_HEIGHT / 2
-  const size = 12
+  const size = MILESTONE_RADIUS
   const diamond = svgEl('polygon', {
     points: `${cx},${cy - size} ${cx + size},${cy} ${cx},${cy + size} ${cx - size},${cy}`,
     fill: color,
@@ -230,9 +232,10 @@ export function drawDependencyArrows(canvas: GanttCanvas, rows: GanttRow[]): voi
     const toRow = indexMap.get(task.id)
     if (toRow === undefined) continue
     const toY = HEADER_HEIGHT + toRow * ROW_HEIGHT + ROW_HEIGHT / 2
-    const taskStart = parsePlainDate(task.start)
+    const taskStart = parsePlainDate(task.type === 'milestone' ? task.due || task.start : task.start)
     if (!taskStart) continue
-    const toX = dateToX(canvas.cfg, taskStart)
+    const toX =
+      dateToX(canvas.cfg, taskStart) + (task.type === 'milestone' ? canvas.cfg.dayWidth / 2 - MILESTONE_RADIUS : 0)
 
     for (const depId of task.dependencies) {
       const fromRow = indexMap.get(depId)

@@ -8,7 +8,7 @@
 }
 
 /* override clickable-icon defaults to get a segmented control shape */
-.pm-view-switcher .pm-view-btn.clickable-icon {
+.pm-view-switcher button.pm-view-btn {
   border-radius: calc(var(--radius-s) - 2px);
   background: transparent;
   color: var(--text-muted);
@@ -16,14 +16,34 @@
     background 0.12s,
     color 0.12s;
 }
-.pm-view-switcher .pm-view-btn.clickable-icon:hover {
+.pm-view-switcher button.pm-view-btn:hover {
   background: transparent;
   color: var(--text-normal);
 }
-.pm-view-switcher .pm-view-btn--active.clickable-icon,
-.pm-view-switcher .pm-view-btn--active.clickable-icon:hover {
+.pm-view-switcher button.pm-view-btn--active,
+.pm-view-switcher button.pm-view-btn--active:hover {
   background: var(--background-primary);
   color: var(--text-normal);
+}
+
+.pm-view-switcher button.pm-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  border: none;
+  box-shadow: none;
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}
+.pm-view-btn-icon {
+  display: inline-flex;
+  --icon-size: 14px;
+}
+.pm-vh--terse .pm-view-btn-label,
+.pm-vh--phone .pm-view-btn-label {
+  display: none;
 }
 
 .pm-content {

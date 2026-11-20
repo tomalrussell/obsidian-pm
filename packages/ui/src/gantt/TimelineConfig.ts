@@ -8,11 +8,11 @@ import {
   parsePlainDate
 } from '@dotpm/core'
 
-export const ROW_HEIGHT = 44
+export const ROW_HEIGHT = 28
 export const HEADER_HEIGHT = 56
 export const LABEL_WIDTH = 280
-export const BAR_PADDING = 8
-export const BAR_BORDER_RADIUS = 7
+export const BAR_PADDING = 5
+export const BAR_BORDER_RADIUS = 4
 
 export const DAY_WIDTH: Record<GanttGranularity, number> = {
   day: 44,

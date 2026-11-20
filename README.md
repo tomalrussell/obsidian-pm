@@ -42,7 +42,7 @@ Needs Obsidian 1.13 or newer. Works on desktop and mobile.
 1. Click the timeline icon in the ribbon, or run **dotpm: Open projects pane**.
 2. Click **New project**, give it a name, and open it.
 3. Click **Add task**. Set a status, a due date, or whatever else you need.
-4. Switch between **Table**, **Timeline** and **Board** from the last part of the path at the top of the view.
+4. Switch between **Table**, **Timeline** and **Board** using the buttons at the top of the view.
 5. Look in your vault. There is a `Projects/Your project.md` note and a `Projects/Your project_tasks/` folder with one note per task.
 
 Already have notes you want as tasks? Run **dotpm: Import notes as tasks**. To turn an existing note into a project, add `pm-project: true` to its properties and run **dotpm: Open current file as project**.

@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 4px 12px;
   border-bottom: 1px solid var(--background-modifier-border);
   flex-shrink: 0;
   background: var(--background-primary);
@@ -41,7 +41,7 @@
 .pm-gantt-left-header {
   display: flex;
   align-items: flex-end;
-  padding: 0 12px 10px;
+  padding: 0 10px 6px;
   box-shadow: inset 0 -2px 0 var(--background-modifier-border);
   flex-shrink: 0;
   background: var(--background-primary);
@@ -63,8 +63,8 @@
 .pm-gantt-label-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding-right: 8px;
+  gap: 4px;
+  padding: 0 6px 0 0;
   box-shadow: inset 0 -1px 0 var(--background-modifier-border);
   cursor: default;
   transition: background 0.1s;

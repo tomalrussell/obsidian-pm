@@ -240,12 +240,12 @@ export class StyleguideView extends ItemView {
 
   private renderViewSwitcher(): void {
     const sec = this.section('ViewSwitcher', 'view-switcher')
-    const row = this.row(sec, 'icon options')
+    const row = this.row(sec, 'side-by-side view buttons')
     new ViewSwitcher(row, {
       options: [
         { id: 'table', icon: 'table', label: 'Table' },
-        { id: 'gantt', icon: 'chart-gantt', label: 'Gantt' },
-        { id: 'kanban', icon: 'kanban', label: 'Kanban' }
+        { id: 'gantt', icon: 'chart-gantt', label: 'Timeline' },
+        { id: 'kanban', icon: 'kanban', label: 'Board' }
       ],
       active: 'table',
       onChange: noop

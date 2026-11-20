@@ -88,7 +88,6 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  min-height: 112px;
   background: var(--background-primary);
   border: 1px solid var(--pm-ghost-border);
   border-radius: var(--radius-m);
@@ -114,7 +113,7 @@
 }
 .pm-kanban-card-body {
   flex: 1;
-  padding: 10px 12px;
+  padding: 4px 12px;
   display: flex;
   flex-direction: column;
   gap: 7px;

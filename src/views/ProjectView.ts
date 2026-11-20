@@ -64,6 +64,7 @@ import {
   renderGroupPanel,
   renderSortPanel,
   renderBreadcrumb,
+  ViewSwitcher,
   safeAsync,
   SearchBox,
   showMenuBelow,
@@ -477,6 +478,11 @@ export class ProjectView extends ItemView {
     const header = new ViewHeader(this.headerEl)
     this.header = header
     this.renderContextSlot(header.context, scope, primary)
+    new ViewSwitcher<ViewMode>(header.context, {
+      options: MODES.map((mode) => ({ id: mode, icon: MODE_ICONS[mode], label: modeLabel(mode) })),
+      active: this.currentView,
+      onChange: (mode) => this.switchMode(mode)
+    })
     this.renderViewSlot(header.view)
     this.renderQuerySlot(header.query)
     this.renderOptionsSlot(header.options, scope)
@@ -596,13 +602,7 @@ export class ProjectView extends ItemView {
     const common = {
       onSwitch: (anchor: HTMLElement) => this.openSwitcher(anchor, scope, primary),
       switchLabel: `Switch project`,
-      foldLabel: `Projects`,
-      mode: {
-        icon: MODE_ICONS[this.currentView],
-        label: modeLabel(this.currentView),
-        tooltip: `View mode: ${modeLabel(this.currentView)}`,
-        onOpen: (anchor: HTMLElement) => this.showModeMenu(anchor, scope, primary)
-      }
+      foldLabel: `Projects`
     }
     if (kind === 'project') {
       renderBreadcrumb(parent, {

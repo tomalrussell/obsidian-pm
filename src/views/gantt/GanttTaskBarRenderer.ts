@@ -1,5 +1,5 @@
 import { Notice } from 'obsidian'
-import { type Task } from '@dotpm/core'
+import { parsePlainDate, type Task } from '@dotpm/core'
 import {
   svgEl,
   safeAsync,
@@ -16,6 +16,8 @@ import {
   BAR_PADDING,
   BAR_BORDER_RADIUS,
   xToDate,
+  dateToX,
+  MILESTONE_RADIUS,
   getSnapPoints,
   snapX
 } from '@dotpm/ui'
@@ -84,26 +86,8 @@ export function renderTaskBar(g: SVGGElement, task: Task, row: number, _depth: n
     barGroup.appendChild(handle)
   }
 
-  const DOT_R = 4
-  const DOT_GAP = 4
   for (const side of ['left', 'right'] as const) {
-    const cx = side === 'left' ? x - DOT_GAP - DOT_R : x + width + DOT_GAP + DOT_R
-    const cy = y + height / 2
-    const dot = svgEl('circle', {
-      cx,
-      cy,
-      r: DOT_R,
-      class: 'pm-gantt-link-dot',
-      cursor: 'crosshair'
-    })
-    dot.addEventListener('mousedown', (e: MouseEvent) => {
-      e.stopPropagation()
-    })
-    dot.addEventListener('click', (e: MouseEvent) => {
-      e.stopPropagation()
-      handleLinkDotClick(dot, task.id, side, ctx.link, ctx.plugin, ctx.scope, ctx.onRefresh)
-    })
-    barGroup.appendChild(dot)
+    renderLinkDot(barGroup, task, side, side === 'left' ? x : x + width, y + height / 2, ctx)
   }
 
   if (task.start && task.due) {
@@ -210,10 +194,42 @@ function renderEmptyRowClickTarget(g: SVGGElement, task: Task, row: number, ctx:
   hitArea.appendChild(tt)
 }
 
+function renderLinkDot(
+  group: SVGGElement,
+  task: Task,
+  side: 'left' | 'right',
+  edgeX: number,
+  cy: number,
+  ctx: RendererContext
+): void {
+  const radius = 4
+  const offset = radius + 4
+  const dot = svgEl('circle', {
+    cx: edgeX + (side === 'left' ? -offset : offset),
+    cy,
+    r: radius,
+    class: 'pm-gantt-link-dot',
+    cursor: 'crosshair'
+  })
+  dot.addEventListener('mousedown', (e: MouseEvent) => e.stopPropagation())
+  dot.addEventListener('click', (e: MouseEvent) => {
+    e.stopPropagation()
+    handleLinkDotClick(dot, task.id, side, ctx.link, ctx.plugin, ctx.scope, ctx.onRefresh)
+  })
+  group.appendChild(dot)
+}
+
 function renderMilestoneDiamond(g: SVGGElement, task: Task, row: number, color: string, ctx: RendererContext): void {
   const project = ctx.scope.projectOf(task.id)
   if (!project) return
-  const diamond = drawMilestoneDiamond(g, ctx, task, row, color)
+  const date = parsePlainDate(task.due) ?? parsePlainDate(task.start)
+  if (!date) return
+  const group = svgEl('g', { class: 'pm-gantt-bar-group' })
+  g.appendChild(group)
+  const diamond = drawMilestoneDiamond(group, ctx, task, row, color)
+  const centerX = dateToX(ctx.cfg, date) + ctx.cfg.dayWidth / 2
+  const centerY = HEADER_HEIGHT + row * ROW_HEIGHT + ROW_HEIGHT / 2
+  renderLinkDot(group, task, 'left', centerX - MILESTONE_RADIUS, centerY, ctx)
   diamond?.addEventListener('click', () => {
     openTaskModal(ctx.plugin, project, { task, onSave: () => ctx.onRefresh() })
   })
