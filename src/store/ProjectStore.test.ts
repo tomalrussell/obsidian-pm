@@ -13,7 +13,6 @@ import {
   type StatusConfig,
   type Task,
   parseFrontmatter,
-  addDays,
   buildTaskIndex,
   findTask,
   flattenTasks
@@ -41,11 +40,11 @@ function newStore(): { store: ProjectStore; vault: FakeVault; app: App } {
   return { store, vault, app: app as unknown as App }
 }
 
-function newIndexedStore(): { store: ProjectStore; index: VaultIndex; app: App } {
+function newIndexedStore(settings: PMSettings = SETTINGS): { store: ProjectStore; index: VaultIndex; app: App } {
   const { app } = makeFakeApp({ liveMetadataCache: true })
   const typed = app as unknown as App
-  const index = new VaultIndex(typed, () => SETTINGS)
-  const store = new ProjectStore(typed, () => SETTINGS, index)
+  const index = new VaultIndex(typed, () => settings)
+  const store = new ProjectStore(typed, () => settings, index)
   return { store, index, app: typed }
 }
 
@@ -467,58 +466,48 @@ describe('ProjectStore completion date', () => {
   })
 })
 
-describe('ProjectStore pull-forward on early finish', () => {
-  const BLOCKER_DUE = '2099-06-10'
+describe('ProjectStore manual dates', () => {
+  it('keeps linked task dates unchanged when dependencies or predecessor dates and completion change', async () => {
+    const legacySettings = { ...SETTINGS, autoSchedule: true, pullForwardOnEarlyFinish: true } as PMSettings
+    const { store, index, app } = newIndexedStore(legacySettings)
+    const source = await store.createProject('Source', 'Projects')
+    const other = await store.createProject('Other', 'Projects')
+    const predecessor = await addNamed(store, source, 'Predecessor')
+    const local = await addNamed(store, source, 'Local dependent')
+    const remote = await addNamed(store, other, 'Other dependent')
+    await store.updateTask(source, predecessor.id, { start: '2099-06-01', due: '2099-06-10' })
+    await store.updateTask(source, local.id, { start: '2099-06-02', due: '2099-06-03' })
+    await store.updateTask(other, remote.id, { start: '2099-06-04', due: '2099-06-05' })
+    index.build()
 
-  async function chain(pullForward: boolean): Promise<{ store: ProjectStore; project: Project; blocked: Task }> {
-    const { app } = makeFakeApp()
-    const store = new ProjectStore(app as unknown as App, () => ({
-      ...SETTINGS,
-      pullForwardOnEarlyFinish: pullForward
-    }))
-    const project = await store.createProject('Early', 'Projects')
-    const blocker = makeTask({ title: 'Blocker', due: BLOCKER_DUE })
-    await store.insertTask(project, blocker)
-    const blocked = makeTask({
-      title: 'Blocked',
-      start: addDays(BLOCKER_DUE, 1),
-      due: addDays(BLOCKER_DUE, 2),
-      dependencies: [blocker.id]
-    })
-    await store.insertTask(project, blocked)
-    await store.updateTask(project, blocker.id, { status: 'done' })
-    return { store, project, blocked }
-  }
+    // Adding a link records the relationship without enforcing a date constraint.
+    await store.updateTask(source, local.id, { dependencies: [predecessor.id] })
+    await store.updateTask(other, remote.id, { dependencies: [predecessor.id] })
+    index.build()
+    const assertDependentDates = (): void => {
+      expect([local.start, local.due]).toEqual(['2099-06-02', '2099-06-03'])
+      expect([remote.start, remote.due]).toEqual(['2099-06-04', '2099-06-05'])
+    }
+    assertDependentDates()
+    const localFile = fileAt(app, expectDefined(local.filePath))
+    const remoteFile = fileAt(app, expectDefined(remote.filePath))
+    const localContent = await app.vault.read(localFile)
+    const remoteContent = await app.vault.read(remoteFile)
 
-  it('pulls a dependent back when its blocker is completed ahead of its due date', async () => {
-    const { blocked } = await chain(true)
-    const finishedOn = today().toString()
-    expect(blocked.start).toBe(addDays(finishedOn, 1))
-    expect(blocked.due).toBe(addDays(finishedOn, 2))
-  })
+    // Moving a bar changes the edited task only, even across project boundaries.
+    await store.updateTask(source, predecessor.id, { start: '2099-07-01', due: '2099-07-10' })
+    expect([predecessor.start, predecessor.due]).toEqual(['2099-07-01', '2099-07-10'])
+    assertDependentDates()
 
-  it('leaves the dependent in place when the option is off', async () => {
-    const { blocked } = await chain(false)
-    expect(blocked.start).toBe(addDays(BLOCKER_DUE, 1))
-  })
-
-  it('keeps a project-level override across a reload', async () => {
-    const { store, vault, app } = newStore()
-    const project = await store.createProject('Override', 'Projects')
-    project.config = { pullForwardOnEarlyFinish: true }
-    await store.saveProject(project)
-
-    const file = vault.getAbstractFileByPath(project.filePath)
-    if (!(file instanceof TFile)) throw new Error('project file missing')
-    const reloaded = expectDefined(await new ProjectStore(app, () => SETTINGS).loadProject(file))
-    expect(reloaded.config?.pullForwardOnEarlyFinish).toBe(true)
-  })
-
-  it('pushes the dependent back out when the blocker is reopened', async () => {
-    const { store, project, blocked } = await chain(true)
-    const blocker = expectDefined(flattenTasks(project.tasks).find((f) => f.task.title === 'Blocker')).task
-    await store.updateTask(project, blocker.id, { status: 'todo' })
-    expect(blocked.start).toBe(addDays(BLOCKER_DUE, 1))
+    // Completion stamping and explicit backdating still work without moving successors.
+    await store.updateTasks(source, [predecessor.id], { status: 'done' })
+    expect(predecessor.completed).toBe(today().toString())
+    assertDependentDates()
+    await store.updateTask(source, predecessor.id, { completed: '2020-01-01' })
+    expect(predecessor.completed).toBe('2020-01-01')
+    assertDependentDates()
+    expect(await app.vault.read(localFile)).toBe(localContent)
+    expect(await app.vault.read(remoteFile)).toBe(remoteContent)
   })
 })
 
@@ -1317,7 +1306,7 @@ describe('per-project config', () => {
     const project = await store.createProject('Custom', 'Projects')
     project.config = {
       defaultView: 'kanban',
-      autoSchedule: false
+      autoArchiveDays: 14
     }
     await store.saveProject(project)
 
@@ -1327,7 +1316,7 @@ describe('per-project config', () => {
     const reloaded = expectDefined(await store2.loadProject(file))
     expect(reloaded.config).toEqual({
       defaultView: project.config?.defaultView,
-      autoSchedule: project.config?.autoSchedule
+      autoArchiveDays: project.config?.autoArchiveDays
     })
   })
 
@@ -1351,104 +1340,6 @@ describe('per-project config', () => {
     const task = await addNamed(store, project, 'Ship it')
     await store.updateTask(project, task.id, { status: 'done' })
     expect(expectDefined(findTask(project.tasks, task.id)).completed).not.toBe('')
-  })
-
-  it('skips auto-scheduling when the project turns it off', async () => {
-    const { store } = newStore()
-    const project = await store.createProject('NoSched', 'Projects')
-    const a = await addNamed(store, project, 'First')
-    const b = await addNamed(store, project, 'Second')
-    await store.updateTask(project, a.id, { start: '2026-07-06', due: '2026-07-10' })
-    await store.updateTask(project, b.id, { start: '2026-07-01', due: '2026-07-02', dependencies: [a.id] })
-
-    project.config = { autoSchedule: false }
-    expect(await store.scheduleAfterChange(project, a.id)).toBe(0)
-
-    project.config = undefined
-    expect(await store.scheduleAfterChange(project, a.id)).toBeGreaterThan(0)
-  })
-})
-
-describe('ProjectStore cross-project scheduling', () => {
-  it('pushes dependents in other projects when a predecessor moves', async () => {
-    const { store, index } = newIndexedStore()
-    const upstream = await store.createProject('Upstream', 'Projects')
-    const middle = await store.createProject('Middle', 'Projects')
-    const downstream = await store.createProject('Downstream', 'Projects')
-
-    const a = await addNamed(store, upstream, 'Build')
-    const b = await addNamed(store, middle, 'Review')
-    const c = await addNamed(store, downstream, 'Launch')
-    await store.updateTask(upstream, a.id, { start: '2026-07-01', due: '2026-07-03' })
-    await store.updateTask(middle, b.id, { start: '2026-07-04', due: '2026-07-05', dependencies: [a.id] })
-    await store.updateTask(downstream, c.id, { start: '2026-07-06', due: '2026-07-06', dependencies: [b.id] })
-    index.build()
-
-    await store.updateTask(upstream, a.id, { start: '2026-07-08', due: '2026-07-10' })
-    expect(await store.scheduleAfterChange(upstream, a.id)).toBe(2)
-
-    expect(expectDefined(findTask(middle.tasks, b.id)).start).toBe('2026-07-11')
-    expect(expectDefined(findTask(middle.tasks, b.id)).due).toBe('2026-07-12')
-    expect(expectDefined(findTask(downstream.tasks, c.id)).start).toBe('2026-07-13')
-  })
-
-  it('leaves a project that turns auto-scheduling off alone but keeps following the chain', async () => {
-    const { store, index } = newIndexedStore()
-    const upstream = await store.createProject('Source', 'Projects')
-    const frozen = await store.createProject('Frozen', 'Projects')
-    const downstream = await store.createProject('Tail', 'Projects')
-
-    const a = await addNamed(store, upstream, 'Build')
-    const b = await addNamed(store, frozen, 'Fixed date')
-    const c = await addNamed(store, downstream, 'Launch')
-    await store.updateTask(upstream, a.id, { start: '2026-07-01', due: '2026-07-03' })
-    await store.updateTask(frozen, b.id, { start: '2026-07-04', due: '2026-07-05', dependencies: [a.id] })
-    await store.updateTask(downstream, c.id, { start: '2026-07-06', due: '2026-07-06', dependencies: [a.id] })
-    index.build()
-
-    frozen.config = { autoSchedule: false }
-    await store.updateTask(upstream, a.id, { start: '2026-07-08', due: '2026-07-10' })
-    await store.scheduleAfterChange(upstream, a.id)
-
-    expect(expectDefined(findTask(frozen.tasks, b.id)).start).toBe('2026-07-04')
-    expect(expectDefined(findTask(downstream.tasks, c.id)).start).toBe('2026-07-11')
-  })
-
-  it('pulls a dependent forward when the blocker finished early in another project', async () => {
-    const { store, index } = newIndexedStore()
-    const upstream = await store.createProject('Ships', 'Projects')
-    const downstream = await store.createProject('Waits', 'Projects')
-    upstream.config = {}
-    downstream.config = { pullForwardOnEarlyFinish: true }
-
-    const blocker = await addNamed(store, upstream, 'Blocker')
-    const blocked = await addNamed(store, downstream, 'Blocked')
-    await store.updateTask(upstream, blocker.id, { start: '2099-06-01', due: '2099-06-10' })
-    await store.updateTask(downstream, blocked.id, {
-      start: '2099-06-11',
-      due: '2099-06-12',
-      dependencies: [blocker.id]
-    })
-    index.build()
-
-    await store.updateTask(upstream, blocker.id, { status: 'shipped', completed: '2099-06-07' })
-
-    expect(expectDefined(findTask(downstream.tasks, blocked.id)).start).toBe('2099-06-08')
-    expect(expectDefined(findTask(downstream.tasks, blocked.id)).due).toBe('2099-06-09')
-  })
-
-  it('stops rather than looping when the chain closes a cycle across projects', async () => {
-    const { store, index } = newIndexedStore()
-    const one = await store.createProject('Ping', 'Projects')
-    const two = await store.createProject('Pong', 'Projects')
-
-    const a = await addNamed(store, one, 'A')
-    const b = await addNamed(store, two, 'B')
-    await store.updateTask(one, a.id, { start: '2026-07-01', due: '2026-07-02', dependencies: [b.id] })
-    await store.updateTask(two, b.id, { start: '2026-07-03', due: '2026-07-04', dependencies: [a.id] })
-    index.build()
-
-    await expect(store.scheduleAfterChange(one, a.id)).resolves.toBeGreaterThan(0)
   })
 })
 

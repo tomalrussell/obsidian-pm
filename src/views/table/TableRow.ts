@@ -115,7 +115,6 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
           urgency: dueUrgency(task, ctx.statuses),
           onSave: async (val) => {
             await ctx.plugin.store.updateTask(project, task.id, { due: val })
-            await ctx.plugin.store.scheduleAfterChange(project, task.id)
             await ctx.onRefresh()
           }
         })

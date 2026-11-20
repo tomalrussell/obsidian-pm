@@ -12,7 +12,7 @@ vi.mock('#ui/ModalFactory', () => ({ openTaskModal: vi.fn<typeof openTaskModal>(
 
 function setup() {
   const predecessor = makeTask({ id: 'work', start: '2026-11-20', due: '2026-11-21' })
-  const milestone = makeTask({ id: 'checkpoint', type: 'milestone', start: '', due: '2026-11-22' })
+  const milestone = makeTask({ id: 'checkpoint', type: 'milestone', start: '', due: '2026-11-19' })
   const tasks = [predecessor, milestone]
   const project = makeProject('Project', 'Project.md')
   const svgElRoot = svgEl('svg', {})
@@ -25,7 +25,6 @@ function setup() {
       Object.assign(task, patch)
     }
   )
-  const scheduleAfterChange = vi.fn<() => Promise<number>>(async () => 0)
   const ctx = {
     svgEl: svgElRoot,
     headerSvgEl: svgEl('svg', {}),
@@ -35,7 +34,7 @@ function setup() {
       projectOf: () => project,
       taskById: (id: string) => tasks.find((task) => task.id === id)
     },
-    plugin: { store: { updateTask, scheduleAfterChange }, index: { wouldCreateCycle: () => false } },
+    plugin: { store: { updateTask }, index: { wouldCreateCycle: () => false } },
     link: makeLinkState(),
     drag: makeDragState(),
     labelFields: [],
@@ -50,12 +49,12 @@ function setup() {
     renderTaskBar(group, task, row, 0, ctx)
     return group
   })
-  return { ctx, groups, milestone, project, updateTask, scheduleAfterChange, onRefresh }
+  return { ctx, groups, milestone, project, updateTask, onRefresh }
 }
 
 for (const milestoneFirst of [false, true]) {
   it(`links a task to a milestone with the ${milestoneFirst ? 'milestone' : 'task'} selected first`, async () => {
-    const { ctx, groups, milestone, project, updateTask, scheduleAfterChange, onRefresh } = setup()
+    const { ctx, groups, milestone, project, updateTask, onRefresh } = setup()
     vi.mocked(openTaskModal).mockClear()
     const taskDots = groups[0].querySelectorAll('.pm-gantt-link-dot')
     const milestoneDots = groups[1].querySelectorAll('.pm-gantt-link-dot')
@@ -65,7 +64,8 @@ for (const milestoneFirst of [false, true]) {
     endpoints.forEach((dot) => dot.dispatchEvent(new MouseEvent('click', { bubbles: true })))
     await vi.waitFor(() => expect(onRefresh).toHaveBeenCalledOnce())
     expect(updateTask).toHaveBeenCalledWith(project, milestone.id, { dependencies: ['work'] })
-    expect(scheduleAfterChange).toHaveBeenCalledWith(project, milestone.id)
+    expect(milestone.start).toBe('')
+    expect(milestone.due).toBe('2026-11-19')
     expect(milestone.dependencies).toEqual(['work'])
     renderDependencyArrows(ctx)
     const arrows = ctx.svgEl.querySelectorAll('.pm-gantt-arrow')

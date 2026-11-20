@@ -242,13 +242,13 @@ describe('migrateBoardCardConfig', () => {
     const { plugin, app, settings } = await vaultWith([
       '  kanbanShowSubtasks: true',
       '  kanbanShowDescriptionPreview: false',
-      '  autoSchedule: false'
+      '  lineBorders: horizontal'
     ])
     await migrateBoardCardConfig(plugin)
     const visible = settings.projectFilters['project:Projects/Roadmap/Roadmap.md'].fields.kanban?.visible
     expect(visible).toContain('subtasks')
     expect(visible).not.toContain('description')
-    expect(frontmatter(app)?.config).toEqual({ autoSchedule: false })
+    expect(frontmatter(app)?.config).toEqual({ lineBorders: 'horizontal' })
   })
 
   it('keeps what the global setting gave a view for a key the note leaves out', async () => {
@@ -279,7 +279,7 @@ describe('migrateBoardCardConfig', () => {
   })
 
   it('leaves a note without the old keys alone', async () => {
-    const { plugin, settings } = await vaultWith(['  autoSchedule: true'])
+    const { plugin, settings } = await vaultWith(['  lineBorders: both'])
     await migrateBoardCardConfig(plugin)
     expect(settings.projectFilters).toEqual({})
   })

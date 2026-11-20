@@ -79,8 +79,6 @@ export interface TaskSource {
   archiveTasks(project: Project, taskIds: string[]): Promise<void>
   unarchiveTask(project: Project, taskId: string): Promise<void>
 
-  /** Runs dependency-based auto-scheduling; a no-op when the project's config disables it. */
-  scheduleAfterChange(project: Project, changedTaskId?: string): Promise<number>
   saveTaskAttachment(project: Project, task: Task, fileName: string, data: ArrayBuffer): Promise<TFile>
   findTaskFileConflict(project: Project, task: Task): TaskFileNameConflictError | null
 }

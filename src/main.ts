@@ -320,7 +320,9 @@ export default class PMPlugin extends Plugin {
       'collapsedProjects',
       'customFields',
       'notificationsEnabled',
-      'notificationLeadDays'
+      'notificationLeadDays',
+      'autoSchedule',
+      'pullForwardOnEarlyFinish'
     ]) {
       Reflect.deleteProperty(this.settings, key)
     }
@@ -339,7 +341,9 @@ export default class PMPlugin extends Plugin {
       'collapsedProjects',
       'customFields',
       'notificationsEnabled',
-      'notificationLeadDays'
+      'notificationLeadDays',
+      'autoSchedule',
+      'pullForwardOnEarlyFinish'
     ].some((key) => saved && key in saved)
     // Filters were keyed by project path before a view could cover several projects.
     for (const key of Object.keys(this.settings.projectFilters)) {

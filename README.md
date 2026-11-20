@@ -17,7 +17,7 @@
 
 Project tools keep the plan in one app and the thinking about it in another. dotpm keeps both in the vault. A project is a note, a task is a note, and the table, the timeline and the board are three ways of looking at the same files.
 
-- Scheduling, not checkboxes. Tasks have start and due dates, dependencies drawn as arrows, and a Gantt timeline that moves dependents when a blocker slips.
+- Tasks have start and due dates, dependencies drawn as arrows, and a Gantt timeline for manually planning dates.
 - Tasks are full notes. Each has a body, backlinks, tags and properties, so search, the graph, templates and Dataview all work on them.
 - Nothing to sign up for. Projects sync with whatever already syncs the vault, and a project folder can be diffed and reviewed in git like any other code.
 - Runs on desktop and mobile.
@@ -57,7 +57,7 @@ Rows sort, filter and edit inline. A multi-row selection changes status, priorit
 
 ### Timeline
 
-Dragging a bar reschedules the task, dragging its edge changes the duration, and dragging from one bar to another adds a dependency. The scale zooms from days to years and is kept per view. Milestones are diamonds and a line marks today.
+Dragging a bar moves that task, and dragging its edge changes its duration. Click a task’s right dependency dot and another task’s or milestone’s left dot to add a dependency. Linked tasks keep their dates until you edit them. The scale zooms from days to years and is kept per view. Milestones are diamonds and a line marks today.
 
 <video src="https://github.com/user-attachments/assets/916f7100-44ef-401c-abb3-e003a0f7720a" autoplay loop muted playsinline width="600"></video>
 
@@ -78,7 +78,6 @@ One column per fixed status. Dragging a card to another column changes its statu
 
 **Planning**
 
-- Auto-scheduling: dependents move when a blocker moves
 - Archive, by hand or automatically after a set number of days
 - Undo and redo
 
@@ -97,7 +96,7 @@ One column per fixed status. Dragging a card to another column changes its statu
 
 - Five fixed task statuses: `capture`, `next`, `in-progress`, `done`, `someday`
 - Four fixed priorities, highest first: `yesterday`, `high`, `medium`, `low`
-- Per-project overrides for default view, scheduling and archiving
+- Per-project overrides for default view and archiving
 
 ## File format
 

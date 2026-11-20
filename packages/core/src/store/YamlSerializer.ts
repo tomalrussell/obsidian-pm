@@ -73,8 +73,6 @@ function serializeProjectConfig(config: ProjectConfig | undefined): Record<strin
   if (!config) return null
   const out: Record<string, unknown> = {}
   if (config.defaultView) out.defaultView = config.defaultView
-  if (config.autoSchedule !== undefined) out.autoSchedule = config.autoSchedule
-  if (config.pullForwardOnEarlyFinish !== undefined) out.pullForwardOnEarlyFinish = config.pullForwardOnEarlyFinish
   if (config.autoArchiveDays !== undefined) out.autoArchiveDays = config.autoArchiveDays
   if (config.showSubtreeConnections !== undefined) out.showSubtreeConnections = config.showSubtreeConnections
   if (config.lineBorders) out.lineBorders = config.lineBorders

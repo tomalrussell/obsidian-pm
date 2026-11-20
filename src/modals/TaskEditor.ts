@@ -187,7 +187,6 @@ export class TaskEditor {
       await this.plugin.store.updateTask(this.project, this.task.id, patch)
       if (moved) await this.plugin.store.moveTask(this.project, this.task.id, this.parentId)
     }
-    await this.plugin.store.scheduleAfterChange(this.project, this.task.id)
     await this.onSave(this.task)
   }
 

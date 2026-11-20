@@ -208,7 +208,7 @@ export class ProjectEditView extends ItemView {
   }
 
   private renderBehavior(project: Project): void {
-    const section = this.section(`View and scheduling`, `Overrides for this project`)
+    const section = this.section(`View and archiving`, `Overrides for this project`)
     const props = section.createDiv('pm-edit-props')
     const row = <K extends keyof ProjectConfig>(
       label: string,
@@ -238,14 +238,6 @@ export class ProjectEditView extends ItemView {
       { value: 'table', label: `Table` },
       { value: 'gantt', label: `Timeline` },
       { value: 'kanban', label: `Board` }
-    ])
-    row(`Auto-schedule`, 'autoSchedule', [
-      { value: true, label: `On` },
-      { value: false, label: `Off` }
-    ])
-    row(`Pull forward on early finish`, 'pullForwardOnEarlyFinish', [
-      { value: true, label: `On` },
-      { value: false, label: `Off` }
     ])
     row(`Auto-archive completed tasks`, 'autoArchiveDays', [
       { value: 0, label: `Never` },

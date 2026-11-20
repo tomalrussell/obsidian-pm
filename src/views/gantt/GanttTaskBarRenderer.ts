@@ -182,7 +182,6 @@ function renderEmptyRowClickTarget(g: SVGGElement, task: Task, row: number, ctx:
         console.error('GanttTaskBarRenderer: click-to-set-dates failed', err)
         return
       }
-      await ctx.plugin.store.scheduleAfterChange(project, task.id)
       await ctx.onRefresh()
     })
   )

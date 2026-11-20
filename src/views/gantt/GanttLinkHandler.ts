@@ -86,7 +86,6 @@ export function handleLinkDotClick(
       console.error('GanttLinkHandler: save failed', err)
       return
     }
-    await plugin.store.scheduleAfterChange(project, successorId)
     await onRefresh()
   })()
 }

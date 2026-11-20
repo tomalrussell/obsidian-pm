@@ -13,7 +13,7 @@ Aim for Markdown tasks with fixed statuses and priorities, a table, a Gantt time
 | Views                     | Table, Gantt, Kanban, dashboard, overview and editors                        | src/views, packages/ui                    |
 | Organization              | Independent projects, multi-project scopes, archives, moving and duplication | ProjectScope, ProjectStore, ArchiveOps    |
 | Configuration             | Fixed priorities, filtering, grouping, saved views, layouts                  | Core configuration and view-state modules |
-| Automation                | Scheduling, early-finish adjustment and auto-archiving                       | Scheduler, AutoArchiver                   |
+| Automation                | Auto-archiving                                                               | AutoArchiver                              |
 | External access (removed) | Local HTTP API, MCP and client library removed                               | src/api, packages/api                     |
 | Sharing (removed)         | HTML export and browser snapshot viewer removed                              | Completed                                 |
 | Support                   | Migrations, ID repair, release notes, styleguide                             | Integration and support modules           |
@@ -27,7 +27,7 @@ Two workspace packages remain: core and ui. The Obsidian plugin combines them. T
 | Dependency                                 | Role                                                        | Removal opportunity                      |
 | ------------------------------------------ | ----------------------------------------------------------- | ---------------------------------------- |
 | Obsidian                                   | Vault, views, Markdown, native controls and production YAML | Foundational                             |
-| temporal-polyfill                          | Dates, filters, timeline, scheduling                        | Keep while date arithmetic remains       |
+| temporal-polyfill                          | Dates, filters and timeline                                 | Keep while date arithmetic remains       |
 | monkey-around                              | Intercept Markdown opening for custom editors               | Remove with automatic editor replacement |
 | hono (removed)                             | HTTP routing and authentication                             | Removed with HTTP API                    |
 | mcp-lite (removed)                         | MCP server                                                  | Removed with MCP                         |
@@ -41,7 +41,7 @@ Audit package-publication and configuration dependencies if publishing reusable 
 
 ## Removal options
 
-13 options completed; Gantt retained; 2 options still open: scheduling and saved views/layout customization.
+14 options completed; Gantt retained; 1 option still open: saved views/layout customization.
 
 | Option                                   | Status    | Complexity reduction | Scope                                                                                                                                            |
 | ---------------------------------------- | --------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -54,7 +54,7 @@ Audit package-publication and configuration dependencies if publishing reusable 
 | Remove time tracking                     | Completed | Medium               | Estimates, logs, editor panel, rollups and time cells removed; legacy note properties preserved inert                                            |
 | Remove TaskNotes                         | Completed | Medium               | Detection, priority sync, special import conversion, related store methods, tests and docs removed                                               |
 | Remove export and viewer                 | Completed | High                 | HTML export, snapshot format and renderers, viewer package, assets and build steps removed                                                       |
-| Remove scheduling                        | Open      | High                 | Scheduler, settings, early finish and propagation across projects                                                                                |
+| Remove scheduling                        | Completed | High                 | Scheduler, settings, early finish and propagation across projects                                                                                |
 | Remove Gantt                             | Keep      | —                    | Retain the timeline, including task bars, milestones and dependency linking                                                                      |
 | Status-only Kanban                       | Completed | Medium to high       | Removed non-status grouping and generic drag updates; retained status column order and visibility                                                |
 | Remove custom fields                     | Completed | Very high            | Definitions, global defaults, editors, filters, grouping and rendering                                                                           |
@@ -69,7 +69,7 @@ Smaller options: auto-archiving, release-note UI, automatic Markdown editor repl
 1. Finish status cleanup; remove recurrence and time tracking. **Completed.** Removed project status override types, indexed palette fields, status editors and redundant status palette merging. Removed recurrence and time tracking across the model, UI, API, imports and docs. Legacy task metadata is preserved as inert frontmatter.
 2. Export and browser viewer removal: **Completed.** Removed HTML export commands, snapshots and snapshot-only renderers, viewer package, viewer assets and build steps. TaskNotes removal: **Completed.** Removed detection, settings, priority syncing, special import conversion, conversion-only store methods, tests and documentation. Ordinary Markdown note import remains.
 3. Fixed priorities: **Completed.** Priorities are `yesterday`, `high`, `medium`, `low`, with matching lowercase IDs and labels. Removed global/project palette and icon settings. Old `critical` tasks and saved selections resolve to `yesterday`. Status-only Kanban: **Completed.** Fixed status columns; removed grouping by priority, tag, type and project and generic drag-to-change behavior. Column visibility, order and hide-empty controls remain.
-4. **Keep Gantt.** Timeline retention is decided. Automatic scheduling remains a separate decision: it can be simplified or removed while keeping manual timeline editing, milestones and dependency links.
+4. **Keep Gantt.** Automatic date propagation removal: **Completed.** Removed dependency scheduling, early-finish adjustments, propagation across projects, and scheduling settings. Manual date editing, Gantt move/resize/undo, milestones, dependency links and cycle checks remain.
 5. Project flattening: **Completed.** Projects are independent: removed parent links, ancestor inheritance, project trees, project collapse state and subtree scopes. Task subtasks remain. Custom-field removal: **Completed.** Removed definitions, global defaults, editors, columns, filters and board grouping. Existing custom-field note properties remain inert frontmatter. Saved views remain an option for later simplification.
 6. API/MCP removal: **Completed.** Removed server, routes, MCP tools, contracts, client, authentication and port settings, API tests and documentation, package publishing trigger and dependencies. Any future agent interface or CLI is deferred.
 

@@ -172,28 +172,6 @@ export class PMSettingTab extends PluginSettingTab {
       },
       {
         type: 'group',
-        heading: `Scheduling`,
-        items: [
-          {
-            name: `Auto-schedule`,
-            desc: `Adjust dependent task dates when a task changes.`,
-            aliases: ['dependencies'],
-            control: { type: 'toggle', key: 'autoSchedule' }
-          },
-          {
-            name: `Pull dependents forward`,
-            desc: `Move dependent tasks earlier when a task is completed before its due date.`,
-            aliases: ['dependencies'],
-            control: {
-              type: 'toggle',
-              key: 'pullForwardOnEarlyFinish',
-              disabled: () => !this.plugin.settings.autoSchedule
-            }
-          }
-        ]
-      },
-      {
-        type: 'group',
         heading: `Archive`,
         items: [
           {

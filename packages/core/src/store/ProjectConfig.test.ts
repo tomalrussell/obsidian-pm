@@ -19,8 +19,6 @@ describe('resolveProjectConfig', () => {
   it('uses global behavior settings when the project has no overrides', () => {
     const resolved = resolveProjectConfig(makeProject('P', 'Projects/P.md'), DEFAULT_SETTINGS)
     expect(resolved.defaultView).toBe(DEFAULT_SETTINGS.defaultView)
-    expect(resolved.autoSchedule).toBe(DEFAULT_SETTINGS.autoSchedule)
-    expect(resolved.pullForwardOnEarlyFinish).toBe(DEFAULT_SETTINGS.pullForwardOnEarlyFinish)
     expect(resolved.showSubtreeConnections).toBe(DEFAULT_SETTINGS.showSubtreeConnections)
     expect(resolved.lineBorders).toBe(DEFAULT_SETTINGS.lineBorders)
   })
@@ -29,15 +27,11 @@ describe('resolveProjectConfig', () => {
     const project = makeProject('P', 'Projects/P.md')
     project.config = {
       defaultView: 'kanban',
-      autoSchedule: false,
-      pullForwardOnEarlyFinish: true,
       showSubtreeConnections: false,
       lineBorders: 'both'
     }
     const resolved = resolveProjectConfig(project, DEFAULT_SETTINGS)
     expect(resolved.defaultView).toBe('kanban')
-    expect(resolved.autoSchedule).toBe(false)
-    expect(resolved.pullForwardOnEarlyFinish).toBe(true)
     expect(resolved.showSubtreeConnections).toBe(false)
     expect(resolved.lineBorders).toBe('both')
     expect(resolved.priorities).toEqual(DEFAULT_PRIORITIES)

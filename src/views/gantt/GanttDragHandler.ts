@@ -136,11 +136,9 @@ export function attachBarDrag(opts: BarDragOpts): () => void {
         },
         redo: async () => {
           await plugin.store.updateTask(project, taskId, redoPatch)
-          await plugin.store.scheduleAfterChange(project, taskId)
           await onRefresh()
         }
       })
-      await plugin.store.scheduleAfterChange(project, taskId)
       await onRefresh()
     })
 
