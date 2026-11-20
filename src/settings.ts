@@ -209,31 +209,6 @@ export class PMSettingTab extends PluginSettingTab {
             }
           }
         ]
-      },
-      {
-        type: 'group',
-        heading: `Notifications`,
-        items: [
-          {
-            name: `Due date reminders`,
-            desc: `Show a banner when a task is approaching its due date.`,
-            aliases: ['notifications', 'banner'],
-            control: { type: 'toggle', key: 'notificationsEnabled' }
-          },
-          {
-            name: `Days in advance`,
-            desc: `Notify this many days before a task is due.`,
-            aliases: ['notifications', 'reminders', 'lead time'],
-            control: {
-              type: 'slider',
-              key: 'notificationLeadDays',
-              min: 1,
-              max: 14,
-              step: 1,
-              disabled: () => !this.plugin.settings.notificationsEnabled
-            }
-          }
-        ]
       }
     ]
   }

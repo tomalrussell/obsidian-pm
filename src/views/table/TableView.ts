@@ -1,4 +1,4 @@
-import { Notice, type KeymapEventHandler, type Scope } from 'obsidian'
+import { type KeymapEventHandler, type Scope } from 'obsidian'
 import { confirmDialog } from '#ui/ModalFactory'
 import type PMPlugin from '#main'
 import { type TaskQuery, type Project, type SortRule, type ViewFields, shownFields } from '@dotpm/core'
@@ -126,31 +126,10 @@ export class TableView implements SubView {
       for (const { project, taskIds } of groups) {
         await this.applyBulkAction(action, project, taskIds)
       }
-      switch (action.type) {
-        case 'set-parent':
-          new Notice(
-            ids.length === 1
-              ? `Moved ${ids.length} task under new parent`
-              : `Moved ${ids.length} tasks under new parent`
-          )
-          break
-        case 'remove-parent':
-          new Notice(
-            ids.length === 1 ? `Moved ${ids.length} task to top level` : `Moved ${ids.length} tasks to top level`
-          )
-          break
-        case 'archive':
-          new Notice(ids.length === 1 ? `Archived ${ids.length} task` : `Archived ${ids.length} tasks`)
-          break
-        case 'unarchive':
-          new Notice(ids.length === 1 ? `Unarchived ${ids.length} task` : `Unarchived ${ids.length} tasks`)
-          break
-      }
       this.state.selectedTaskIds.clear()
       await this.onRefresh()
     } catch (err) {
       console.error('Bulk action failed', err)
-      new Notice(`Bulk action failed. Please try again.`)
       await this.onRefresh()
     }
   }

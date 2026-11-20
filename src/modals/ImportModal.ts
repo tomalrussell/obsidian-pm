@@ -1,4 +1,4 @@
-import { App, ButtonComponent, Modal, TFile, Notice } from 'obsidian'
+import { App, ButtonComponent, Modal, TFile } from 'obsidian'
 import type PMPlugin from '#main'
 import {
   type PriorityConfig,
@@ -306,42 +306,27 @@ export class ImportModal extends Modal {
 
   private async handleImport(): Promise<void> {
     if (!this.project) {
-      new Notice(`Error: project not set for import`, 5000)
+      console.error('Project not set for import')
       return
     }
 
     const selectedFiles = this.files.filter((f) => f.selected).map((f) => f.file)
-    let skipped = 0
-    let imported = 0
 
     for (const file of selectedFiles) {
       try {
-        const result = await this.plugin.store.importNoteAsTask(this.project, file, {
+        await this.plugin.store.importNoteAsTask(this.project, file, {
           status: this.defaultStatus,
           priority: this.defaultPriority,
           handling: this.fileHandling
         })
-        if (result === 'imported') imported++
-        else skipped++
       } catch (err) {
         console.error(`Failed to import ${file.basename}:`, err)
-        skipped++
       }
     }
 
     if (this.onImportComplete) {
       this.onImportComplete()
     }
-
-    const message =
-      skipped > 0
-        ? imported === 1
-          ? `Imported ${imported} task (${skipped} skipped)`
-          : `Imported ${imported} tasks (${skipped} skipped)`
-        : imported === 1
-          ? `Imported ${imported} task`
-          : `Imported ${imported} tasks`
-    new Notice(message, 3000)
 
     this.close()
   }

@@ -13,7 +13,7 @@ Aim for Markdown tasks with fixed statuses, a table, and a status board. Keep pe
 | Views                     | Table, Gantt, Kanban, dashboard, overview and editors                        | src/views, packages/ui                    |
 | Organization              | Independent projects, multi-project scopes, archives, moving and duplication | ProjectScope, ProjectStore, ArchiveOps    |
 | Configuration             | Fixed priorities, filtering, grouping, saved views, layouts                  | Core configuration and view-state modules |
-| Automation                | Scheduling, early-finish adjustment, reminders, auto-archiving               | Scheduler, Notifier, AutoArchiver         |
+| Automation                | Scheduling, early-finish adjustment and auto-archiving                       | Scheduler, AutoArchiver                   |
 | External access (removed) | Local HTTP API, MCP and client library removed                               | src/api, packages/api                     |
 | Sharing (removed)         | HTML export and browser snapshot viewer removed                              | Completed                                 |
 | Support                   | Migrations, ID repair, release notes, styleguide                             | Integration and support modules           |
@@ -41,25 +41,26 @@ Audit package-publication and configuration dependencies if publishing reusable 
 
 ## Removal options
 
-| Option                                  | Status    | Complexity reduction | Scope                                                                                                                                            |
-| --------------------------------------- | --------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Remove translation and locales          | Completed | Medium               | Translation layer, locale files, localized labels, locale-dependent date and sorting behavior removed                                            |
-| Remove people, members and assignees    | Completed | High                 | Model fields, people controls, avatars, filters, grouping, settings, exports and API support removed                                             |
-| Finish fixed-status cleanup             | Completed | Small                | Fixed options enforced; project override types, indexed palettes and status editors removed                                                      |
-| Fix priorities                          | Completed | Medium               | Fixed lowercase yesterday/high/medium/low; removed palette and icon settings and project overrides; legacy critical values map to yesterday      |
-| Remove recurrence                       | Completed | Small to medium      | Metadata, controls, imports, serialization and indicators removed; legacy note properties preserved inert                                        |
-| Remove time tracking                    | Completed | Medium               | Estimates, logs, editor panel, rollups and time cells removed; legacy note properties preserved inert                                            |
-| Remove TaskNotes                        | Completed | Medium               | Detection, priority sync, special import conversion, related store methods, tests and docs removed                                               |
-| Remove export and viewer                | Completed | High                 | HTML export, snapshot format and renderers, viewer package, assets and build steps removed                                                       |
-| Remove scheduling                       | Open      | High                 | Scheduler, settings, early finish and propagation across projects                                                                                |
-| Remove Gantt                            | Open      | Very high            | Timeline rendering, drag/resize/link, calendars and scales                                                                                       |
-| Status-only Kanban                      | Open      | Medium to high       | Generic field grouping, per-field column configuration and drag updates                                                                          |
-| Remove custom fields                    | Completed | Very high            | Definitions, global defaults, editors, filters, grouping and rendering                                                                           |
-| Flatten projects                        | Completed | High                 | Parent links, ancestor inheritance, project trees, collapse state, subtree scopes and inherited archive behavior removed; task subtasks retained |
-| Remove saved views/layout customization | Open      | Medium to high       | Named/starred views, change tracking, scope persistence and configurable columns                                                                 |
-| Remove API/MCP                          | Completed | High                 | Server, MCP tools, contracts, client, authentication, settings, dependencies, tests and docs removed                                             |
+| Option                                   | Status    | Complexity reduction | Scope                                                                                                                                            |
+| ---------------------------------------- | --------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Remove translation and locales           | Completed | Medium               | Translation layer, locale files, localized labels, locale-dependent date and sorting behavior removed                                            |
+| Remove people, members and assignees     | Completed | High                 | Model fields, people controls, avatars, filters, grouping, settings, exports and API support removed                                             |
+| Finish fixed-status cleanup              | Completed | Small                | Fixed options enforced; project override types, indexed palettes and status editors removed                                                      |
+| Fix priorities                           | Completed | Medium               | Fixed lowercase yesterday/high/medium/low; removed palette and icon settings and project overrides; legacy critical values map to yesterday      |
+| Remove toast notifications and reminders | Completed | Medium               | Removed Obsidian Notice calls, helpers, hourly due-date checks and notification settings; validation and console logging retained                |
+| Remove recurrence                        | Completed | Small to medium      | Metadata, controls, imports, serialization and indicators removed; legacy note properties preserved inert                                        |
+| Remove time tracking                     | Completed | Medium               | Estimates, logs, editor panel, rollups and time cells removed; legacy note properties preserved inert                                            |
+| Remove TaskNotes                         | Completed | Medium               | Detection, priority sync, special import conversion, related store methods, tests and docs removed                                               |
+| Remove export and viewer                 | Completed | High                 | HTML export, snapshot format and renderers, viewer package, assets and build steps removed                                                       |
+| Remove scheduling                        | Open      | High                 | Scheduler, settings, early finish and propagation across projects                                                                                |
+| Remove Gantt                             | Open      | Very high            | Timeline rendering, drag/resize/link, calendars and scales                                                                                       |
+| Status-only Kanban                       | Open      | Medium to high       | Generic field grouping, per-field column configuration and drag updates                                                                          |
+| Remove custom fields                     | Completed | Very high            | Definitions, global defaults, editors, filters, grouping and rendering                                                                           |
+| Flatten projects                         | Completed | High                 | Parent links, ancestor inheritance, project trees, collapse state, subtree scopes and inherited archive behavior removed; task subtasks retained |
+| Remove saved views/layout customization  | Open      | Medium to high       | Named/starred views, change tracking, scope persistence and configurable columns                                                                 |
+| Remove API/MCP                           | Completed | High                 | Server, MCP tools, contracts, client, authentication, settings, dependencies, tests and docs removed                                             |
 
-Smaller options: reminders, auto-archiving, release-note UI, automatic Markdown editor replacement. Styleguide removal primarily reduces maintenance because production builds already exclude it.
+Smaller options: auto-archiving, release-note UI, automatic Markdown editor replacement. Styleguide removal primarily reduces maintenance because production builds already exclude it.
 
 ## Sequence
 
@@ -71,3 +72,5 @@ Smaller options: reminders, auto-archiving, release-note UI, automatic Markdown 
 6. API/MCP removal: **Completed.** Removed server, routes, MCP tools, contracts, client, authentication and port settings, API tests and documentation, package publishing trigger and dependencies. Any future agent interface or CLI is deferred.
 
 For each removal, cover controls, types, serialization, API fields, styles, tests and docs. Preserve removed metadata as inert frontmatter where practical. Future steps require a user decision.
+
+Toast notifications and due-date reminders: **Completed.** Removed Notice calls, notification helpers, hourly reminder checks and notification settings. Validation and confirmation dialogs remain; errors are logged to the console.

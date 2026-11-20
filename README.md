@@ -79,7 +79,6 @@ One column per status, priority, tag or type. Dragging a card to another column 
 **Planning**
 
 - Auto-scheduling: dependents move when a blocker moves
-- Due date reminders
 - Archive, by hand or automatically after a set number of days
 - Undo and redo
 

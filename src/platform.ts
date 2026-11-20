@@ -3,7 +3,6 @@ import {
   ExtraButtonComponent,
   getIconIds,
   Menu,
-  Notice,
   parseYaml,
   Platform,
   setIcon,
@@ -24,9 +23,6 @@ export function installObsidianPlatform(): void {
     createButton: (parent) => new ButtonComponent(parent),
     createExtraButton: (parent) => new ExtraButtonComponent(parent),
     createMenu: () => new Menu(),
-    showNotice: (message) => {
-      new Notice(message)
-    },
     activeWindow: () => activeWindow,
     activeDocument: () => activeDocument
   })

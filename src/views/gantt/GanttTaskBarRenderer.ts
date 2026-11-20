@@ -1,4 +1,3 @@
-import { Notice } from 'obsidian'
 import { parsePlainDate, type Task } from '@dotpm/core'
 import {
   svgEl,
@@ -180,7 +179,6 @@ function renderEmptyRowClickTarget(g: SVGGElement, task: Task, row: number, ctx:
       try {
         await ctx.plugin.store.updateTask(project, task.id, { start: iso, due: iso })
       } catch (err) {
-        new Notice(`Failed to set task dates. Please try again.`)
         console.error('GanttTaskBarRenderer: click-to-set-dates failed', err)
         return
       }

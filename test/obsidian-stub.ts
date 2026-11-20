@@ -8,10 +8,6 @@ if (!('window' in globalThis)) Object.assign(globalThis, { window: globalThis })
 export const parseYaml = (raw: string): unknown => parse(raw)
 export const stringifyYaml = (obj: unknown): string => stringify(obj)
 
-export class Notice {
-  hide(): void {}
-}
-
 export function setIcon(): void {}
 
 export function getIcon(): SVGSVGElement | null {

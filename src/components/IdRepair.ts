@@ -113,7 +113,6 @@ export class IdRepair {
         const project = await this.plugin.store.loadProjectByPath(plan.projectPath)
         if (!project) continue
         await this.plugin.store.reassignIds(project, plan.taskIds, plan.newProjectId)
-        this.plugin.showNotice(`Repaired duplicated ids in "${project.title}" (copied project).`)
       }
     } finally {
       this.running = false

@@ -92,7 +92,6 @@ describe('IdRepair sweep', () => {
   let vault: FakeVault
   let index: VaultIndex
   let store: ProjectStore
-  let notices: string[]
   let repair: IdRepair
 
   beforeEach(() => {
@@ -102,12 +101,10 @@ describe('IdRepair sweep', () => {
     const settings: PMSettings = structuredClone(DEFAULT_SETTINGS)
     index = new VaultIndex(app, () => settings)
     store = new ProjectStore(app, () => settings, index)
-    notices = []
     const plugin = {
       app,
       index,
-      store,
-      showNotice: (msg: string) => notices.push(msg)
+      store
     } as unknown as PMPlugin
     repair = new IdRepair(plugin)
   })
@@ -145,7 +142,6 @@ describe('IdRepair sweep', () => {
 
     await repair.check()
 
-    expect(notices).toEqual(['Repaired duplicated ids in "Template" (copied project).'])
     for (const path of vault.modifyCount.keys()) {
       expect(path.startsWith('Projects/Copy/')).toBe(true)
     }
@@ -172,7 +168,6 @@ describe('IdRepair sweep', () => {
     vault.resetCounts()
     await repair.check()
 
-    expect(notices).toHaveLength(1)
     expect(vault.modifyCount.size).toBe(0)
   })
 })

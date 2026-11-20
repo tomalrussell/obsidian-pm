@@ -13,7 +13,6 @@ describe('AutoArchiver', () => {
   let index: VaultIndex
   let store: ProjectStore
   let settings: PMSettings
-  let notices: string[]
   let archiver: AutoArchiver
 
   beforeEach(() => {
@@ -21,13 +20,11 @@ describe('AutoArchiver', () => {
     settings = structuredClone(DEFAULT_SETTINGS)
     index = new VaultIndex(app, () => settings)
     store = new ProjectStore(app, () => settings, index)
-    notices = []
     const plugin = {
       app,
       index,
       store,
       settings,
-      showNotice: (msg: string) => notices.push(msg),
       saveSettings: () => Promise.resolve()
     } as unknown as PMPlugin
     archiver = new AutoArchiver(plugin)
@@ -72,7 +69,6 @@ describe('AutoArchiver', () => {
     expect(archived(project, fresh)).toBe(false)
     expect(archived(project, open)).toBe(false)
     expect(settings.lastAutoArchiveDate).toBe(today().toString())
-    expect(notices).toEqual(['Archived 1 completed task in 1 project.'])
   })
 
   it('never archives a completed task carrying no completion date', async () => {

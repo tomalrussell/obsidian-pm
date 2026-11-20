@@ -183,9 +183,6 @@ export const domPlatform: UiPlatform = {
   createButton: (parent) => new DomButton(parent),
   createExtraButton: (parent) => new DomExtraButton(parent),
   createMenu: () => new DomMenu(),
-  showNotice: (message) => {
-    console.error(message)
-  },
   activeWindow: () => window,
   activeDocument: () => document
 }

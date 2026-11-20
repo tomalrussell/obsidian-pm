@@ -1,5 +1,5 @@
 import type { Plugin, TAbstractFile } from 'obsidian'
-import { App, Notice, TFile, TFolder, normalizePath } from 'obsidian'
+import { App, TFile, TFolder, normalizePath } from 'obsidian'
 import {
   type PMSettings,
   type Project,
@@ -466,7 +466,7 @@ export class ProjectStore implements TaskSource {
       return project
     } catch (e) {
       console.error(`[PM] Failed to load project ${file.path}:`, e)
-      new Notice(`dotpm: Failed to load "${file.basename}". Check console for details.`)
+
       return null
     }
   }
@@ -592,7 +592,6 @@ export class ProjectStore implements TaskSource {
         console.warn(`[PM] Task file no longer exists, skipping: ${file.path}`)
       } else {
         console.error(`[PM] Failed to load task ${file.path}:`, e)
-        new Notice(`dotpm: Failed to load task "${file.basename}". Check console for details.`)
       }
       return { task: null, subtaskIds: [], parentId: null }
     }
@@ -740,11 +739,11 @@ export class ProjectStore implements TaskSource {
       if (e instanceof TaskFileNameConflictError) throw e
       if (e instanceof UnreadableNoteError) {
         console.error(`[PM] Refused to rewrite an unreadable note while saving "${project.title}":`, e)
-        new Notice(`dotpm: "${project.title}" was not saved because a note could not be read.`)
+
         throw e
       }
       console.error(`[PM] Failed to save project "${project.title}":`, e)
-      new Notice(`dotpm: Failed to save "${project.title}". Check console for details.`)
+
       throw e
     }
   }

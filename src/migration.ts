@@ -1,4 +1,4 @@
-import { Notice, TFile } from 'obsidian'
+import { TFile } from 'obsidian'
 import type PMPlugin from './main'
 import type { ScopeSpec } from './store'
 import { isRefLink } from './store/refs'
@@ -13,8 +13,6 @@ import {
 
 /** Rewrites projects whose tasks are embedded in frontmatter as one file per task. */
 export async function migrateProjects(plugin: PMPlugin): Promise<void> {
-  let migrated = 0
-
   for (const path of plugin.index.projectPaths(true)) {
     const file = plugin.app.vault.getAbstractFileByPath(path)
     if (!(file instanceof TFile)) continue
@@ -27,22 +25,10 @@ export async function migrateProjects(plugin: PMPlugin): Promise<void> {
       const project = await plugin.store.loadProject(file)
       if (!project || project.tasks.length === 0) continue
 
-      new Notice(`Migrating project: ${project.title}...`)
-
       await plugin.store.saveProject(project)
-      migrated++
     } catch (e) {
       console.error(`[PM] Migration failed for ${file.path}:`, e)
-      new Notice(`dotpm: Migration failed for "${file.basename}". Check console for details.`)
     }
-  }
-
-  if (migrated > 0) {
-    new Notice(
-      migrated === 1
-        ? `dotpm: Migrated ${migrated} project to new format.`
-        : `dotpm: Migrated ${migrated} projects to new format.`
-    )
   }
 }
 
@@ -119,8 +105,6 @@ function frontmatterOf(plugin: PMPlugin, path: string): Record<string, unknown> 
  * no ids, which is what makes a second run free.
  */
 export async function migrateTaskRefs(plugin: PMPlugin): Promise<void> {
-  let rewritten = 0
-
   for (const path of plugin.index.projectPaths(true)) {
     const stale = plugin.index
       .taskRefs(path)
@@ -133,18 +117,9 @@ export async function migrateTaskRefs(plugin: PMPlugin): Promise<void> {
       const project = await plugin.store.loadProjectByPath(path)
       if (!project) continue
       await plugin.store.normalizeTaskRefs(project, stale, projectNoteStale)
-      rewritten += stale.length
     } catch (e) {
       console.error(`[PM] Failed to update the references in "${path}":`, e)
     }
-  }
-
-  if (rewritten > 0) {
-    new Notice(
-      rewritten === 1
-        ? `dotpm: Updated the references in ${rewritten} task note.`
-        : `dotpm: Updated the references in ${rewritten} task notes.`
-    )
   }
 }
 
@@ -175,7 +150,6 @@ export async function migrateProjectLayout(plugin: PMPlugin): Promise<void> {
       })
     } catch (e) {
       console.error(`[PM] Failed to move "${path}" into its own folder:`, e)
-      new Notice(`dotpm: Could not move "${path}" into its own folder. Check console for details.`)
     }
   }
 
@@ -184,11 +158,6 @@ export async function migrateProjectLayout(plugin: PMPlugin): Promise<void> {
   remapProjectSettings(plugin, moves)
   retargetOpenViews(plugin, moves)
   await plugin.saveSettings()
-  new Notice(
-    moves.length === 1
-      ? `dotpm: Moved ${moves.length} project into its own folder.`
-      : `dotpm: Moved ${moves.length} projects into their own folders.`
-  )
 }
 
 function movedPath(path: string, moves: ProjectMove[]): string | null {

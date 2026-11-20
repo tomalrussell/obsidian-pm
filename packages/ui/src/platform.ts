@@ -45,7 +45,6 @@ export interface UiPlatform {
   createButton(parent: HTMLElement): PlatformButton
   createExtraButton(parent: HTMLElement): PlatformExtraButton
   createMenu(): PlatformMenu
-  showNotice(message: string): void
   activeWindow(): Window
   activeDocument(): Document
 }
@@ -87,10 +86,6 @@ export function createExtraButton(parent: HTMLElement): PlatformExtraButton {
 
 export function createMenu(): PlatformMenu {
   return platform().createMenu()
-}
-
-export function showNotice(message: string): void {
-  platform().showNotice(message)
 }
 
 export function activeWindow(): Window {

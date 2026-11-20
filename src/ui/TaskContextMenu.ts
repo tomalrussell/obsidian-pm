@@ -1,4 +1,4 @@
-import { Menu, Notice } from 'obsidian'
+import { Menu } from 'obsidian'
 import type PMPlugin from '#main'
 import { type Task, type Project } from '@dotpm/core'
 import { safeAsync } from '@dotpm/ui'
@@ -61,7 +61,6 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
       .onClick(() => {
         const targets = ctx.plugin.index.projectRefs().filter((ref) => ref.path !== ctx.project.filePath)
         if (!targets.length) {
-          new Notice(`There is no other project to move this task to.`)
           return
         }
         openProjectPicker(
@@ -71,7 +70,6 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
             const target = await ctx.plugin.store.loadProjectByPath(ref.path)
             if (!target) return
             await ctx.plugin.store.moveTaskToProject(ctx.project, target, task.id)
-            new Notice(`Moved "${task.title}" to ${target.title}`)
             await ctx.onRefresh()
           })
         )
@@ -86,7 +84,6 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
         .onClick(
           safeAsync(async () => {
             await ctx.plugin.store.unarchiveTask(ctx.project, task.id)
-            new Notice(`Task unarchived`)
             await ctx.onRefresh()
           })
         )
@@ -99,7 +96,6 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
         .onClick(
           safeAsync(async () => {
             await ctx.plugin.store.archiveTask(ctx.project, task.id)
-            new Notice(`Task archived`)
             await ctx.onRefresh()
           })
         )

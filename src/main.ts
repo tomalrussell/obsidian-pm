@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, Plugin, WorkspaceLeaf, type ViewState } from 'obsidian'
+import { MarkdownView, Plugin, WorkspaceLeaf, type ViewState } from 'obsidian'
 import {
   DEFAULT_SETTINGS,
   defaultPriorities,
@@ -38,7 +38,6 @@ import {
   confirmDialog,
   promptText
 } from './ui/ModalFactory'
-import { Notifier } from './components/Notifier'
 import { AutoArchiver } from './components/AutoArchiver'
 import { IdRepair } from './components/IdRepair'
 import { migrateBoardCardConfig, migrateProjects, migrateProjectLayout, migrateTaskRefs } from './migration'
@@ -47,7 +46,6 @@ export default class PMPlugin extends Plugin {
   settings: PMSettings = { ...DEFAULT_SETTINGS }
   store!: TaskSource
   index!: VaultIndex
-  notifier!: Notifier
   autoArchiver!: AutoArchiver
   idRepair!: IdRepair
   router!: PMViewRouter
@@ -91,7 +89,6 @@ export default class PMPlugin extends Plugin {
     })
     this.store = new ProjectStore(this.app, () => this.settings, this.index)
     this.store.registerVaultSync(this)
-    this.notifier = new Notifier(this)
     this.autoArchiver = new AutoArchiver(this)
     this.idRepair = new IdRepair(this)
     this.router = new PMViewRouter(this)
@@ -196,11 +193,6 @@ export default class PMPlugin extends Plugin {
       name: `Rebuild project index`,
       callback: () => {
         this.index.build()
-        this.showNotice(
-          this.index.projectRefs(true).length === 1
-            ? `Found ${this.index.projectRefs(true).length} project.`
-            : `Found ${this.index.projectRefs(true).length} projects.`
-        )
       }
     })
 
@@ -261,13 +253,8 @@ export default class PMPlugin extends Plugin {
     })
 
     this.addSettingTab(new PMSettingTab(this.app, this))
-    this.notifier.start()
     this.autoArchiver.start()
     this.idRepair.start()
-  }
-
-  onunload(): void {
-    this.notifier.stop()
   }
 
   /** Records the running version, and after an update opens the notes for every release since the last run. */
@@ -326,7 +313,15 @@ export default class PMPlugin extends Plugin {
     this.settings = Object.assign(structuredClone(DEFAULT_SETTINGS), saved ?? {})
     Reflect.deleteProperty(this.settings, 'peopleFolder')
     Reflect.deleteProperty(this.settings, 'globalTeamMembers')
-    for (const key of ['localApiEnabled', 'localApiPort', 'localApiToken', 'collapsedProjects', 'customFields']) {
+    for (const key of [
+      'localApiEnabled',
+      'localApiPort',
+      'localApiToken',
+      'collapsedProjects',
+      'customFields',
+      'notificationsEnabled',
+      'notificationLeadDays'
+    ]) {
       Reflect.deleteProperty(this.settings, key)
     }
     this.settings.statuses = defaultStatuses()
@@ -337,9 +332,15 @@ export default class PMPlugin extends Plugin {
     if (!this.settings.collapsedTasks) this.settings.collapsedTasks = {}
     if (!this.settings.excludedFolders) this.settings.excludedFolders = []
 
-    let migrated = ['localApiEnabled', 'localApiPort', 'localApiToken', 'collapsedProjects', 'customFields'].some(
-      (key) => saved && key in saved
-    )
+    let migrated = [
+      'localApiEnabled',
+      'localApiPort',
+      'localApiToken',
+      'collapsedProjects',
+      'customFields',
+      'notificationsEnabled',
+      'notificationLeadDays'
+    ].some((key) => saved && key in saved)
     // Filters were keyed by project path before a view could cover several projects.
     for (const key of Object.keys(this.settings.projectFilters)) {
       if (key.includes(':')) continue
@@ -460,7 +461,6 @@ export default class PMPlugin extends Plugin {
     const project = await this.store.loadProjectByPath(path)
     if (!project) return
     await this.store.updateProject(project, { archived: archived || undefined })
-    this.showNotice(archived ? `Archived "${project.title}".` : `Unarchived "${project.title}".`)
   }
 
   /** Prompts for a title, copies the project with fresh task ids, and opens the copy. */
@@ -471,7 +471,7 @@ export default class PMPlugin extends Plugin {
     try {
       copy = await this.store.duplicateProject(source, title)
     } catch (e) {
-      this.showNotice(e instanceof Error ? e.message : String(e))
+      console.error('[PM] Failed to duplicate project:', e)
       return
     }
     await this.router.openProjectOverview(copy.filePath)
@@ -483,7 +483,6 @@ export default class PMPlugin extends Plugin {
     const plans = await this.autoArchiver.plan(scoped?.length ? scoped : this.index.projectPaths(), true)
     const tasks = plans.reduce((sum, plan) => sum + plan.tasks, 0)
     if (!tasks) {
-      this.showNotice(`No completed tasks are ready to archive.`)
       return
     }
     const ok = await confirmDialog(
@@ -495,10 +494,9 @@ export default class PMPlugin extends Plugin {
     )
     if (!ok) return
     await this.autoArchiver.apply(plans)
-    this.showNotice(tasks === 1 ? `Archived ${tasks} task.` : `Archived ${tasks} tasks.`)
   }
 
-  /** The startup work that reads the index: migration, pruning, and the first due and archive sweeps. */
+  /** The startup work that reads the index: migration, pruning, and the archive sweep. */
   private async startupSweep(): Promise<void> {
     await migrateProjects(this)
     await migrateProjectLayout(this)
@@ -506,7 +504,6 @@ export default class PMPlugin extends Plugin {
     await migrateBoardCardConfig(this)
     await this.idRepair.check()
     await this.cleanupStaleProjectFilters()
-    this.notifier.check()
     await this.autoArchiver.check()
   }
 
@@ -558,10 +555,6 @@ export default class PMPlugin extends Plugin {
     await this.saveData(this.settings)
   }
 
-  showNotice(msg: string, duration = 3000): void {
-    new Notice(msg, duration)
-  }
-
   /**
    * A settings edit changed a palette or how a view draws itself. Nothing in the vault
    * moved, so the store's own change events say nothing about it. Coalesced, because a
@@ -588,18 +581,12 @@ export default class PMPlugin extends Plugin {
   private pickProject(onChoose: (project: Project) => void, autoSelectSingle: boolean): void {
     const refs = this.index.projectRefs()
     if (!refs.length) {
-      this.showNotice(
-        this.index.ready
-          ? `No projects yet. Create a project first.`
-          : `Still looking for projects. Try again in a moment.`
-      )
       return
     }
     const choose = (ref: ProjectRef): void => {
       void (async () => {
         const project = await this.store.loadProjectByPath(ref.path)
         if (!project) {
-          this.showNotice(`Could not open "${ref.title}".`)
           return
         }
         onChoose(project)
@@ -615,7 +602,6 @@ export default class PMPlugin extends Plugin {
       if (mode === 'pick-parent') {
         const flat = flattenTasks(project.tasks)
         if (!flat.length) {
-          this.showNotice(`No tasks in this project. Create a task first.`)
           return
         }
         openTaskPicker(

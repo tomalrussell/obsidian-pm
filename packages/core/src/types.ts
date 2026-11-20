@@ -273,8 +273,6 @@ export interface PMSettings {
   priorities: PriorityConfig[]
   /** Icons for priorities that don't carry their own. */
   priorityIcons: PriorityIconSet
-  notificationsEnabled: boolean
-  notificationLeadDays: number
   /** Days after completion before a task moves to its project's archive. 0 turns it off. */
   autoArchiveDays: number
   /** The day the archive sweep last ran, so it runs at most once a day. */
@@ -348,8 +346,6 @@ export const DEFAULT_SETTINGS: PMSettings = {
   lineBorders: 'none',
   showTagColors: true,
   dateFormat: '',
-  notificationsEnabled: true,
-  notificationLeadDays: 2,
   autoArchiveDays: 0,
   lastAutoArchiveDate: '',
   autoSchedule: true,

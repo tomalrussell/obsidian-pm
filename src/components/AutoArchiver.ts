@@ -43,16 +43,9 @@ export class AutoArchiver {
     this.running = true
     try {
       const plans = await this.plan(this.plugin.index.projectPaths(), false)
-      const tasks = await this.apply(plans)
+      await this.apply(plans)
       settings.lastAutoArchiveDate = stamp
       await this.plugin.saveSettings()
-      if (tasks) {
-        this.plugin.showNotice(
-          tasks === 1
-            ? `Archived ${tasks} completed task in ${plans.length === 1 ? `${plans.length} project` : `${plans.length} projects`}.`
-            : `Archived ${tasks} completed tasks in ${plans.length === 1 ? `${plans.length} project` : `${plans.length} projects`}.`
-        )
-      }
     } finally {
       this.running = false
     }

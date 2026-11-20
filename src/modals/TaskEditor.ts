@@ -7,7 +7,6 @@ import {
   type KeymapEventHandler,
   Menu,
   MarkdownRenderer,
-  Notice,
   type Scope,
   setIcon,
   setTooltip
@@ -115,7 +114,7 @@ export class TaskEditor {
     ) {
       const conflict = this.plugin.store.findTaskFileConflict(this.project, this.task)
       if (conflict) {
-        new Notice(`Task not saved: a note named "${conflict.fileName}" already exists.`)
+        console.error(`Task not saved: a note named "${conflict.fileName}" already exists.`)
       } else {
         void this.persistTask()
       }
@@ -160,7 +159,6 @@ export class TaskEditor {
         autoResize()
       } catch (err) {
         console.error('Failed to save attachment', err)
-        new Notice(`Failed to save attachment`)
       }
     }
   }
@@ -261,7 +259,6 @@ export class TaskEditor {
           .onClick(
             safeAsync(async () => {
               await this.plugin.store.unarchiveTask(this.project, this.task.id)
-              new Notice(`Task unarchived`)
               await this.onSave(this.task)
               this.cancelled = true
               this.host.close()
@@ -276,7 +273,6 @@ export class TaskEditor {
           .onClick(
             safeAsync(async () => {
               await this.plugin.store.archiveTask(this.project, this.task.id)
-              new Notice(`Task archived`)
               await this.onSave(this.task)
               this.cancelled = true
               this.host.close()
@@ -325,7 +321,6 @@ export class TaskEditor {
       'click',
       safeAsync(async () => {
         await navigator.clipboard.writeText(this.task.id)
-        new Notice(`Copied task ID`)
       })
     )
 
@@ -623,7 +618,6 @@ export class TaskEditor {
         'click',
         safeAsync(async () => {
           await navigator.clipboard.writeText(filePath)
-          new Notice(`Copied file path`)
         })
       )
     }
@@ -659,7 +653,6 @@ export class TaskEditor {
           return
         }
         console.error('[PM]', err)
-        new Notice(`Something went wrong. Check the console for details.`)
       } finally {
         saving = false
       }
