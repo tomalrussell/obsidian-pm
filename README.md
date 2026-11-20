@@ -63,7 +63,7 @@ Dragging a bar reschedules the task, dragging its edge changes the duration, and
 
 ### Board
 
-One column per status, priority, tag or type. Dragging a card to another column changes that value, and columns can be reordered or hidden. Cards show priority, tags and due date.
+One column per fixed status. Dragging a card to another column changes its status, and columns can be reordered or hidden. Cards show priority, tags and due date.
 
 <video src="https://github.com/user-attachments/assets/316fc43b-6915-499a-a6ad-0680c462d014" autoplay loop muted playsinline width="600"></video>
 

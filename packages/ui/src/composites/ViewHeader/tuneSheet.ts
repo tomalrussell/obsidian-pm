@@ -21,7 +21,7 @@ export interface TuneSheetProps {
 }
 
 /**
- * The phone's one sheet for the view's query: a tab per panel (Filter, Sort, Group,
+ * The phone's one sheet for the view's query: a tab per panel (Filter, Sort, Columns,
  * Fields), the panel, and a footer whose button closes the sheet and says what the view
  * now shows. Edits apply as they happen; the footer and the tab names follow them.
  */

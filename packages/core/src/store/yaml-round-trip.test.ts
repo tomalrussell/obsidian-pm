@@ -263,7 +263,11 @@ describe('project round-trip', () => {
     const group = {
       field: 'priority',
       hideEmpty: true,
-      columns: { priority: { order: ['low', 7, 'high'], hidden: ['low'] }, status: 'x', tag: {} }
+      columns: {
+        priority: { order: ['low'], hidden: ['low'] },
+        status: { order: ['done', 7, 'obsolete', 'capture'], hidden: ['someday', 'obsolete'] },
+        tag: {}
+      }
     }
     const fm = {
       savedViews: [
@@ -273,11 +277,11 @@ describe('project round-trip', () => {
     }
     const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
     expect(project.savedViews[0].group).toEqual({
-      field: 'priority',
       hideEmpty: true,
-      columns: { priority: { order: ['low', 'high'], hidden: ['low'] } }
+      columns: { order: ['done', 'capture'], hidden: ['someday'] }
     })
     expect(project.savedViews[1].group).toBeUndefined()
+    expect(hydrateGroup(project.savedViews[0].group)).toEqual(project.savedViews[0].group)
   })
 
   it('reads saved fields and drops what it cannot use', () => {
@@ -445,9 +449,7 @@ describe('legacy custom field view settings', () => {
         ]
       }).conditions
     ).toEqual([{ field: 'status', op: 'any', value: ['next'] }])
-    expect(hydrateGroup({ field: 'cf:client', columns: { 'cf:client': { hidden: ['Acme'] } } })).toEqual({
-      field: 'status'
-    })
+    expect(hydrateGroup({ field: 'cf:client', columns: { 'cf:client': { hidden: ['Acme'] } } })).toEqual({})
     expect(
       hydrateFields({ table: { visible: ['title', 'cf:client', 'due'], widths: { 'cf:client': 180, due: 90 } } })
     ).toEqual({ table: { visible: ['title', 'due'], widths: { due: 90 } } })
@@ -477,7 +479,7 @@ describe('fixed priority compatibility', () => {
     ).toBe('yesterday')
   })
 
-  it('keeps priority filters and board preferences attached to the renamed value', () => {
+  it('keeps priority filters attached to the renamed value and drops obsolete board grouping', () => {
     expect(
       hydrateFilter({ conditions: [{ field: 'priority', op: 'any', value: ['critical', 'high'] }] }).conditions
     ).toEqual([{ field: 'priority', op: 'any', value: ['yesterday', 'high'] }])
@@ -486,9 +488,6 @@ describe('fixed priority compatibility', () => {
     ])
     expect(
       hydrateGroup({ field: 'priority', columns: { priority: { order: ['critical', 'high'], hidden: ['critical'] } } })
-    ).toEqual({
-      field: 'priority',
-      columns: { priority: { order: ['yesterday', 'high'], hidden: ['yesterday'] } }
-    })
+    ).toEqual({})
   })
 })

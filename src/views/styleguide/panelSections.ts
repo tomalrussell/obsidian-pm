@@ -7,7 +7,6 @@ import {
   type ViewFields,
   DEFAULT_PRIORITIES,
   DEFAULT_STATUSES,
-  filterFieldLabel,
   makeTask
 } from '@dotpm/core'
 import {
@@ -16,8 +15,6 @@ import {
   type TuneItem,
   Stepper,
   boardColumns,
-  boardField,
-  groupableFields,
   renderFieldsPanel,
   renderFilterPanel,
   renderGroupPanel,
@@ -110,15 +107,12 @@ export function renderPanelSections({ section, row }: GalleryLayout): void {
   renderSortPanel(frame(sortRow, 340), { fields: sortFields, sort: twoKeys, onChange: noop, onReset: noop })
   renderSortPanel(frame(sortRow, 340), { fields: sortFields, sort: [], onChange: noop, onReset: noop })
 
-  const group = section('Group panel', 'panel-group')
+  const group = section('Columns panel', 'panel-group')
   const groupRow = row(group, 'columns by status, one hidden')
-  const groupSetup = setupWith([])
-  const groupState: GroupState = { field: 'status', columns: { status: { hidden: ['done'] } } }
+  const groupState: GroupState = { columns: { hidden: ['done'] } }
   renderGroupPanel(frame(groupRow, 300), {
-    fields: groupableFields(groupSetup).map((id) => ({ id, label: filterFieldLabel(id) })),
     group: groupState,
-    field: () => boardField(groupSetup, groupState),
-    columns: () => boardColumns(groupSetup, groupState, TASKS),
+    columns: () => boardColumns(groupState, TASKS),
     onChange: noop
   })
 

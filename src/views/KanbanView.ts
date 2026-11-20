@@ -2,7 +2,6 @@ import { Menu } from 'obsidian'
 import type PMPlugin from '#main'
 import {
   type Task,
-  type TaskType,
   type FilterContext,
   type GroupState,
   type SortRule,
@@ -20,12 +19,10 @@ import {
   safeAsync,
   boardCandidates,
   boardColumns,
-  boardField,
   ChipButton,
   descriptionPreview,
   compareTasks,
   KanbanColumn,
-  type FilterSetup,
   type KanbanCardData,
   renderProjectChip
 } from '@dotpm/ui'
@@ -33,21 +30,8 @@ import { openTaskModal } from '#ui/ModalFactory'
 import { buildTaskContextMenu } from '#ui/TaskContextMenu'
 import type { SubView } from './SubView'
 
-/**
- * `values` with the one of the column a card left swapped for the one it landed in; the
- * column of tasks without a value takes them all away.
- */
-function moveValue(values: string[], from: string, to: string, keyOf: (value: string) => string): string[] {
-  if (!to) return []
-  const next = values.filter((value) => keyOf(value) !== keyOf(from))
-  if (!next.some((value) => keyOf(value) === keyOf(to))) next.push(to)
-  return next
-}
-
 export class KanbanView implements SubView {
   private dragTask: Task | null = null
-  private dragFrom: string | null = null
-  private setup!: FilterSetup
   /** Resolved once per board render. */
   private config!: ResolvedProjectConfig
   private filterContext!: FilterContext
@@ -63,7 +47,7 @@ export class KanbanView implements SubView {
     private sort: SortRule[],
     private group: GroupState,
     private fields: ViewFields,
-    /** Opens the Group popover from the strip that stands in for hidden columns. */
+    /** Opens the Columns popover from the strip that stands in for hidden columns. */
     private onShowHidden: (anchor: HTMLElement) => void
   ) {}
 
@@ -76,14 +60,13 @@ export class KanbanView implements SubView {
 
   private renderBoard(): void {
     this.config = this.scope.config
-    this.setup = this.scope.filterSetup(this.query.filter)
-    this.filterContext = this.setup.ctx
+    this.filterContext = this.scope.filterContext()
     this.cardFields = shownFields(this.fields, 'kanban', this.scope.fieldCatalog())
     this.container.empty()
     this.container.addClass('pm-kanban-view')
 
     const board = this.container.createDiv('pm-kanban-board')
-    const columns = boardColumns(this.setup, this.group, this.visibleTasks())
+    const columns = boardColumns(this.group, this.visibleTasks())
     for (const column of columns.filter((c) => !c.hidden)) {
       new KanbanColumn(board, {
         column,
@@ -93,11 +76,9 @@ export class KanbanView implements SubView {
         onCardContextMenu: (task, e) => this.openContextMenu(task, e),
         onCardDragStart: (task) => {
           this.dragTask = task
-          this.dragFrom = column.id
         },
         onCardDragEnd: () => {
           this.dragTask = null
-          this.dragFrom = null
         },
         onDrop: (taskId, to) => this.handleDrop(taskId, to)
       })
@@ -189,32 +170,13 @@ export class KanbanView implements SubView {
     menu.showAtMouseEvent(e)
   }
 
-  private async handleDrop(taskId: string, to: string): Promise<void> {
+  private async handleDrop(taskId: string, status: string): Promise<void> {
     const task = this.dragTask
-    const from = this.dragFrom
-    if (!task || task.id !== taskId || from === null || from === to) return
+    if (!task || task.id !== taskId || task.status === status) return
+    if (!this.config.statuses.some((option) => option.id === status)) return
     const owner = this.scope.projectOf(taskId)
-    const patch = this.dropPatch(task, from, to)
-    if (!owner || !patch) return
-    await this.plugin.store.updateTask(owner, task.id, patch)
+    if (!owner) return
+    await this.plugin.store.updateTask(owner, task.id, { status })
     await this.onRefresh()
-  }
-
-  /** What moving a card from one column to another changes on its task. Null where a move means nothing. */
-  private dropPatch(task: Task, from: string, to: string): Partial<Task> | null {
-    const field = boardField(this.setup, this.group)
-    const keyOf = (value: string): string => value
-    switch (field) {
-      case 'status':
-        return { status: to }
-      case 'priority':
-        return { priority: to }
-      case 'type':
-        return to ? { type: to as TaskType } : null
-      case 'tag':
-        return { tags: moveValue(task.tags, from, to, keyOf) }
-      default:
-        return null
-    }
   }
 }

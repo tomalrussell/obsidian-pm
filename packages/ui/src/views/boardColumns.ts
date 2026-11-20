@@ -1,8 +1,7 @@
-import { type GroupState, type Task, filterFieldLabel, filterKind, filterValue, makeDefaultGroup } from '@dotpm/core'
-import { valueOptions, type FilterSetup } from '../composites/ViewHeader/filterPopover'
+import { DEFAULT_STATUSES, type GroupState, type Task } from '@dotpm/core'
 
 export interface BoardColumn {
-  /** The value the column stands for; empty for the column of tasks without one. */
+  /** The fixed status this column represents. */
   id: string
   label: string
   color?: string
@@ -11,63 +10,18 @@ export interface BoardColumn {
   hidden: boolean
 }
 
-/** Fields whose value every task has, so their board needs no column for tasks without one. */
-const ALWAYS_SET = ['status', 'priority', 'type', 'project']
-
-/** The fields a board can put in columns: one value, or several, picked from a list. */
-export function groupableFields(setup: FilterSetup): string[] {
-  return ['status', 'priority', 'tag', 'type', ...(setup.projects.length > 1 ? ['project'] : [])]
-}
-
-/** The field the board groups by: the saved one while this scope offers it, the default otherwise. */
-export function boardField(setup: FilterSetup, group: GroupState): string {
-  return groupableFields(setup).includes(group.field) ? group.field : makeDefaultGroup().field
-}
-
-/** The values a task files under: one for a single-value field, each of them for a list. Empty when unset. */
-export function groupValues(task: Task, field: string, setup: FilterSetup): string[] {
-  const value = filterValue(task, field, setup.ctx)
-  if (Array.isArray(value)) return value
-  return typeof value === 'string' && value ? [value] : []
-}
-
-/**
- * The columns for `tasks` grouped by `group.field`: every value the field offers, in the
- * saved order, then one for tasks with no value. A task with several values sits in each
- * of their columns. Hidden columns come back flagged rather than dropped, so the Group
- * popover can list them; `hideEmpty` flags empty ones the same way.
- */
-export function boardColumns(setup: FilterSetup, group: GroupState, tasks: Task[]): BoardColumn[] {
-  const field = boardField(setup, group)
-  const kind = filterKind(field)
-  const byKey = new Map<string, BoardColumn>()
-  for (const option of valueOptions(setup, field)) {
-    byKey.set(option.id, { ...option, tasks: [], hidden: false })
-  }
-  const none: BoardColumn = {
-    id: '',
-    label: `No ${filterFieldLabel(field)}`,
-    tasks: [],
-    hidden: false
-  }
+/** Fixed status columns, with the saved order and visibility applied. */
+export function boardColumns(group: GroupState, tasks: Task[]): BoardColumn[] {
+  const columns: BoardColumn[] = DEFAULT_STATUSES.map((status) => ({ ...status, tasks: [], hidden: false }))
+  const byId = new Map(columns.map((column) => [column.id, column]))
   for (const task of tasks) {
-    const values = groupValues(task, field, setup)
-    if (!values.length) none.tasks.push(task)
-    for (const value of values) {
-      const key = value
-      let column = byKey.get(key)
-      if (!column) {
-        column = { id: value, label: value, tasks: [], hidden: false }
-        byKey.set(key, column)
-      }
-      column.tasks.push(task)
-    }
+    const column = byId.get(task.status) ?? columns[0]
+    column.tasks.push(task)
   }
-  const columns = [...byKey.values()]
-  if (kind && (!ALWAYS_SET.includes(field) || none.tasks.length)) columns.push(none)
 
-  const prefs = group.columns?.[field]
-  const rank = new Map((prefs?.order ?? []).map((id, index) => [id, index]))
+  const prefs = group.columns
+  const known = new Set(columns.map((column) => column.id))
+  const rank = new Map((prefs?.order ?? []).filter((id) => known.has(id)).map((id, index) => [id, index]))
   const ordered = columns
     .map((column, index) => ({ column, index }))
     .sort((a, b) => (rank.get(a.column.id) ?? rank.size + a.index) - (rank.get(b.column.id) ?? rank.size + b.index))

@@ -106,15 +106,10 @@ export interface GroupColumns {
   hidden?: string[]
 }
 
-/**
- * What board columns stand for. `field` is a built-in filter field id.
- * Column order and hidden columns are kept per field, so hiding a status
- * column leaves the priority columns alone.
- */
+/** Status-column visibility and ordering for a Kanban board. */
 export interface GroupState {
-  field: string
   hideEmpty?: boolean
-  columns?: Record<string, GroupColumns>
+  columns?: GroupColumns
 }
 
 /** Which fields one presentation shows, in order, and the widths in px the table's columns were dragged to. */
@@ -418,7 +413,7 @@ export function makeDefaultProjectList(): ProjectListState {
 }
 
 export function makeDefaultGroup(): GroupState {
-  return { field: 'status' }
+  return {}
 }
 
 export function makeDefaultSort(): SortRule[] {

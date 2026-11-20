@@ -2,7 +2,7 @@
 
 ## Product direction
 
-Aim for Markdown tasks with fixed statuses, a table, and a status board. Keep persistence safeguards: queued writes, rename handling, unknown frontmatter preservation, and ID repair. Feature usage is a user decision; this review identifies complexity rather than measuring usage.
+Aim for Markdown tasks with fixed statuses and priorities, a table, a Gantt timeline, and a status board. Gantt is a retained feature. Keep persistence safeguards: queued writes, rename handling, unknown frontmatter preservation, and ID repair. Feature usage is a user decision; this review identifies complexity rather than measuring usage.
 
 ## Current functionality
 
@@ -41,6 +41,8 @@ Audit package-publication and configuration dependencies if publishing reusable 
 
 ## Removal options
 
+13 options completed; Gantt retained; 2 options still open: scheduling and saved views/layout customization.
+
 | Option                                   | Status    | Complexity reduction | Scope                                                                                                                                            |
 | ---------------------------------------- | --------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Remove translation and locales           | Completed | Medium               | Translation layer, locale files, localized labels, locale-dependent date and sorting behavior removed                                            |
@@ -53,8 +55,8 @@ Audit package-publication and configuration dependencies if publishing reusable 
 | Remove TaskNotes                         | Completed | Medium               | Detection, priority sync, special import conversion, related store methods, tests and docs removed                                               |
 | Remove export and viewer                 | Completed | High                 | HTML export, snapshot format and renderers, viewer package, assets and build steps removed                                                       |
 | Remove scheduling                        | Open      | High                 | Scheduler, settings, early finish and propagation across projects                                                                                |
-| Remove Gantt                             | Open      | Very high            | Timeline rendering, drag/resize/link, calendars and scales                                                                                       |
-| Status-only Kanban                       | Open      | Medium to high       | Generic field grouping, per-field column configuration and drag updates                                                                          |
+| Remove Gantt                             | Keep      | —                    | Retain the timeline, including task bars, milestones and dependency linking                                                                      |
+| Status-only Kanban                       | Completed | Medium to high       | Removed non-status grouping and generic drag updates; retained status column order and visibility                                                |
 | Remove custom fields                     | Completed | Very high            | Definitions, global defaults, editors, filters, grouping and rendering                                                                           |
 | Flatten projects                         | Completed | High                 | Parent links, ancestor inheritance, project trees, collapse state, subtree scopes and inherited archive behavior removed; task subtasks retained |
 | Remove saved views/layout customization  | Open      | Medium to high       | Named/starred views, change tracking, scope persistence and configurable columns                                                                 |
@@ -66,8 +68,8 @@ Smaller options: auto-archiving, release-note UI, automatic Markdown editor repl
 
 1. Finish status cleanup; remove recurrence and time tracking. **Completed.** Removed project status override types, indexed palette fields, status editors and redundant status palette merging. Removed recurrence and time tracking across the model, UI, API, imports and docs. Legacy task metadata is preserved as inert frontmatter.
 2. Export and browser viewer removal: **Completed.** Removed HTML export commands, snapshots and snapshot-only renderers, viewer package, viewer assets and build steps. TaskNotes removal: **Completed.** Removed detection, settings, priority syncing, special import conversion, conversion-only store methods, tests and documentation. Ordinary Markdown note import remains.
-3. Fixed priorities: **Completed.** Priorities are `yesterday`, `high`, `medium`, `low`, with matching lowercase IDs and labels. Removed global/project palette and icon settings. Old `critical` tasks and saved selections resolve to `yesterday`. Status-only Kanban remains an option.
-4. Decide whether to retain scheduling; if unnecessary, remove Gantt, scheduling, dependencies and milestones together.
+3. Fixed priorities: **Completed.** Priorities are `yesterday`, `high`, `medium`, `low`, with matching lowercase IDs and labels. Removed global/project palette and icon settings. Old `critical` tasks and saved selections resolve to `yesterday`. Status-only Kanban: **Completed.** Fixed status columns; removed grouping by priority, tag, type and project and generic drag-to-change behavior. Column visibility, order and hide-empty controls remain.
+4. **Keep Gantt.** Timeline retention is decided. Automatic scheduling remains a separate decision: it can be simplified or removed while keeping manual timeline editing, milestones and dependency links.
 5. Project flattening: **Completed.** Projects are independent: removed parent links, ancestor inheritance, project trees, project collapse state and subtree scopes. Task subtasks remain. Custom-field removal: **Completed.** Removed definitions, global defaults, editors, columns, filters and board grouping. Existing custom-field note properties remain inert frontmatter. Saved views remain an option for later simplification.
 6. API/MCP removal: **Completed.** Removed server, routes, MCP tools, contracts, client, authentication and port settings, API tests and documentation, package publishing trigger and dependencies. Any future agent interface or CLI is deferred.
 

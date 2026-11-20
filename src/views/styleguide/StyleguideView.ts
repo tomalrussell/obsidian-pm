@@ -623,7 +623,7 @@ export class StyleguideView extends ItemView {
 
   private renderVisibilityList(): void {
     const sec = this.section('VisibilityList', 'visibility-list')
-    const host = this.row(sec, 'locked, shown with widths, hidden; the Group and Fields popovers use it')
+    const host = this.row(sec, 'locked, shown with widths, hidden; the Columns and Fields popovers use it')
     host.addClass('pm-sg-narrow')
     renderVisibilityList(host, {
       rows: [

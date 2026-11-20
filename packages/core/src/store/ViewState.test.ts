@@ -45,10 +45,10 @@ describe('viewDifferences', () => {
   })
 
   it('compares the grouping only when the view saved one', () => {
-    const byPriority = { field: 'priority', columns: { priority: { hidden: ['low'] } } }
-    expect(viewDifferences(view, state({ group: byPriority }))).toEqual([])
+    const hiddenStatus = { columns: { hidden: ['someday'] } }
+    expect(viewDifferences(view, state({ group: hiddenStatus }))).toEqual([])
     const grouped: SavedView = { ...view, group: makeDefaultGroup() }
-    expect(viewDifferences(grouped, state({ group: byPriority }))).toEqual(['group'])
+    expect(viewDifferences(grouped, state({ group: hiddenStatus }))).toEqual(['group'])
   })
 
   it('compares the fields only when the view saved them', () => {

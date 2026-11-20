@@ -625,12 +625,6 @@ button.pm-filter-chip-remove {
   font-variant-numeric: tabular-nums;
 }
 select.pm-sort-field,
-select.pm-sort-dir,
-select.pm-group-field {
-  height: 26px;
-  font-size: var(--font-ui-smaller);
-}
-select.pm-sort-field,
 select.pm-sort-dir {
   flex: 1;
   min-width: 0;

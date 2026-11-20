@@ -41,7 +41,6 @@ import {
 import {
   boardCandidates,
   boardColumns,
-  boardField,
   ChipButton,
   clampZoom,
   MAX_ZOOM,
@@ -50,7 +49,6 @@ import {
   Stepper,
   stepZoom,
   EmptyState,
-  groupableFields,
   openFieldsPopover,
   openGroupPopover,
   type BoardColumn,
@@ -406,7 +404,7 @@ export class ProjectView extends ItemView {
     const labels = {
       filter: `Filter`,
       sort: `Sort`,
-      group: `Grouping`,
+      group: `Columns`,
       fields: `Fields`,
       mode: `View mode`,
       scale: `Timeline scale`,
@@ -515,7 +513,7 @@ export class ProjectView extends ItemView {
       const label = this.groupSummary()
       const hidden = this.boardColumnsNow().filter((column) => column.hidden).length
       this.groupButton
-        .setLabel(label || `Group`)
+        .setLabel(`Columns`)
         .setDetail(hidden ? (hidden === 1 ? `${hidden} hidden` : `${hidden} hidden`) : '')
         .setActive(!!label)
     }
@@ -772,7 +770,7 @@ export class ProjectView extends ItemView {
       this.sortButton = sortButton
     }
     if (this.currentView === 'kanban') {
-      const groupButton = new ChipButton(parent).setIcon('group').setAriaLabel(`Group`)
+      const groupButton = new ChipButton(parent).setIcon('columns-3').setAriaLabel(`Columns`)
       groupButton.onClick(() => this.openGroup(groupButton.el))
       this.groupButton = groupButton
     }
@@ -896,8 +894,8 @@ export class ProjectView extends ItemView {
     }
     if (this.currentView === 'kanban') {
       query.push({
-        icon: 'group',
-        label: `Group`,
+        icon: 'columns-3',
+        label: `Columns`,
         state: this.groupSummary(),
         onOpen: (anchor) => this.openGroup(anchor)
       })
@@ -932,18 +930,12 @@ export class ProjectView extends ItemView {
     void this.persistFilter()
   }
 
-  /** The board's field as the Group button names it, or nothing while the board groups by status untouched. */
+  /** The board's column customizations, as the Columns control summarizes them. */
   private groupSummary(): string {
-    const setup = this.groupSetup()
-    if (!setup) return ''
-    const field = boardField(setup, this.group)
-    const columns = this.group.columns?.[field]
-    const changed =
-      field !== makeDefaultGroup().field ||
-      !!this.group.hideEmpty ||
-      !!columns?.hidden?.length ||
-      !!columns?.order?.length
-    return changed ? filterFieldLabel(field) : ''
+    const hidden = this.group.columns?.hidden?.length ?? 0
+    if (hidden) return `${hidden} hidden`
+    if (this.group.hideEmpty) return `Hide empty`
+    return this.group.columns?.order?.length ? `Reordered` : ''
   }
 
   private groupSetup() {
@@ -951,14 +943,14 @@ export class ProjectView extends ItemView {
     return scope ? scope.filterSetup(this.query.filter) : null
   }
 
-  /** The board's columns as the Group popover lists them: every task the filter lets through. */
+  /** The board's status columns as the Columns popover lists them: every task the filter lets through. */
   private boardColumnsNow(): BoardColumn[] {
     const setup = this.groupSetup()
     const scope = this.projectScope
     if (!setup || !scope) return []
     const candidates = boardCandidates(scope.tasks(), shownFields(this.fields, 'kanban', scope.fieldCatalog()))
     const shown = candidates.filter((task) => matchesQuery(task, this.query, setup.ctx))
-    return boardColumns(setup, this.group, shown)
+    return boardColumns(this.group, shown)
   }
 
   private openGroup(anchor: HTMLElement): void {
@@ -967,12 +959,9 @@ export class ProjectView extends ItemView {
   }
 
   private groupProps(after?: () => void): GroupPopoverProps | null {
-    const setup = this.groupSetup()
-    if (!setup) return null
+    if (!this.projectScope) return null
     return {
-      fields: groupableFields(setup).map((id) => ({ id, label: filterFieldLabel(id) })),
       group: this.group,
-      field: () => boardField(setup, this.group),
       columns: () => this.boardColumnsNow(),
       onChange: () => {
         this.syncHeader()
@@ -1015,7 +1004,7 @@ export class ProjectView extends ItemView {
     if (this.currentView === 'kanban') {
       tabs.push({
         id: 'group',
-        label: `Group`,
+        label: `Columns`,
         render: (parent, changed) => {
           const props = this.groupProps(changed)
           if (props) renderGroupPanel(parent, props)

@@ -17,6 +17,7 @@ import type {
 } from '../types'
 import {
   DEFAULT_PROJECT_COLOR,
+  DEFAULT_STATUSES,
   FILTER_OPS,
   GANTT_GRANULARITIES,
   makeDefaultGroup,
@@ -123,36 +124,33 @@ export function hydrateSort(record: Record<string, unknown>): SortRule[] {
 
 export function hydrateGroup(raw: unknown): GroupState {
   const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
-  const group: GroupState =
-    typeof r.field === 'string' && r.field && !r.field.startsWith('cf:') ? { field: r.field } : makeDefaultGroup()
+  const group = makeDefaultGroup()
   if (r.hideEmpty === true) group.hideEmpty = true
   if (r.columns && typeof r.columns === 'object') {
-    const columns: Record<string, GroupColumns> = {}
-    for (const [field, value] of Object.entries(r.columns as Record<string, unknown>)) {
-      if (field.startsWith('cf:') || !value || typeof value !== 'object') continue
-      const v = value as Record<string, unknown>
-      const entry: GroupColumns = {}
-      if (Array.isArray(v.order)) {
-        entry.order = [
-          ...new Set(
-            v.order
-              .filter((id): id is string => typeof id === 'string')
-              .map((id) => (field === 'priority' ? normalizePriority(id) : id))
+    const stored = r.columns as Record<string, unknown>
+    // Older boards kept separate preferences for every grouping field. Only status survives.
+    const rawColumns = stored.status && typeof stored.status === 'object' ? stored.status : stored
+    const values = rawColumns as Record<string, unknown>
+    const columns: GroupColumns = {}
+    if (Array.isArray(values.order)) {
+      columns.order = [
+        ...new Set(
+          values.order.filter(
+            (id): id is string => typeof id === 'string' && DEFAULT_STATUSES.some((status) => status.id === id)
           )
-        ]
-      }
-      if (Array.isArray(v.hidden)) {
-        entry.hidden = [
-          ...new Set(
-            v.hidden
-              .filter((id): id is string => typeof id === 'string')
-              .map((id) => (field === 'priority' ? normalizePriority(id) : id))
-          )
-        ]
-      }
-      if (entry.order || entry.hidden) columns[field] = entry
+        )
+      ]
     }
-    if (Object.keys(columns).length) group.columns = columns
+    if (Array.isArray(values.hidden)) {
+      columns.hidden = [
+        ...new Set(
+          values.hidden.filter(
+            (id): id is string => typeof id === 'string' && DEFAULT_STATUSES.some((status) => status.id === id)
+          )
+        )
+      ]
+    }
+    if (columns.order || columns.hidden) group.columns = columns
   }
   return group
 }

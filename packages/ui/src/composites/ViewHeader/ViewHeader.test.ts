@@ -476,56 +476,46 @@ describe('sort popover', () => {
   })
 })
 
-describe('group popover', () => {
+describe('status columns popover', () => {
   const columns = (group: GroupState): BoardColumn[] =>
-    ['todo', 'doing', 'done'].map((id, index) => ({
+    ['capture', 'in-progress', 'done'].map((id, index) => ({
       id,
       label: id,
       tasks: index === 2 ? [] : [makeTask({ id })],
-      hidden: group.columns?.[group.field]?.hidden?.includes(id) ?? false
+      hidden: group.columns?.hidden?.includes(id) ?? false
     }))
   const open = (group: GroupState) => {
     const onChange = vi.fn<() => void>()
     openGroupPopover(document.body.createEl('button'), {
-      fields: [
-        { id: 'status', label: 'Status' },
-        { id: 'priority', label: 'Priority' }
-      ],
       group,
-      field: () => group.field,
       columns: () => columns(group),
       onChange
     })
     return onChange
   }
 
-  it('switches the field, hides empty columns and hides one by its eye', () => {
-    const group: GroupState = { field: 'status' }
+  it('hides empty columns and toggles column visibility without offering a grouping field', () => {
+    const group: GroupState = {}
     const onChange = open(group)
     const row = document.body.findAll('.pm-vis-row')
     expect(row.map((r) => r.find('.pm-vis-detail')?.textContent)).toEqual(['1', '1', 'empty'])
     row[1].querySelector<HTMLButtonElement>('.pm-vis-eye')?.click()
-    expect(group.columns?.status?.hidden).toEqual(['doing'])
+    expect(group.columns?.hidden).toEqual(['in-progress'])
     document.body.querySelector<HTMLInputElement>('.pm-group-pop input[type=checkbox]')?.click()
     expect(group.hideEmpty).toBe(true)
-    const field = document.body.querySelector<HTMLSelectElement>('select.pm-group-field')
-    if (!field) throw new Error('no field picker')
-    field.value = 'priority'
-    field.dispatchEvent(new Event('change'))
-    expect(group.field).toBe('priority')
-    expect(group.columns?.status?.hidden).toEqual(['doing'])
-    expect(onChange).toHaveBeenCalledTimes(3)
+    expect(document.body.querySelector('select.pm-group-field')).toBeNull()
+    expect(onChange).toHaveBeenCalledTimes(2)
   })
 
   it('shows every hidden column again and reorders by dragging', () => {
-    const group: GroupState = { field: 'status', columns: { status: { hidden: ['todo'] } } }
+    const group: GroupState = { columns: { hidden: ['capture'] } }
     open(group)
     document.body.querySelector<HTMLButtonElement>('.pm-group-pop .pm-pop-head-action')?.click()
-    expect(group.columns?.status?.hidden).toBeUndefined()
+    expect(group.columns?.hidden).toBeUndefined()
     const rows = document.body.findAll('.pm-vis-row')
     rows[2].dispatchEvent(new Event('dragstart'))
     rows[0].dispatchEvent(new Event('drop'))
-    expect(group.columns?.status?.order).toEqual(['done', 'todo', 'doing'])
+    expect(group.columns?.order).toEqual(['done', 'capture', 'in-progress'])
   })
 })
 
