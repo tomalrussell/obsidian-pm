@@ -6,18 +6,14 @@ import { boardColumns, boardField, groupableFields } from './boardColumns'
 const tasks = [
   makeTask({ id: 'a', status: 'capture', priority: 'high', tags: ['web'] }),
   makeTask({ id: 'b', status: 'capture', priority: 'low' }),
-  makeTask({ id: 'c', status: 'done', priority: 'high', customFields: { client: 'Acme' } })
+  makeTask({ id: 'c', status: 'done', priority: 'high' })
 ]
 
 const setup: FilterSetup = {
   filter: makeDefaultFilter(),
   tasks,
   ctx: {
-    statuses: DEFAULT_STATUSES,
-    customFields: [
-      { id: 'client', name: 'Client', type: 'select', options: ['Acme', 'Globex'] },
-      { id: 'estimate', name: 'Estimate', type: 'number' }
-    ]
+    statuses: DEFAULT_STATUSES
   },
   priorities: DEFAULT_PRIORITIES,
   priorityIcons: 'chevrons',
@@ -35,21 +31,12 @@ describe('boardColumns', () => {
     expect(columns[0].color).toBe(DEFAULT_STATUSES[0].color)
   })
 
-  it('falls back to status columns when the field is a custom field this scope no longer has', () => {
+  it('falls back to status columns for a removed custom field', () => {
     const group: GroupState = { field: 'cf:removed', columns: { status: { hidden: ['done'] } } }
     expect(boardField(setup, group)).toBe('status')
     const columns = boardColumns(setup, group, tasks)
     expect(columns.map((c) => c.id)).toEqual(DEFAULT_STATUSES.map((s) => s.id))
     expect(columns.find((c) => c.id === 'done')?.hidden).toBe(true)
-    expect(boardField(setup, { field: 'cf:client' })).toBe('cf:client')
-  })
-
-  it('offers every option of a custom select, plus a column for tasks without a value', () => {
-    expect(ids({ field: 'cf:client' })).toEqual([
-      ['Acme', 'c', false],
-      ['Globex', '', false],
-      ['', 'ab', false]
-    ])
   })
 
   it('follows the saved order and flags hidden and empty columns without dropping them', () => {
@@ -61,12 +48,12 @@ describe('boardColumns', () => {
     expect(ids(group)).toEqual([
       ['low', 'b', true],
       ['high', 'ac', false],
-      ['critical', '', true],
+      ['yesterday', '', true],
       ['medium', '', true]
     ])
   })
 
   it('groups only by fields with a list of values', () => {
-    expect(groupableFields(setup)).toEqual(['status', 'priority', 'tag', 'type', 'cf:client'])
+    expect(groupableFields(setup)).toEqual(['status', 'priority', 'tag', 'type'])
   })
 })

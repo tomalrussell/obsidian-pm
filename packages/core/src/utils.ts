@@ -26,6 +26,11 @@ export function getDefaultStatusId(statuses: StatusConfig[]): string {
   return statuses.length > 0 ? statuses[0].id : 'capture'
 }
 
+/** The former highest priority keeps its rank under the fixed priority names. */
+export function normalizePriority(priority: TaskPriority): TaskPriority {
+  return priority === 'critical' ? 'yesterday' : priority
+}
+
 export function getDefaultPriorityId(priorities: PriorityConfig[]): string {
   if (priorities.some((p) => p.id === 'medium')) return 'medium'
   return priorities.length > 0 ? priorities[Math.floor(priorities.length / 2)].id : 'medium'
@@ -54,15 +59,6 @@ export function dateUrgency(due: string, overdue: boolean): DueUrgency {
 export function dueUrgency(task: Task, statuses: StatusConfig[]): DueUrgency {
   if (isTerminalStatus(task.status, statuses)) return 'normal'
   return dateUrgency(task.due, true)
-}
-
-/** Objects fall back to '' rather than rendering as [object Object]. */
-export function stringifyCustomValue(val: unknown): string {
-  if (val === undefined || val === null) return ''
-  if (typeof val === 'string') return val
-  if (typeof val === 'number' || typeof val === 'boolean') return String(val)
-  if (Array.isArray(val)) return val.map((v) => String(v)).join(', ')
-  return ''
 }
 
 export function sanitizeFileName(title: string): string {

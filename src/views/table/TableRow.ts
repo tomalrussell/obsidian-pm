@@ -1,19 +1,9 @@
-import { Menu, type App } from 'obsidian'
-import {
-  getStatusConfig,
-  dueUrgency,
-  formatDateLong,
-  isTerminalStatus,
-  stringifyCustomValue,
-  type CustomFieldDef,
-  type Project
-} from '@dotpm/core'
+import { Menu } from 'obsidian'
+import { getStatusConfig, dueUrgency, isTerminalStatus, type Project } from '@dotpm/core'
 import {
   safeAsync,
   TaskRow,
   ActionsCell,
-  CustomFieldCell,
-  type CustomFieldValue,
   DueDateCell,
   ExpandCell,
   PriorityCell,
@@ -28,7 +18,6 @@ import type { TableContext, TableState, TableTreeRow } from './TableRenderer'
 import { openTaskModal } from '#ui/ModalFactory'
 import { buildTaskContextMenu } from '#ui/TaskContextMenu'
 import { toggleCollapsed } from '../collapse'
-import { linkedRefs } from '../linkedRefs'
 
 export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: TableContext): void {
   const { task, depth } = flat
@@ -87,7 +76,6 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
     })
   })
 
-  const customFields = ctx.scope.customFields()
   for (const column of ctx.columns) {
     switch (column) {
       case 'title':
@@ -142,11 +130,6 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
           }
         })
         break
-      default: {
-        const cf = customFields.find((field) => `cf:${field.id}` === column)
-        const source = task.filePath ?? project.filePath
-        new CustomFieldCell(row, cf ? customFieldValue(ctx.plugin.app, cf, task.customFields[cf.id], source) : EMPTY)
-      }
     }
   }
 
@@ -187,22 +170,6 @@ function renderTitleCell(row: HTMLElement, flat: TableTreeRow, project: Project,
       })
     }
   })
-}
-
-const EMPTY: CustomFieldValue = { kind: 'text', text: '' }
-
-const WIKILINK = /^\[\[.+\]\]$/
-
-/** A custom value naming a note is shown as a link. */
-function customFieldValue(app: App, cf: CustomFieldDef, val: unknown, sourcePath: string): CustomFieldValue {
-  const values = (Array.isArray(val) ? val : [val]).map(stringifyCustomValue).filter(Boolean)
-  if (cf.type === 'checkbox') return { kind: 'checkbox', checked: Boolean(val) }
-  if (cf.type === 'url') return { kind: 'url', url: values.join(', ') }
-  if (cf.type === 'date') return { kind: 'text', text: values.map((v) => formatDateLong(v) || v).join(', ') }
-  if (values.some((v) => WIKILINK.test(v.trim()))) {
-    return { kind: 'links', links: linkedRefs(app, values, sourcePath) }
-  }
-  return { kind: 'text', text: val !== undefined ? stringifyCustomValue(val) : '' }
 }
 
 export function updateSelectAllCheckbox(state: TableState): void {

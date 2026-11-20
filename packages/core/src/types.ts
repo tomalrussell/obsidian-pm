@@ -13,8 +13,6 @@ export type SortDir = 'asc' | 'desc'
 export type DueUrgency = 'normal' | 'near' | 'overdue'
 export type TaskType = 'task' | 'milestone' | 'subtask'
 
-export const CUSTOM_FIELD_TYPES = ['text', 'number', 'date', 'select', 'multiselect', 'checkbox', 'url'] as const
-
 export const SORT_KEYS = ['title', 'status', 'priority', 'due', 'progress'] as const
 export type SortKey = (typeof SORT_KEYS)[number]
 
@@ -25,16 +23,6 @@ export interface SortRule {
 }
 
 export const MAX_SORT_RULES = 3
-
-export interface CustomFieldDef {
-  id: string
-  name: string
-  type: (typeof CUSTOM_FIELD_TYPES)[number]
-  options?: string[] // for select / multiselect
-  icon?: string // emoji or lucide icon name
-  /** False keeps the field out of the filter picker. */
-  filterable?: boolean
-}
 
 export interface Task {
   id: string
@@ -50,7 +38,6 @@ export interface Task {
   tags: string[]
   subtasks: Task[]
   dependencies: string[] // task IDs
-  customFields: Record<string, unknown>
   createdAt: string
   updatedAt: string
   filePath?: string // vault path to this task's .md file
@@ -64,7 +51,6 @@ export interface Project {
   color: string // hex
   icon: string // emoji
   tasks: Task[]
-  customFields: CustomFieldDef[]
   createdAt: string
   updatedAt: string
   filePath: string // resolved vault path
@@ -79,7 +65,7 @@ export interface Project {
 
 /** Tasks are excluded: they change through the task mutators, never a whole-project write. */
 export type ProjectPatch = Partial<
-  Pick<Project, 'title' | 'description' | 'color' | 'icon' | 'customFields' | 'savedViews' | 'config' | 'archived'>
+  Pick<Project, 'title' | 'description' | 'color' | 'icon' | 'savedViews' | 'config' | 'archived'>
 >
 
 export const FILTER_OPS = [
@@ -90,28 +76,16 @@ export const FILTER_OPS = [
   'not-empty',
   'contains',
   'not-contains',
-  'eq',
-  'ne',
-  'gte',
-  'lte',
   'between',
-  'bucket',
-  'checked',
-  'unchecked'
+  'bucket'
 ] as const
 export type FilterOp = (typeof FILTER_OPS)[number]
 
-/**
- * One applied filter. `field` is a built-in field id or `cf:<id>` for a custom field.
- * `value` holds the ids an `any` / `none` / `all` compares against, the text of a
- * `contains`, the numbers of a number comparison, the bucket of a `bucket`, or the two
- * ends of a `between`: `YYYY-MM-DD` strings for a date, where an open end is empty, and
- * numbers for a number, where an open end is null.
- */
+/** A built-in field condition with selected values, text, a date bucket or date range. */
 export interface FilterCondition {
   field: string
   op: FilterOp
-  value?: string[] | string | (number | null)[]
+  value?: string[] | string
 }
 
 /** Conditions combine with AND; the ids inside one condition with OR. */
@@ -133,8 +107,8 @@ export interface GroupColumns {
 }
 
 /**
- * What board columns stand for. `field` is a filter field id (`status`,
- * `cf:<id>`...). Column order and hidden columns are kept per field, so hiding a status
+ * What board columns stand for. `field` is a built-in filter field id.
+ * Column order and hidden columns are kept per field, so hiding a status
  * column leaves the priority columns alone.
  */
 export interface GroupState {
@@ -243,10 +217,6 @@ export interface StatusConfig {
 
 /** Overrides a project may set in its own file. An absent field falls back to the global settings. */
 export interface ProjectConfig {
-  priorities?: PriorityConfig[]
-  priorityIcons?: PriorityIconSet
-  /** Inherited field ids this project leaves out. Its own fields are never listed. */
-  hiddenCustomFields?: string[]
   defaultView?: ViewMode
   autoSchedule?: boolean
   pullForwardOnEarlyFinish?: boolean
@@ -263,7 +233,6 @@ export interface ResolvedProjectConfig {
   statuses: StatusConfig[]
   priorities: PriorityConfig[]
   priorityIcons: PriorityIconSet
-  customFields: CustomFieldDef[]
   defaultView: ViewMode
   autoSchedule: boolean
   pullForwardOnEarlyFinish: boolean
@@ -290,16 +259,6 @@ export const PRIORITY_ICON_SETS: Record<PriorityIconSet, string[]> = {
   none: []
 }
 
-export function priorityIconSetLabels(): Record<PriorityIconSet, string> {
-  return {
-    chevrons: 'Chevrons',
-    signal: 'Signal',
-    arrows: 'Arrows',
-    alerts: 'Alerts',
-    none: 'None'
-  }
-}
-
 export interface PMSettings {
   /** Where new projects are created. Projects are discovered vault-wide, wherever they live. */
   projectsFolder: string
@@ -314,8 +273,6 @@ export interface PMSettings {
   priorities: PriorityConfig[]
   /** Icons for priorities that don't carry their own. */
   priorityIcons: PriorityIconSet
-  /** Task properties every project starts with. A project adds to these, or overrides one by id. */
-  customFields: CustomFieldDef[]
   notificationsEnabled: boolean
   notificationLeadDays: number
   /** Days after completion before a task moves to its project's archive. 0 turns it off. */
@@ -362,10 +319,10 @@ export const DEFAULT_STATUSES: StatusConfig[] = [
 ]
 
 export const DEFAULT_PRIORITIES: PriorityConfig[] = [
-  { id: 'critical', label: 'Critical', color: '#c47070', icon: '' },
-  { id: 'high', label: 'High', color: '#b8a06b', icon: '' },
-  { id: 'medium', label: 'Medium', color: '#8a94a0', icon: '' },
-  { id: 'low', label: 'Low', color: '#79b58d', icon: '' }
+  { id: 'yesterday', label: 'yesterday', color: '#c47070', icon: '' },
+  { id: 'high', label: 'high', color: '#b8a06b', icon: '' },
+  { id: 'medium', label: 'medium', color: '#8a94a0', icon: '' },
+  { id: 'low', label: 'low', color: '#79b58d', icon: '' }
 ]
 
 /** The default palettes for a vault that has none yet. */
@@ -374,13 +331,7 @@ export function defaultStatuses(): StatusConfig[] {
 }
 
 export function defaultPriorities(): PriorityConfig[] {
-  const labels: Record<string, string> = {
-    critical: 'Critical',
-    high: 'High',
-    medium: 'Medium',
-    low: 'Low'
-  }
-  return DEFAULT_PRIORITIES.map((priority) => ({ ...priority, label: labels[priority.id] ?? priority.label }))
+  return DEFAULT_PRIORITIES.map((priority) => ({ ...priority }))
 }
 
 export const DEFAULT_SETTINGS: PMSettings = {
@@ -393,7 +344,6 @@ export const DEFAULT_SETTINGS: PMSettings = {
   statuses: DEFAULT_STATUSES,
   priorities: DEFAULT_PRIORITIES,
   priorityIcons: 'chevrons',
-  customFields: [],
   showSubtreeConnections: true,
   lineBorders: 'none',
   showTagColors: true,
@@ -439,7 +389,6 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     tags: [],
     subtasks: [],
     dependencies: [],
-    customFields: {},
     createdAt: now,
     updatedAt: now,
     ...overrides
@@ -460,7 +409,6 @@ export function makeProject(title: string, filePath: string): Project {
     color: DEFAULT_PROJECT_COLOR,
     icon: DEFAULT_PROJECT_ICON,
     tasks: [],
-    customFields: [],
     createdAt: now,
     updatedAt: now,
     filePath,

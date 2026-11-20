@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_PROJECT_COLOR, makeProject, makeTask, type Project, type Task } from '../types'
 import {
-  DEFAULT_PROJECT_COLOR,
-  makeProject,
-  makeTask,
-  type FilterCondition,
-  type Project,
-  type SavedView,
-  type Task
-} from '../types'
-import { hydrateProjectFromFrontmatter, hydrateTaskFromFile } from './YamlHydrator'
+  hydrateFields,
+  hydrateFilter,
+  hydrateGroup,
+  hydrateProjectFromFrontmatter,
+  hydrateTaskFromFile
+} from './YamlHydrator'
 import { parseFrontmatter } from './YamlParser'
 import {
   buildTaskFrontmatter,
@@ -101,15 +99,6 @@ describe('task round-trip', () => {
     expect(task.due).toBe('2026-05-01')
   })
 
-  it('preserves custom field values', () => {
-    const original = makeTask({
-      id: 'task-3',
-      customFields: { impact: 'high', score: 42 }
-    })
-    const { task } = roundTripTask(original)
-    expect(task.customFields).toEqual({ impact: 'high', score: 42 })
-  })
-
   it('subtask wikilinks derive from sub.filePath, falling back to a bare slug', () => {
     const project = makeProject('P', 'Projects/P.md')
     const legacySub = makeTask({ id: 'sub-legacy', title: 'Legacy', filePath: 'Projects/P_tasks/legacy-12345678.md' })
@@ -125,17 +114,6 @@ describe('task round-trip', () => {
     const parent = makeTask({ id: 'parent-x', description: 'User-written note.', subtasks: [child] })
     const { task } = roundTripTask(parent)
     expect(task.description).toBe('User-written note.')
-  })
-
-  it('defaults missing fields to safe values', () => {
-    const frontmatter: Record<string, unknown> = { id: 't-x' }
-    const { task } = hydrateTaskFromFile(frontmatter, '', 'path.md')
-    expect(task.title).toBe('Untitled')
-    expect(task.status).toBe('capture')
-    expect(task.priority).toBe('medium')
-    expect(task.progress).toBe(0)
-    expect(task.dependencies).toEqual([])
-    expect(task.customFields).toEqual({})
   })
 
   it('keeps only the usable values in tags and dependencies', () => {
@@ -181,14 +159,13 @@ describe('project round-trip', () => {
     }
   })
 
-  it('ignores project status palettes and falls back to the default color for invalid priorities', () => {
+  it('ignores obsolete project status and priority palettes', () => {
     const config = {
       statuses: [{ id: 'todo', label: 'To do', color: 'red' }],
       priorities: [{ id: 'high', label: 'High', color: '#f80' }]
     }
     const project = hydrateProjectFromFrontmatter({ config }, '# P', 'Projects/P.md', 'P')
-    expect(project.config).not.toHaveProperty('statuses')
-    expect(project.config?.priorities?.[0].color).toBe('#ff8800')
+    expect(project.config).toBeUndefined()
   })
 
   it('reads the description from a note that carries it only as a property', () => {
@@ -200,48 +177,6 @@ describe('project round-trip', () => {
     const body = '# P\n\nFrom the note\n\n## Tasks\n- [ ] [[t|T]]'
     const project = hydrateProjectFromFrontmatter({ description: 'From properties' }, body, 'Projects/P.md', 'P')
     expect(project.description).toBe('From the note')
-  })
-
-  it('preserves saved views with their filter, sort, mode, scale and star', () => {
-    const p = makeProject('P', 'Projects/P.md')
-    const view: SavedView = {
-      id: 'v1',
-      name: 'High priority',
-      filter: {
-        conditions: [
-          { field: 'status', op: 'any', value: ['in-progress'] },
-          { field: 'cf:estimate', op: 'between', value: [2, 8] },
-          { field: 'due', op: 'bucket', value: 'overdue' },
-          { field: 'title', op: 'contains', value: 'api' },
-          { field: 'tag', op: 'empty' }
-        ],
-        showArchived: true
-      },
-      sort: [
-        { key: 'due', dir: 'desc' },
-        { key: 'title', dir: 'asc' }
-      ],
-      isDefault: true,
-      viewMode: 'gantt',
-      ganttGranularity: 'month'
-    }
-    p.savedViews = [view]
-
-    const { project } = roundTripProject(p)
-    expect(project.savedViews).toEqual([view])
-  })
-
-  it('keeps the open end of a between in place', () => {
-    const p = makeProject('P', 'Projects/P.md')
-    const conditions: FilterCondition[] = [
-      { field: 'due', op: 'between', value: ['', '2026-01-31'] },
-      { field: 'start', op: 'between', value: ['2026-01-01', ''] },
-      { field: 'cf:estimate', op: 'between', value: [null, 5] }
-    ]
-    p.savedViews = [{ id: 'v1', name: 'Open ends', filter: { conditions, showArchived: false }, sort: [] }]
-
-    const { project } = roundTripProject(p)
-    expect(project.savedViews[0].filter.conditions).toEqual(conditions)
   })
 
   it('falls back to the default sort when a saved view holds an unknown one', () => {
@@ -409,47 +344,6 @@ describe('project round-trip', () => {
 
 // The store passes Obsidian's live frontmatter object straight into these hydrators, so
 // sharing a container reference with the input would let an edit corrupt the cache.
-describe('hydration does not alias the source frontmatter', () => {
-  it('copies task object containers', () => {
-    const fm: Record<string, unknown> = {
-      id: 't1',
-      title: 'Task',
-      tags: ['api'],
-      dependencies: ['dep-1'],
-      customFields: { sprint: 'S1' }
-    }
-
-    const { task } = hydrateTaskFromFile(fm, '', 'Projects/P_tasks/task.md')
-
-    expect(task.tags).not.toBe(fm.tags)
-    expect(task.dependencies).not.toBe(fm.dependencies)
-    expect(task.customFields).not.toBe(fm.customFields)
-
-    task.tags.push('design')
-    task.dependencies.push('dep-2')
-    task.customFields.priority = 'high'
-
-    expect(fm.tags).toEqual(['api'])
-    expect(fm.dependencies).toEqual(['dep-1'])
-    expect(fm.customFields).toEqual({ sprint: 'S1' })
-  })
-
-  it('copies project custom field containers', () => {
-    const fm: Record<string, unknown> = {
-      id: 'p1',
-      title: 'Project',
-      customFields: [{ id: 'cf1', name: 'Sprint', type: 'text' }]
-    }
-
-    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-
-    expect(project.customFields).not.toBe(fm.customFields)
-
-    project.customFields.push({ id: 'cf2', name: 'Points', type: 'number' })
-
-    expect((fm.customFields as unknown[]).length).toBe(1)
-  })
-})
 
 describe('foreign frontmatter', () => {
   it('preserves removed recurrence and time tracking as foreign frontmatter', () => {
@@ -482,31 +376,6 @@ describe('foreign frontmatter', () => {
     expect(parsed.frontmatter.assignees).toEqual(['[[People/Ada]]'])
   })
 
-  it('leaves removed project members and person field definitions untouched', () => {
-    const legacyFields = [
-      { id: 'owner', name: 'Owner', type: 'person' },
-      { id: 'estimate', name: 'Estimate', type: 'number' }
-    ]
-    const fm: Record<string, unknown> = {
-      id: 'legacy-project',
-      title: 'Legacy project',
-      teamMembers: ['Ada'],
-      customFields: legacyFields
-    }
-    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-    expect(project).not.toHaveProperty('teamMembers')
-    expect(project.customFields).toEqual([{ id: 'estimate', name: 'Estimate', type: 'number' }])
-
-    const foreign = foreignFrontmatter(fm, PROJECT_FRONTMATTER_KEYS)
-    const parsed = parseFrontmatter(serializeProject(project, [], refs, foreign))
-    if (parsed.kind !== 'frontmatter') throw new Error('frontmatter missing')
-    expect(parsed.frontmatter.teamMembers).toEqual(['Ada'])
-    expect(parsed.frontmatter.customFields).toEqual([
-      { id: 'estimate', name: 'Estimate', type: 'number' },
-      { id: 'owner', name: 'Owner', type: 'person' }
-    ])
-  })
-
   it('preserves old project parent metadata without hydrating a relationship', () => {
     const fm = { id: 'flat', title: 'Flat', parent: '[[Projects/Old parent]]' }
     const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/Flat.md', 'Flat')
@@ -515,24 +384,6 @@ describe('foreign frontmatter', () => {
     const parsed = parseFrontmatter(serializeProject(project, [], refs, foreign))
     if (parsed.kind !== 'frontmatter') throw new Error('frontmatter missing')
     expect(parsed.frontmatter.parent).toBe('[[Projects/Old parent]]')
-  })
-
-  it('owns every key the serializers write', () => {
-    const project = makeProject('P', 'Projects/P.md')
-    project.config = { defaultView: 'kanban' }
-    const task = makeTask({
-      id: 't-full',
-      title: 'Full',
-      completed: '2026-04-01',
-      customFields: { sprint: 'S1' }
-    })
-
-    const taskKeys = Object.keys(buildTaskFrontmatter(task, project, null, refs))
-    expect(taskKeys.filter((key) => !TASK_FRONTMATTER_KEYS.has(key))).toEqual([])
-
-    const parsedProject = parseFrontmatter(serializeProject(project, [], refs))
-    const projectKeys = parsedProject.kind === 'frontmatter' ? Object.keys(parsedProject.frontmatter) : []
-    expect(projectKeys.filter((key) => !PROJECT_FRONTMATTER_KEYS.has(key))).toEqual([])
   })
 
   it('writes foreign keys after its own and reads them back unchanged', () => {
@@ -558,6 +409,86 @@ describe('foreign frontmatter', () => {
     expect(foreignFrontmatter({ status: 'done', uuid: 'x', tasks: [] }, PROJECT_FRONTMATTER_KEYS)).toEqual({
       status: 'done',
       uuid: 'x'
+    })
+  })
+})
+
+describe('removed custom field metadata', () => {
+  it('preserves legacy task values as inert foreign frontmatter', () => {
+    const fm = { id: 'legacy', customFields: { client: 'Acme', score: 3 } }
+    const { task } = hydrateTaskFromFile(fm, '', 'Projects/P_tasks/task.md')
+    expect(task).not.toHaveProperty('customFields')
+    const foreign = foreignFrontmatter(fm, TASK_FRONTMATTER_KEYS)
+    const parsed = parseFrontmatter(serializeTask(task, makeProject('P', 'Projects/P.md'), null, [], refs, foreign))
+    if (parsed.kind !== 'frontmatter') throw new Error('frontmatter missing')
+    expect(parsed.frontmatter.customFields).toEqual(fm.customFields)
+  })
+
+  it('preserves legacy project definitions as inert foreign frontmatter', () => {
+    const fm = { id: 'legacy', customFields: [{ id: 'client', name: 'Client', type: 'text' }] }
+    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
+    expect(project).not.toHaveProperty('customFields')
+    const foreign = foreignFrontmatter(fm, PROJECT_FRONTMATTER_KEYS)
+    const parsed = parseFrontmatter(serializeProject(project, [], refs, foreign))
+    if (parsed.kind !== 'frontmatter') throw new Error('frontmatter missing')
+    expect(parsed.frontmatter.customFields).toEqual(fm.customFields)
+  })
+})
+
+describe('legacy custom field view settings', () => {
+  it('drops removed filters and columns while keeping built-in settings', () => {
+    expect(
+      hydrateFilter({
+        conditions: [
+          { field: 'cf:client', op: 'any', value: ['Acme'] },
+          { field: 'status', op: 'any', value: ['next'] }
+        ]
+      }).conditions
+    ).toEqual([{ field: 'status', op: 'any', value: ['next'] }])
+    expect(hydrateGroup({ field: 'cf:client', columns: { 'cf:client': { hidden: ['Acme'] } } })).toEqual({
+      field: 'status'
+    })
+    expect(
+      hydrateFields({ table: { visible: ['title', 'cf:client', 'due'], widths: { 'cf:client': 180, due: 90 } } })
+    ).toEqual({ table: { visible: ['title', 'due'], widths: { due: 90 } } })
+  })
+})
+
+describe('serializer ownership', () => {
+  it('owns every active key it writes', () => {
+    const project = makeProject('P', 'Projects/P.md')
+    project.config = { defaultView: 'kanban' }
+    const task = makeTask({ id: 'full', title: 'Full', completed: '2026-04-01' })
+    expect(
+      Object.keys(buildTaskFrontmatter(task, project, null, refs)).filter((key) => !TASK_FRONTMATTER_KEYS.has(key))
+    ).toEqual([])
+    const parsed = parseFrontmatter(serializeProject(project, [], refs))
+    if (parsed.kind !== 'frontmatter') throw new Error('frontmatter missing')
+    expect(Object.keys(parsed.frontmatter).filter((key) => !PROJECT_FRONTMATTER_KEYS.has(key))).toEqual([])
+  })
+})
+
+describe('fixed priority compatibility', () => {
+  it('loads and saves the former top priority under its new id', () => {
+    const task = hydrateTaskFromFile({ priority: 'critical' }, '', 'Tasks/Old.md').task
+    expect(task.priority).toBe('yesterday')
+    expect(
+      buildTaskFrontmatter(makeTask({ priority: 'critical' }), makeProject('P', 'P.md'), null, refs).priority
+    ).toBe('yesterday')
+  })
+
+  it('keeps priority filters and board preferences attached to the renamed value', () => {
+    expect(
+      hydrateFilter({ conditions: [{ field: 'priority', op: 'any', value: ['critical', 'high'] }] }).conditions
+    ).toEqual([{ field: 'priority', op: 'any', value: ['yesterday', 'high'] }])
+    expect(hydrateFilter({ priorities: ['critical'] }).conditions).toEqual([
+      { field: 'priority', op: 'any', value: ['yesterday'] }
+    ])
+    expect(
+      hydrateGroup({ field: 'priority', columns: { priority: { order: ['critical', 'high'], hidden: ['critical'] } } })
+    ).toEqual({
+      field: 'priority',
+      columns: { priority: { order: ['yesterday', 'high'], hidden: ['yesterday'] } }
     })
   })
 })

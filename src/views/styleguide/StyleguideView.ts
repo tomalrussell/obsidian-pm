@@ -2,14 +2,10 @@ import { ButtonComponent, ItemView, WorkspaceLeaf } from 'obsidian'
 import type PMPlugin from '#main'
 import { renderPanelSections } from './panelSections'
 import {
-  type PriorityConfig,
-  type PriorityIconSet,
   type Task,
   DEFAULT_PRIORITIES,
   DEFAULT_STATUSES,
-  PRIORITY_ICON_SETS,
   PROJECT_LIST_FIELDS,
-  priorityIconSetLabels,
   makeDefaultFilter,
   makeTask
 } from '@dotpm/core'
@@ -21,8 +17,6 @@ import {
   renderNoteLink,
   renderProjectChip,
   ActionsCell,
-  CustomFieldCell,
-  type CustomFieldValue,
   DueDateCell,
   ExpandCell,
   PriorityCell,
@@ -35,8 +29,6 @@ import {
   ProjectRow,
   TaskRow,
   renderAddButton,
-  customFieldTypeLabels,
-  renderCustomFieldListEditor,
   renderAddProperty,
   renderDepRow,
   renderDateControl,
@@ -74,12 +66,6 @@ export const PM_STYLEGUIDE_VIEW_TYPE = 'pm-styleguide'
 
 const noop = (): void => undefined
 const noopAsync = (): Promise<void> => Promise.resolve()
-/** Five ranks, so every icon of a set shows. */
-const FIVE_PRIORITIES: PriorityConfig[] = [
-  ...DEFAULT_PRIORITIES,
-  { id: 'trivial', label: 'Trivial', color: '#6ba8a0', icon: '' }
-]
-
 /**
  * Gallery of every primitive and composite variant, in a real pane so the CSS cascade is
  * the one users get. Mock data only. Compiled in only when `__STYLEGUIDE__` is true.
@@ -122,7 +108,6 @@ export class StyleguideView extends ItemView {
     this.group('Shared widgets')
     this.renderBadges()
     this.renderForm()
-    this.renderCustomFieldEditor()
     this.group('Composites')
     this.renderDerivedChips()
     this.renderProjectRows()
@@ -321,11 +306,9 @@ export class StyleguideView extends ItemView {
     for (const status of DEFAULT_STATUSES) {
       renderStatusBadge(statusRow, makeTask({ status: status.id }), DEFAULT_STATUSES, noop)
     }
-    for (const iconSet of Object.keys(PRIORITY_ICON_SETS) as PriorityIconSet[]) {
-      const prioRow = this.row(sec, `renderPriorityBadge (${priorityIconSetLabels()[iconSet]})`)
-      for (const priority of FIVE_PRIORITIES) {
-        renderPriorityBadge(prioRow, makeTask({ priority: priority.id }), FIVE_PRIORITIES, iconSet, noop)
-      }
+    const prioRow = this.row(sec, 'renderPriorityBadge')
+    for (const priority of DEFAULT_PRIORITIES) {
+      renderPriorityBadge(prioRow, makeTask({ priority: priority.id }), DEFAULT_PRIORITIES, 'chevrons', noop)
     }
     const dotRow = this.row(sec, 'renderStatusDot')
     for (const status of DEFAULT_STATUSES) {
@@ -335,26 +318,6 @@ export class StyleguideView extends ItemView {
     renderTagChip(tagRow, 'design', false)
     renderTagChip(tagRow, 'design', true)
     renderTagChip(tagRow, 'backend', true)
-  }
-
-  private renderCustomFieldEditor(): void {
-    const sec = this.section('CustomFieldListEditor', 'custom-fields')
-    const inherited = this.row(sec, 'an inherited row, as the project edit page draws it')
-    const inheritedRow = inherited.createDiv('pm-cf-row pm-cf-row--inherited')
-    inheritedRow.createSpan({ cls: 'pm-cf-name', text: 'Client' })
-    inheritedRow.createSpan({ cls: 'pm-cf-type', text: customFieldTypeLabels().text })
-    inheritedRow.createSpan({ cls: 'pm-cf-source', text: 'from Platform' })
-    new IconButton(inheritedRow).setIcon('eye').setTooltip('Hide on this project').onClick(noop)
-    new IconButton(inheritedRow).setIcon('pencil').setTooltip('Override on this project').onClick(noop)
-
-    const editable = this.row(sec, 'renderCustomFieldListEditor: text and select')
-    renderCustomFieldListEditor(editable.createDiv('pm-cf-list'), {
-      fields: [
-        { id: 'cf-sprint', name: 'Sprint', type: 'text' },
-        { id: 'cf-stage', name: 'Stage', type: 'select', options: ['Draft', 'Review'] }
-      ],
-      onChanged: noop
-    })
   }
 
   private renderForm(): void {
@@ -538,18 +501,17 @@ export class StyleguideView extends ItemView {
       onDragEnd: noop
     })
     new KanbanCard(kanbanRow, {
-      fields: ['priority', 'description', 'tags', 'progress', 'cf:client', 'project', 'due'],
+      fields: ['priority', 'description', 'tags', 'progress', 'project', 'due'],
       task: makeTask({
         title: 'Ship the redesign',
         type: 'milestone',
-        priority: 'critical',
+        priority: 'yesterday',
         due: '2026-06-20',
         tags: ['design', 'frontend']
       }),
       priorityColor: '#c47070',
       descriptionPreview: 'Everything that must land before the announcement goes out.',
       parentTitle: 'Website relaunch',
-      customValues: { 'cf:client': { name: 'Client', text: 'Acme' } },
       renderSource: (el) => renderProjectChip(el, { title: 'Platform', color: '#7a9ec4', onClick: noop }),
       overdue: true,
       showTagColors: true,
@@ -644,12 +606,11 @@ export class StyleguideView extends ItemView {
         conditions: [
           { field: 'status', op: 'any', value: ['capture', 'in-progress'] },
           { field: 'due', op: 'bucket', value: 'this-week' },
-          { field: 'cf:estimate', op: 'between', value: [2, 8] },
           { field: 'tag', op: 'none', value: ['design'] }
         ]
       },
       tasks: [makeTask({ tags: ['design'] })],
-      ctx: { statuses: DEFAULT_STATUSES, customFields: [{ id: 'estimate', name: 'Estimate', type: 'number' }] },
+      ctx: { statuses: DEFAULT_STATUSES },
       priorities: DEFAULT_PRIORITIES,
       priorityIcons: 'chevrons',
       projects: [],
@@ -683,7 +644,7 @@ export class StyleguideView extends ItemView {
     const sec = this.section('Table row and cells', 'table')
     sec.createDiv({
       cls: 'pm-sg-caption',
-      text: 'TaskRow + one of each cell composite, with TitleCell tree connectors. ProjectCell only appears when a view covers several projects. CustomFieldCell takes plain text, or the links a value names.'
+      text: 'TaskRow + one of each cell composite, with TitleCell tree connectors. ProjectCell only appears when a view covers several projects.'
     })
     const table = sec.createEl('table', { cls: 'pm-table' })
     const tbody = table.createEl('tbody')
@@ -692,7 +653,6 @@ export class StyleguideView extends ItemView {
       props: { depth: number; isDone: boolean; isSelected: boolean }
       tree: { guides: boolean[]; isLastChild: boolean }
       urgency: 'normal' | 'near' | 'overdue'
-      custom: CustomFieldValue
     }[] = [
       {
         task: makeTask({
@@ -705,38 +665,34 @@ export class StyleguideView extends ItemView {
         }),
         props: { depth: 0, isDone: false, isSelected: false },
         tree: { guides: [], isLastChild: false },
-        urgency: 'normal',
-        custom: { kind: 'links', links: [{ name: 'Ada Lovelace', onClick: noop }] }
+        urgency: 'normal'
       },
       {
         task: makeTask({
           title: 'Fix the overdue banner',
           status: 'next',
-          priority: 'critical',
+          priority: 'yesterday',
           due: '2026-06-20',
           progress: 20
         }),
         props: { depth: 1, isDone: false, isSelected: true },
         tree: { guides: [false], isLastChild: false },
-        urgency: 'overdue',
-        custom: { kind: 'links', links: [{ name: 'Missing Person', unresolved: true }] }
+        urgency: 'overdue'
       },
       {
         task: makeTask({ title: 'Sweep the leftover copy', status: 'someday', priority: 'low' }),
         props: { depth: 2, isDone: false, isSelected: false },
         tree: { guides: [true, false], isLastChild: true },
-        urgency: 'normal',
-        custom: { kind: 'text', text: 'Rim road' }
+        urgency: 'normal'
       },
       {
         task: makeTask({ title: 'Archive old sprints', status: 'done', progress: 100 }),
         props: { depth: 1, isDone: true, isSelected: false },
         tree: { guides: [false], isLastChild: true },
-        urgency: 'normal',
-        custom: { kind: 'checkbox', checked: true }
+        urgency: 'normal'
       }
     ]
-    for (const { task, props, tree, urgency, custom } of rows) {
+    for (const { task, props, tree, urgency } of rows) {
       const tr = new TaskRow(tbody, {
         taskId: task.id,
         depth: props.depth,
@@ -761,7 +717,6 @@ export class StyleguideView extends ItemView {
       new PriorityCell(tr.el, { task, priorities: DEFAULT_PRIORITIES, priorityIcons: 'chevrons', onChange: noop })
       new DueDateCell(tr.el, { task, urgency, onSave: noopAsync })
       new ProgressCell(tr.el, { value: task.progress, color: 'var(--interactive-accent)', onSave: noopAsync })
-      new CustomFieldCell(tr.el, custom)
       new ActionsCell(tr.el, { onClick: noop })
     }
   }

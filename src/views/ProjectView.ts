@@ -548,7 +548,7 @@ export class ProjectView extends ItemView {
     }
     state.setTitle(`No tasks match these filters`)
     if (best) {
-      const label = filterFieldLabel(conditions[best.index].field, ctx.customFields)
+      const label = filterFieldLabel(conditions[best.index].field)
       state
         .setBody(
           best.shown === 1
@@ -943,7 +943,7 @@ export class ProjectView extends ItemView {
       !!this.group.hideEmpty ||
       !!columns?.hidden?.length ||
       !!columns?.order?.length
-    return changed ? filterFieldLabel(field, setup.ctx.customFields) : ''
+    return changed ? filterFieldLabel(field) : ''
   }
 
   private groupSetup() {
@@ -970,7 +970,7 @@ export class ProjectView extends ItemView {
     const setup = this.groupSetup()
     if (!setup) return null
     return {
-      fields: groupableFields(setup).map((id) => ({ id, label: filterFieldLabel(id, setup.ctx.customFields) })),
+      fields: groupableFields(setup).map((id) => ({ id, label: filterFieldLabel(id) })),
       group: this.group,
       field: () => boardField(setup, this.group),
       columns: () => this.boardColumnsNow(),

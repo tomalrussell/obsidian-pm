@@ -42,13 +42,8 @@ const noopAsync = (): Promise<void> => Promise.resolve()
 const TASKS = [
   makeTask({ id: 'a', status: 'capture', priority: 'high', tags: ['design'] }),
   makeTask({ id: 'b', status: 'capture', priority: 'medium', tags: ['web'] }),
-  makeTask({ id: 'c', status: 'in-progress', priority: 'high', customFields: { client: 'Acme' } }),
-  makeTask({ id: 'd', status: 'done', priority: 'low', due: '2030-01-01', customFields: { estimate: 3 } })
-]
-
-const CUSTOM_FIELDS = [
-  { id: 'estimate', name: 'Estimate', type: 'number' as const },
-  { id: 'client', name: 'Client', type: 'select' as const, options: ['Acme', 'Globex'] }
+  makeTask({ id: 'c', status: 'in-progress', priority: 'high' }),
+  makeTask({ id: 'd', status: 'done', priority: 'low', due: '2030-01-01' })
 ]
 
 /** A fresh setup per panel, since every panel edits its filter in place. */
@@ -56,7 +51,7 @@ function setupWith(conditions: FilterCondition[]): FilterSetup {
   return {
     filter: { conditions, showArchived: false },
     tasks: TASKS,
-    ctx: { statuses: DEFAULT_STATUSES, customFields: CUSTOM_FIELDS },
+    ctx: { statuses: DEFAULT_STATUSES },
     priorities: DEFAULT_PRIORITIES,
     priorityIcons: 'chevrons',
     projects: []
@@ -83,17 +78,14 @@ export function renderPanelSections({ section, row }: GalleryLayout): void {
   renderFilterPanel(frame(filterRow, 300), setupWith([{ field: 'status', op: 'any', value: ['capture'] }]), noop, 0)
   renderFilterPanel(
     frame(filterRow, 300),
-    setupWith([
-      { field: 'status', op: 'any', value: ['capture', 'in-progress'] },
-      { field: 'cf:estimate', op: 'between', value: [2, 8] }
-    ]),
+    setupWith([{ field: 'status', op: 'any', value: ['capture', 'in-progress'] }]),
     noop,
     'list'
   )
-  const rangeRow = row(filter, 'a number range and a date range with an open end')
+  const rangeRow = row(filter, 'date ranges with open start and end dates')
   renderFilterPanel(
     frame(rangeRow, 300),
-    setupWith([{ field: 'cf:estimate', op: 'between', value: [null, 5] }]),
+    setupWith([{ field: 'due', op: 'between', value: ['', '2030-01-31'] }]),
     noop,
     0
   )
@@ -123,7 +115,7 @@ export function renderPanelSections({ section, row }: GalleryLayout): void {
   const groupSetup = setupWith([])
   const groupState: GroupState = { field: 'status', columns: { status: { hidden: ['done'] } } }
   renderGroupPanel(frame(groupRow, 300), {
-    fields: groupableFields(groupSetup).map((id) => ({ id, label: filterFieldLabel(id, CUSTOM_FIELDS) })),
+    fields: groupableFields(groupSetup).map((id) => ({ id, label: filterFieldLabel(id) })),
     group: groupState,
     field: () => boardField(groupSetup, groupState),
     columns: () => boardColumns(groupSetup, groupState, TASKS),
@@ -132,9 +124,9 @@ export function renderPanelSections({ section, row }: GalleryLayout): void {
 
   const fields = section('Fields panel', 'panel-fields')
   const fieldsRow = row(fields, 'table columns with widths / board card')
-  const catalog = { customFields: CUSTOM_FIELDS, multi: false }
+  const catalog = { multi: false }
   const tableFields: ViewFields = {
-    table: { visible: ['title', 'status', 'due', 'cf:estimate'], widths: { due: 120 } }
+    table: { visible: ['title', 'status', 'due'], widths: { due: 120 } }
   }
   renderFieldsPanel(frame(fieldsRow, 320), { mode: 'table', fields: tableFields, catalog, onChange: noop })
   renderFieldsPanel(frame(fieldsRow, 320), { mode: 'kanban', fields: {}, catalog, onChange: noop })

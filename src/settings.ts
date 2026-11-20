@@ -1,18 +1,8 @@
-import { App, Notice, PluginSettingTab, Setting, debounce } from 'obsidian'
+import { App, PluginSettingTab, Setting, debounce } from 'obsidian'
 import type { SettingDefinitionItem, SettingDefinitionPage } from 'obsidian'
 import type PMPlugin from './main'
-import {
-  type PMSettings,
-  DEFAULT_PALETTE_COLOR,
-  DEFAULT_SETTINGS,
-  priorityIconSetLabels,
-  makeId,
-  flattenTasks,
-  setDateFormat
-} from '@dotpm/core'
+import { type PMSettings, DEFAULT_SETTINGS, setDateFormat } from '@dotpm/core'
 import { saveShortcutLabel } from './utils'
-import { renderCustomFieldFields, renderCustomFieldOptions } from '@dotpm/ui'
-import { renderPaletteFields } from './ui/PaletteListEditor'
 
 export type { PMSettings }
 export { DEFAULT_SETTINGS }
@@ -114,16 +104,6 @@ export class PMSettingTab extends PluginSettingTab {
             desc: `Set how dates are written, using tokens such as YYYY, MM, DD, MMM and ddd. Leave it empty for the default format.`,
             aliases: ['appearance', 'date', 'moment'],
             control: { type: 'text', key: 'dateFormat', placeholder: 'YYYY-MM-DD' }
-          },
-          {
-            name: `Priority icons`,
-            desc: `Choose the icons for priorities that have no icon of their own.`,
-            aliases: ['appearance', 'chevrons', 'signal'],
-            control: {
-              type: 'dropdown',
-              key: 'priorityIcons',
-              options: priorityIconSetLabels()
-            }
           }
         ]
       },
@@ -254,11 +234,6 @@ export class PMSettingTab extends PluginSettingTab {
             }
           }
         ]
-      },
-      {
-        type: 'group',
-        heading: `Task fields`,
-        items: [this.prioritiesPage(), this.customFieldsPage()]
       }
     ]
   }
@@ -273,96 +248,6 @@ export class PMSettingTab extends PluginSettingTab {
     if (key === 'dateFormat') setDateFormat(this.plugin.settings.dateFormat)
     this.plugin.refreshViews()
     this.refreshDomState()
-  }
-
-  private customFieldsPage(): SettingDefinitionPage {
-    const fields = this.plugin.settings.customFields
-    return {
-      type: 'page',
-      name: `Custom fields`,
-      desc: `Manage the extra task properties available across all projects.`,
-      displayValue: () =>
-        this.plugin.settings.customFields.length === 1
-          ? `${this.plugin.settings.customFields.length} field`
-          : `${this.plugin.settings.customFields.length} fields`,
-      items: [
-        {
-          type: 'list',
-          heading: `Custom fields`,
-          emptyState: `No custom fields.`,
-          items: fields.map((field) => ({
-            name: field.name,
-            render: (setting: Setting) => {
-              setting.setClass('pm-palette-row')
-              setting.setClass('pm-cf-settings-row')
-              renderCustomFieldFields(
-                setting.controlEl,
-                field,
-                () => this.persist(),
-                () => this.update()
-              )
-              renderCustomFieldOptions(setting.controlEl, field, () => this.persist())
-            }
-          })),
-          onReorder: (from, to) => this.reorder(fields, from, to),
-          onDelete: (index) => {
-            fields.splice(index, 1)
-            this.persist()
-            this.update()
-          },
-          addItem: {
-            name: `Add custom field`,
-            action: () => {
-              fields.push({ id: makeId(), name: `New field`, type: 'text' })
-              this.persist()
-              this.update()
-            }
-          }
-        }
-      ]
-    }
-  }
-
-  private prioritiesPage(): SettingDefinitionPage {
-    const priorities = this.plugin.settings.priorities
-    return {
-      type: 'page',
-      name: `Priorities`,
-      desc: `Manage the labels, colors, and icons of task priorities.`,
-      displayValue: () =>
-        this.plugin.settings.priorities.length === 1
-          ? `${this.plugin.settings.priorities.length} priority`
-          : `${this.plugin.settings.priorities.length} priorities`,
-      items: [
-        {
-          type: 'list',
-          heading: `Priorities`,
-          emptyState: `No priorities.`,
-          items: priorities.map((priority) => ({
-            name: priority.label,
-            render: (setting: Setting) => {
-              setting.setClass('pm-palette-row')
-              renderPaletteFields(setting.controlEl, priority, () => this.persist())
-            }
-          })),
-          onReorder: (from, to) => this.reorder(priorities, from, to),
-          onDelete: (index) => this.deleteEntry('priority', index),
-          addItem: {
-            name: `Add priority`,
-            action: () => {
-              priorities.push({
-                id: 'priority-' + makeId().slice(0, 6),
-                label: `New priority`,
-                color: DEFAULT_PALETTE_COLOR,
-                icon: ''
-              })
-              this.persist()
-              this.update()
-            }
-          }
-        }
-      ]
-    }
   }
 
   private excludedFoldersPage(): SettingDefinitionPage {
@@ -418,56 +303,5 @@ export class PMSettingTab extends PluginSettingTab {
   private persist(): void {
     void this.plugin.saveSettings()
     this.plugin.refreshViews()
-  }
-
-  private reorder<T>(items: T[], from: number, to: number): void {
-    const [moved] = items.splice(from, 1)
-    items.splice(to, 0, moved)
-    this.persist()
-    this.update()
-  }
-
-  private deleteEntry(field: 'priority', index: number): void {
-    const entries = this.plugin.settings.priorities
-    if (entries.length <= 1) {
-      new Notice(`You must have at least one priority.`)
-      return
-    }
-    const [removed] = entries.splice(index, 1)
-    this.persist()
-    this.update()
-    void this.remapOrphanTasks(field, removed.id, removed.label)
-  }
-
-  private async remapOrphanTasks(field: 'priority', deletedId: string, deletedLabel: string): Promise<void> {
-    const configs = this.plugin.settings.priorities
-    if (configs.length === 0) return
-    const fallback = configs[0]
-    // Only projects the index says still use the deleted value are worth loading.
-    const affected = this.plugin.index
-      .projectRefs(true)
-      .filter((ref) => this.plugin.index.taskRefs(ref.path).some((task) => task[field] === deletedId))
-      .map((ref) => ref.path)
-    const projects = await this.plugin.store.loadProjects(affected)
-    let remapped = 0
-    for (const project of projects) {
-      // A project defining this status or priority itself is unaffected by a global delete.
-      const own = project.config?.priorities
-      if (own?.some((entry) => entry.id === deletedId)) continue
-      const ids = flattenTasks(project.tasks)
-        .filter(({ task }) => task[field] === deletedId)
-        .map(({ task }) => task.id)
-      if (ids.length) {
-        await this.plugin.store.updateTasks(project, ids, { [field]: fallback.id })
-        remapped += ids.length
-      }
-    }
-    if (remapped > 0) {
-      new Notice(
-        remapped === 1
-          ? `Remapped ${remapped} task from '${deletedLabel}' to '${fallback.label}'.`
-          : `Remapped ${remapped} tasks from '${deletedLabel}' to '${fallback.label}'.`
-      )
-    }
   }
 }

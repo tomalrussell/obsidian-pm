@@ -92,7 +92,7 @@ export class FilterBar {
   }
 
   private renderChips(): void {
-    const { filter, ctx } = this.props
+    const { filter } = this.props
     filter.conditions.forEach((condition, index) => {
       let chip = this.chips[index]
       if (!chip) {
@@ -105,10 +105,10 @@ export class FilterBar {
         this.chipsEl.insertBefore(chip.el, this.archivedChip.el)
         this.chips.push(chip)
       }
-      const label = filterFieldLabel(condition.field, ctx.customFields)
+      const label = filterFieldLabel(condition.field)
       const { op, value } = describeCondition(this.props, condition)
       chip
-        .setField(label, filterFieldIcon(condition.field, ctx.customFields))
+        .setField(label, filterFieldIcon(condition.field))
         .setOperator(op)
         .setValue(value)
         .setRemoveLabel(`Remove ${label} filter`)

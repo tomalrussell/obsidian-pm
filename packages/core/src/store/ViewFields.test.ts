@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CustomFieldDef, ViewFields } from '../types'
+import type { ViewFields } from '../types'
 import {
   availableFields,
   columnWidth,
@@ -12,19 +12,16 @@ import {
   withFieldShown
 } from './ViewFields'
 
-const client: CustomFieldDef = { id: 'client', name: 'Client', type: 'text' }
-const one = { customFields: [client], multi: false }
-const many = { customFields: [client], multi: true }
+const one = { multi: false }
+const many = { multi: true }
 
 describe('view fields', () => {
   it('offers the project only while a view spans projects', () => {
     expect(availableFields('table', one)).not.toContain('project')
     expect(availableFields('table', many)).toContain('project')
-    expect(availableFields('table', one).at(-1)).toBe('cf:client')
   })
 
   it('shows custom fields by default in a table only', () => {
-    expect(defaultFields('table', one)).toContain('cf:client')
     expect(defaultFields('kanban', one)).not.toContain('cf:client')
     expect(defaultFields('kanban', one)).not.toContain('description')
     expect(defaultFields('gantt', one)).toEqual(['title'])
@@ -33,7 +30,7 @@ describe('view fields', () => {
   it('keeps the title first and drops fields that no longer exist', () => {
     const fields: ViewFields = { table: { visible: ['due', 'cf:gone', 'title', 'status'] } }
     expect(shownFields(fields, 'table', one)).toEqual(['title', 'due', 'status'])
-    expect(hiddenFields(fields, 'table', one)).toEqual(['priority', 'progress', 'cf:client'])
+    expect(hiddenFields(fields, 'table', one)).toEqual(['priority', 'progress'])
   })
 
   it('keeps the title in a table even when every field is hidden', () => {
@@ -45,7 +42,6 @@ describe('view fields', () => {
     const fields: ViewFields = { table: { visible: ['title', 'due'], widths: { due: 80 } } }
     expect(columnWidth(fields, 'due')).toBe(80)
     expect(columnWidth(fields, 'status')).toBe(130)
-    expect(columnWidth(fields, 'cf:client')).toBe(120)
     expect(columnWidth(fields, 'title')).toBeUndefined()
   })
 
@@ -72,9 +68,8 @@ describe('view fields', () => {
     expect(shownFields(legacyBoardFields(false, true), 'kanban', one)).not.toContain('subtasks')
   })
 
-  it('names custom fields by their name', () => {
-    expect(viewFieldLabel('cf:client', [client])).toBe('Client')
-    expect(viewFieldLabel('due', [])).toBe('Due')
+  it('names built-in fields', () => {
+    expect(viewFieldLabel('due')).toBe('Due')
   })
 })
 

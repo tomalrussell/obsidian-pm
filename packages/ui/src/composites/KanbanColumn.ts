@@ -2,7 +2,7 @@ import { setIcon } from '#platform'
 import type { Task } from '@dotpm/core'
 import { formatBadgeText, isIconName } from '#icons'
 import { safeAsync } from '#dom'
-import { KanbanCard, type CardFieldValue } from './KanbanCard'
+import { KanbanCard } from './KanbanCard'
 
 /** What a column stands for: a status, a priority, a tag... */
 export interface KanbanColumnHead {
@@ -17,7 +17,6 @@ export interface KanbanCardData {
   priorityColor?: string
   descriptionPreview?: string
   parentTitle?: string
-  customValues?: Record<string, CardFieldValue>
   renderSource?: (parent: HTMLElement) => void
   overdue: boolean
   showTagColors: boolean
@@ -77,7 +76,6 @@ export class KanbanColumn {
         priorityColor: card.priorityColor,
         descriptionPreview: card.descriptionPreview,
         parentTitle: card.parentTitle,
-        customValues: card.customValues,
         renderSource: card.renderSource,
         overdue: card.overdue,
         showTagColors: card.showTagColors,

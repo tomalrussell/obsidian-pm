@@ -1,5 +1,4 @@
-import { type CustomFieldDef, type Task, flattenTasks, formatDateLong, stringifyCustomValue } from '@dotpm/core'
-import type { CardFieldValue } from '../composites/KanbanCard'
+import { type Task, flattenTasks } from '@dotpm/core'
 
 /** The tasks a board deals cards for: the top-level ones, or every task once subtasks get cards of their own. */
 export function boardCandidates(tasks: Task[], fields: string[]): Task[] {
@@ -17,29 +16,4 @@ export function descriptionPreview(markdown: string): string | undefined {
     .replace(/\s+/g, ' ')
     .trim()
   return text ? text.slice(0, 240) : undefined
-}
-
-/** The custom fields among `fields`, as the card shows them. */
-export function cardCustomValues(
-  task: Task,
-  customFields: CustomFieldDef[],
-  fields: string[]
-): Record<string, CardFieldValue> {
-  const values: Record<string, CardFieldValue> = {}
-  for (const cf of customFields) {
-    const id = `cf:${cf.id}`
-    const raw = task.customFields[cf.id]
-    if (!fields.includes(id) || raw === undefined || raw === null || raw === '') continue
-    const list = (Array.isArray(raw) ? raw : [raw]).map(stringifyCustomValue).filter(Boolean)
-    const text =
-      cf.type === 'checkbox'
-        ? raw === true
-          ? 'Yes'
-          : ''
-        : cf.type === 'date'
-          ? list.map((value) => formatDateLong(value) || value).join(', ')
-          : list.map((value) => value.replace(/^\[\[(?:[^|\]]*\|)?([^\]]*)\]\]$/, '$1')).join(', ')
-    if (text) values[id] = { name: cf.name, text }
-  }
-  return values
 }

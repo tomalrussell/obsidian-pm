@@ -62,7 +62,7 @@ export function renderFieldsPanel(parent: HTMLElement, props: FieldsPopoverProps
     props.onChange()
   }
 
-  const label = (id: string): string => viewFieldLabel(id, catalog.customFields)
+  const label = (id: string): string => viewFieldLabel(id)
   const toggle = (id: string): void => {
     const shown = shownFields(fields, mode, catalog)
     list().visible = shown.includes(id)

@@ -5,7 +5,6 @@ import {
   DEFAULT_STATUSES,
   makeDefaultFilter,
   makeTask,
-  type CustomFieldDef,
   type GroupState,
   type SortRule,
   type FilterState,
@@ -37,11 +36,6 @@ import { ViewHeader } from './ViewHeader'
 
 function noop(): void {}
 
-const FIELDS: CustomFieldDef[] = [
-  { id: 'estimate', name: 'Estimate', type: 'number' },
-  { id: 'secret', name: 'Secret', type: 'text', filterable: false }
-]
-
 const TASKS = [
   makeTask({ id: 'a', status: 'capture' }),
   makeTask({ id: 'b', status: 'capture' }),
@@ -52,7 +46,7 @@ function setupFor(filter: FilterState): FilterSetup {
   return {
     filter,
     tasks: TASKS,
-    ctx: { statuses: DEFAULT_STATUSES, customFields: FIELDS },
+    ctx: { statuses: DEFAULT_STATUSES },
     priorities: DEFAULT_PRIORITIES,
     priorityIcons: 'chevrons',
     projects: []
@@ -123,25 +117,18 @@ describe('FilterBar', () => {
       conditions: [
         { field: 'status', op: 'any', value: ['capture', 'next'] },
         { field: 'due', op: 'bucket', value: 'overdue' },
-        { field: 'cf:estimate', op: 'between', value: [2, 8] },
         { field: 'tag', op: 'empty' }
       ]
     }
     const bar = mountBar(filter)
     const chips = visibleChips(bar)
-    expect(chips.map((chip) => chip.find('.pm-filter-chip-op')?.textContent)).toEqual([
-      'is any of',
-      'is',
-      'is between',
-      'is empty'
-    ])
+    expect(chips.map((chip) => chip.find('.pm-filter-chip-op')?.textContent)).toEqual(['is any of', 'is', 'is empty'])
     expect(chips.map((chip) => chip.find('.pm-filter-chip-value')?.textContent)).toEqual([
       `${DEFAULT_STATUSES[0].label}, ${DEFAULT_STATUSES[1].label}`,
       'Overdue',
-      '2 to 8',
       ''
     ])
-    expect(chips[3].find('.pm-filter-chip-value')?.hasClass('pm-hidden')).toBe(true)
+    expect(chips[2].find('.pm-filter-chip-value')?.hasClass('pm-hidden')).toBe(true)
     expect(bar.el.find('.pm-filter-bar-summary')?.textContent).toBe('1 of 3 shown')
   })
 
@@ -168,20 +155,10 @@ describe('FilterBar', () => {
     expect(onChange).toHaveBeenCalledTimes(2)
   })
 
-  it('offers the built-in fields and every custom field not opted out', () => {
+  it('offers the built-in fields', () => {
     mountBar(makeDefaultFilter()).openPicker()
     const labels = document.body.findAll('.pm-filter-pop .pm-pop-item-label').map((el) => el.textContent)
-    expect(labels).toEqual([
-      'Status',
-      'Priority',
-      'Tag',
-      'Due date',
-      'Start date',
-      'Type',
-      'Title',
-      'Estimate',
-      'Include archived'
-    ])
+    expect(labels).toEqual(['Status', 'Priority', 'Tag', 'Due date', 'Start date', 'Type', 'Title', 'Include archived'])
   })
 
   it('adds a condition from the value list, with counts that leave archived tasks out', () => {
@@ -553,7 +530,7 @@ describe('group popover', () => {
 })
 
 describe('fields popover', () => {
-  const catalog = { customFields: [{ id: 'client', name: 'Client', type: 'text' as const }], multi: false }
+  const catalog = { multi: false }
   const open = (fields: ViewFields, mode: 'table' | 'kanban' = 'table') => {
     const onChange = vi.fn<() => void>()
     openFieldsPopover(document.body.createEl('button'), { mode, fields, catalog, onChange })
@@ -564,7 +541,7 @@ describe('fields popover', () => {
 
   it('lists the table columns with their widths, the title locked', () => {
     open({})
-    expect(labels()).toEqual(['Task', 'Status', 'Priority', 'Due', 'Progress', 'Client'])
+    expect(labels()).toEqual(['Task', 'Status', 'Priority', 'Due', 'Progress'])
     const first = document.body.find('.pm-vis-row')
     expect(first?.find('.pm-vis-lock')).not.toBeNull()
     expect(first?.find('.pm-vis-detail')?.textContent).toBe('fill')
@@ -579,7 +556,7 @@ describe('fields popover', () => {
     expect(document.body.find('.pm-fields-pop .pm-pop-head.pm-pop-section')).not.toBeNull()
     document.body.find('.pm-vis-row.is-hidden')?.querySelector<HTMLButtonElement>('.pm-vis-eye')?.click()
     expect(fields.table).toBeUndefined()
-    expect(labels()).toEqual(['Task', 'Status', 'Priority', 'Due', 'Progress', 'Client'])
+    expect(labels()).toEqual(['Task', 'Status', 'Priority', 'Due', 'Progress'])
     expect(onChange).toHaveBeenCalledTimes(2)
   })
 

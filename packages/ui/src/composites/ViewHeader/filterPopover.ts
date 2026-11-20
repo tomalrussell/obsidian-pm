@@ -12,7 +12,6 @@ import {
   type Task,
   BUILTIN_FILTER_FIELDS,
   OPS_BY_KIND,
-  customFilterField,
   filterFieldIcon,
   filterFieldLabel,
   filterKind,
@@ -55,14 +54,12 @@ const bucketLabel = (bucket: DateBucket): string =>
   })[bucket]
 
 /**
- * The fields the picker offers: the built-in ones, then every custom field not opted out.
+ * The built-in fields the picker offers.
  * Project isn't offered, since the project switcher decides which projects are in view; a
  * project condition a saved view already holds still shows and matches.
  */
-export function offeredFields(setup: FilterSetup): string[] {
-  const builtins = BUILTIN_FILTER_FIELDS.filter((field) => field !== 'project')
-  const custom = setup.ctx.customFields.filter((cf) => cf.filterable !== false).map((cf) => customFilterField(cf.id))
-  return [...builtins, ...custom]
+export function offeredFields(): string[] {
+  return BUILTIN_FILTER_FIELDS.filter((field) => field !== 'project')
 }
 
 export function valueOptions(setup: FilterSetup, field: string): ValueOption[] {
@@ -87,8 +84,6 @@ export function valueOptions(setup: FilterSetup, field: string): ValueOption[] {
       return setup.projects.map((p) => ({ id: p.id, label: p.title, color: p.color }))
   }
   const seen = new Map<string, ValueOption>()
-  const custom = ctx.customFields.find((cf) => customFilterField(cf.id) === field)
-  for (const option of custom?.options ?? []) seen.set(option, { id: option, label: option })
   for (const task of setup.tasks) {
     const value = filterValue(task, field, ctx)
     for (const v of Array.isArray(value) ? value : typeof value === 'string' && value ? [value] : []) {
@@ -97,7 +92,7 @@ export function valueOptions(setup: FilterSetup, field: string): ValueOption[] {
     }
   }
   const options = [...seen.values()]
-  return custom?.options ? options : options.sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : 0))
+  return options.sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : 0))
 }
 
 function opLabel(op: FilterOp, count: number): string {
@@ -116,20 +111,8 @@ function opLabel(op: FilterOp, count: number): string {
       return 'contains'
     case 'not-contains':
       return 'does not contain'
-    case 'eq':
-      return 'equals'
-    case 'ne':
-      return 'does not equal'
-    case 'gte':
-      return 'is at least'
-    case 'lte':
-      return 'is at most'
     case 'between':
       return 'is between'
-    case 'checked':
-      return 'is checked'
-    case 'unchecked':
-      return 'is not checked'
     case 'bucket':
       return 'is'
   }
@@ -143,7 +126,7 @@ function rangeText(from: string, to: string): string {
 /** The operator and value words a chip shows for a condition. */
 export function describeCondition(setup: FilterSetup, condition: FilterCondition): { op: string; value: string } {
   const { value } = condition
-  const values = Array.isArray(value) ? value.map((v) => (v === null ? '' : String(v))) : []
+  const values = Array.isArray(value) ? value : []
   const op = opLabel(condition.op, values.length)
   switch (condition.op) {
     case 'any':
@@ -159,15 +142,9 @@ export function describeCondition(setup: FilterSetup, condition: FilterCondition
     case 'bucket':
       return { op, value: typeof value === 'string' ? bucketLabel(value as DateBucket) : '' }
     case 'between': {
-      const isDate = filterKind(condition.field, setup.ctx.customFields) === 'date'
-      const [from = '', to = ''] = values.map((v) => (isDate && v ? formatDate(v) : v))
+      const [from = '', to = ''] = values.map((v) => (v ? formatDate(v) : v))
       return { op, value: rangeText(from, to) }
     }
-    case 'eq':
-    case 'ne':
-    case 'gte':
-    case 'lte':
-      return { op, value: values[0] ?? '' }
     default:
       return { op, value: '' }
   }
@@ -219,12 +196,12 @@ export function renderFilterPanel(
         .el.addClass('pm-filter-list-remove')
     }
     filter.conditions.forEach((condition, index) => {
-      const label = filterFieldLabel(condition.field, setup.ctx.customFields)
+      const label = filterFieldLabel(condition.field)
       const { op, value } = describeCondition(setup, condition)
       const row = list.createDiv('pm-filter-list-row')
       renderOptionRow(row, {
         label,
-        icon: filterFieldIcon(condition.field, setup.ctx.customFields),
+        icon: filterFieldIcon(condition.field),
         note: `${op} ${value}`.trim(),
         onPick: () => showEditor(index, condition.field, showList)
       })
@@ -271,23 +248,16 @@ export function renderFilterPanel(
     }
     const search = renderPopSearch(body, 'Filter by...', () => renderList())
     const list = body.createDiv('pm-pop-list')
-    const fields = offeredFields(setup)
+    const fields = offeredFields()
     const renderList = (): void => {
       list.empty()
       const q = search.value.trim().toLowerCase()
-      const shown = fields.filter(
-        (field) => !q || filterFieldLabel(field, setup.ctx.customFields).toLowerCase().includes(q)
-      )
-      let headed = false
+      const shown = fields.filter((field) => !q || filterFieldLabel(field).toLowerCase().includes(q))
       for (const field of shown) {
-        if (field.startsWith('cf:') && !headed) {
-          list.createDiv({ cls: 'pm-pop-heading', text: 'Custom fields' })
-          headed = true
-        }
         const index = filter.conditions.findIndex((c) => c.field === field)
         renderOptionRow(list, {
-          label: filterFieldLabel(field, setup.ctx.customFields),
-          icon: filterFieldIcon(field, setup.ctx.customFields),
+          label: filterFieldLabel(field),
+          icon: filterFieldIcon(field),
           selected: index >= 0,
           onPick: () => showEditor(index >= 0 ? index : null, field, () => showFields(back))
         })
@@ -314,7 +284,7 @@ export function renderFilterPanel(
   }
 
   const showEditor = (index: number | null, field: string, back?: () => void): void => {
-    const kind = filterKind(field, setup.ctx.customFields)
+    const kind = filterKind(field)
     if (!kind) return
     let at = index
     const draft: FilterCondition =
@@ -338,7 +308,7 @@ export function renderFilterPanel(
 
     body.empty()
     renderPopHead(body, {
-      title: filterFieldLabel(field, setup.ctx.customFields),
+      title: filterFieldLabel(field),
       variant: 'title',
       back: back && { label: 'Back', onClick: back }
     })
@@ -387,27 +357,21 @@ export function renderFilterPanel(
           input.focus()
           return
         }
-        case 'eq':
-        case 'ne':
-        case 'gte':
-        case 'lte':
         case 'between': {
-          const isDate = kind === 'date'
-          const count = draft.op === 'between' ? 2 : 1
+          const count = 2
           const current = Array.isArray(draft.value) ? draft.value : []
           const row = valueEl.createDiv('pm-filter-pop-range')
           const inputs: HTMLInputElement[] = []
           for (let i = 0; i < count; i++) {
             const input = row.createEl('input', {
-              type: isDate ? 'date' : 'number',
+              type: 'date',
               cls: 'pm-pop-field',
               attr: { placeholder: 'Value' }
             })
-            input.value = current[i] === undefined || current[i] === null ? '' : String(current[i])
+            input.value = current[i] ?? ''
             inputs.push(input)
             input.addEventListener('change', () => {
-              const numbers = inputs.map((el) => (el.value === '' ? null : Number(el.value)))
-              draft.value = isDate ? inputs.map((el) => el.value) : numbers.some((n) => n !== null) ? numbers : []
+              draft.value = inputs.map((el) => el.value)
               commit()
             })
           }

@@ -1,9 +1,7 @@
 import {
-  type CustomFieldDef,
   type FieldCatalog,
   type FilterContext,
   type FilterState,
-  type PriorityConfig,
   type Project,
   type ResolvedProjectConfig,
   type Task,
@@ -51,19 +49,6 @@ export function resolveScopePaths(spec: ScopeSpec, index: VaultIndex): string[] 
 /** A single selection is a project; multiple selections are an explicit set. */
 export function selectionSpec(paths: string[]): ScopeSpec {
   return paths.length === 1 ? { kind: 'project', path: paths[0] } : { kind: 'picked', paths }
-}
-
-function unionById<T extends { id: string }>(lists: T[][]): T[] {
-  const seen = new Set<string>()
-  const out: T[] = []
-  for (const list of lists) {
-    for (const entry of list) {
-      if (seen.has(entry.id)) continue
-      seen.add(entry.id)
-      out.push(entry)
-    }
-  }
-  return out
 }
 
 /**
@@ -152,17 +137,11 @@ export class ProjectScope {
     return [...groups].map(([project, ids]) => ({ project, taskIds: ids }))
   }
 
-  /** Fixed statuses and merged priorities for displaying all projects in scope. */
+  /** Fixed palettes and behavior settings from the primary project. */
   get config(): ResolvedProjectConfig {
     const primary = this.primary
     if (!primary) throw new Error('ProjectScope.config on an empty scope')
-    const base = this.configOfProject(primary)
-    if (!this.isMulti) return base
-    const configs = this.projects.map((project) => this.configOfProject(project))
-    return {
-      ...base,
-      priorities: unionById<PriorityConfig>(configs.map((c) => c.priorities))
-    }
+    return this.configOfProject(primary)
   }
 
   /** The owning project's resolved config, for anything that decides a task's own state. */
@@ -171,25 +150,15 @@ export class ProjectScope {
     return owner ? this.configOfProject(owner) : this.config
   }
 
-  /**
-   * Columns only, so every project in scope lines up on one header row. Editing a value
-   * asks `configOf` instead, because an overridden field carries its own type and options.
-   */
-  customFields(): CustomFieldDef[] {
-    if (!this.isMulti) return this.primary ? this.configOfProject(this.primary).customFields : []
-    return unionById(this.projects.map((project) => this.configOfProject(project).customFields))
-  }
-
   /** What decides which fields a table, board card or timeline label can show. */
   fieldCatalog(): FieldCatalog {
-    return { customFields: this.customFields(), multi: this.isMulti }
+    return { multi: this.isMulti }
   }
 
   /** What a filter condition needs to match the tasks in scope. */
   filterContext(): FilterContext {
     return {
       statuses: this.config.statuses,
-      customFields: this.customFields(),
       projectOf: (task) => this.projectOf(task.id)?.id
     }
   }

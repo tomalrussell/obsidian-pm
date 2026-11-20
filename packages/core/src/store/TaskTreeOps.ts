@@ -100,8 +100,7 @@ function cloneNode(source: Task, includeSubtasks: boolean, idMap: Map<string, st
     updatedAt: now,
     subtasks: includeSubtasks ? source.subtasks.map((s) => cloneNode(s, true, idMap)) : [],
     dependencies: [...source.dependencies],
-    tags: [...source.tags],
-    customFields: { ...source.customFields }
+    tags: [...source.tags]
   }
 }
 

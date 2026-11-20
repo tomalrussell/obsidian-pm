@@ -334,8 +334,7 @@ export class GanttView implements SubView {
       labelFields: shownFields(this.fields, 'gantt', this.scope.fieldCatalog()).filter((id) => id !== 'title'),
       labelSource: {
         statuses: this.scope.config.statuses,
-        priorities: this.scope.config.priorities,
-        customFields: this.scope.customFields()
+        priorities: this.scope.config.priorities
       },
       flatTasks: this.flatTasks,
       drag: this.drag,

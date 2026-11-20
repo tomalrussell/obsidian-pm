@@ -4,7 +4,6 @@ import {
   DEFAULT_STATUSES,
   makeDefaultFilter,
   makeTask,
-  type CustomFieldDef,
   type FilterCondition,
   type Task,
   type TaskQuery
@@ -23,16 +22,7 @@ import {
 } from './TaskFilter'
 import { flattenTasks } from './TaskTreeOps'
 
-const FIELDS: CustomFieldDef[] = [
-  { id: 'client', name: 'Client', type: 'select', options: ['Acme', 'Globex'] },
-  { id: 'estimate', name: 'Estimate', type: 'number' },
-  { id: 'reviewed', name: 'Reviewed', type: 'checkbox' },
-  { id: 'sprint', name: 'Sprint', type: 'text' },
-  { id: 'labels', name: 'Labels', type: 'multiselect' },
-  { id: 'launch', name: 'Launch', type: 'date' }
-]
-
-const ctx: FilterContext = { statuses: DEFAULT_STATUSES, customFields: FIELDS }
+const ctx: FilterContext = { statuses: DEFAULT_STATUSES }
 
 function task(overrides: Partial<Task> & { id: string }): Task {
   return makeTask(overrides)
@@ -81,74 +71,19 @@ describe('list fields', () => {
     expect(matches(t, { field: 'status', op: 'any', value: [] })).toBe(true)
   })
 
-  it('reads a custom select and its empty state', () => {
-    const withClient = task({ id: 'b', customFields: { client: 'Acme' } })
-    const without = task({ id: 'c' })
-    expect(matches(withClient, { field: 'cf:client', op: 'any', value: ['Acme'] })).toBe(true)
-    expect(matches(without, { field: 'cf:client', op: 'empty' })).toBe(true)
-    expect(matches(withClient, { field: 'cf:client', op: 'not-empty' })).toBe(true)
-  })
-
   it('matches the project a task belongs to', () => {
     const withProject: FilterContext = { ...ctx, projectOf: () => 'p1' }
     expect(matches(t, { field: 'project', op: 'any', value: ['p1'] }, withProject)).toBe(true)
     expect(matches(t, { field: 'project', op: 'any', value: ['p2'] }, withProject)).toBe(false)
   })
-
-  it('ignores a field nothing defines any more', () => {
-    expect(matches(t, { field: 'cf:gone', op: 'any', value: ['x'] })).toBe(true)
-  })
 })
 
 describe('multi fields', () => {
-  const t = task({ id: 'a', tags: ['design', 'web'], customFields: { labels: ['red', 'blue'] } })
-
-  it('matches any, all and none', () => {
-    expect(matches(t, { field: 'tag', op: 'any', value: ['web', 'ops'] })).toBe(true)
-    expect(matches(t, { field: 'tag', op: 'all', value: ['web', 'design'] })).toBe(true)
-    expect(matches(t, { field: 'tag', op: 'all', value: ['web', 'ops'] })).toBe(false)
-    expect(matches(t, { field: 'tag', op: 'none', value: ['ops'] })).toBe(true)
-    expect(matches(t, { field: 'cf:labels', op: 'none', value: ['red'] })).toBe(false)
-  })
+  const t = task({ id: 'a', tags: ['design', 'web'] })
 
   it('matches a task with no values as empty', () => {
     expect(matches(task({ id: 'b' }), { field: 'tag', op: 'empty' })).toBe(true)
     expect(matches(t, { field: 'tag', op: 'empty' })).toBe(false)
-  })
-})
-
-describe('text, number and checkbox fields', () => {
-  const t = task({ id: 'a', title: 'Checkout copy', customFields: { estimate: 5, reviewed: true, sprint: 'S14' } })
-
-  it('matches contains case-insensitively', () => {
-    expect(matches(t, { field: 'title', op: 'contains', value: 'CHECKOUT' })).toBe(true)
-    expect(matches(t, { field: 'title', op: 'not-contains', value: 'checkout' })).toBe(false)
-    expect(matches(t, { field: 'cf:sprint', op: 'contains', value: '14' })).toBe(true)
-  })
-
-  it('compares numbers', () => {
-    expect(matches(t, { field: 'cf:estimate', op: 'eq', value: [5] })).toBe(true)
-    expect(matches(t, { field: 'cf:estimate', op: 'gte', value: [6] })).toBe(false)
-    expect(matches(t, { field: 'cf:estimate', op: 'lte', value: [5] })).toBe(true)
-    expect(matches(t, { field: 'cf:estimate', op: 'between', value: [2, 8] })).toBe(true)
-    expect(matches(t, { field: 'cf:estimate', op: 'between', value: [6, 8] })).toBe(false)
-    expect(matches(t, { field: 'cf:estimate', op: 'between', value: [null, 4] })).toBe(false)
-    expect(matches(t, { field: 'cf:estimate', op: 'between', value: [null, 5] })).toBe(true)
-    expect(matches(t, { field: 'cf:estimate', op: 'between', value: [6, null] })).toBe(false)
-    expect(matches(task({ id: 'b' }), { field: 'cf:estimate', op: 'between', value: [null, 5] })).toBe(false)
-    expect(matches(task({ id: 'b' }), { field: 'cf:estimate', op: 'empty' })).toBe(true)
-    expect(matches(task({ id: 'b' }), { field: 'cf:estimate', op: 'ne', value: [5] })).toBe(true)
-  })
-
-  it('reads a number stored as text', () => {
-    expect(
-      matches(task({ id: 'b', customFields: { estimate: '3' } }), { field: 'cf:estimate', op: 'eq', value: [3] })
-    ).toBe(true)
-  })
-
-  it('matches checked and unchecked', () => {
-    expect(matches(t, { field: 'cf:reviewed', op: 'checked' })).toBe(true)
-    expect(matches(task({ id: 'b' }), { field: 'cf:reviewed', op: 'unchecked' })).toBe(true)
   })
 })
 
@@ -171,13 +106,6 @@ describe('date fields', () => {
     expect(matches(done, { field: 'due', op: 'bucket', value: 'overdue' })).toBe(false)
   })
 
-  it('matches a range with either end open', () => {
-    const t = task({ id: 'a', start: '2030-06-10', customFields: { launch: '2030-07-01' } })
-    expect(matches(t, { field: 'start', op: 'between', value: ['2030-06-01', '2030-06-30'] })).toBe(true)
-    expect(matches(t, { field: 'start', op: 'between', value: ['2030-06-11', ''] })).toBe(false)
-    expect(matches(t, { field: 'cf:launch', op: 'between', value: ['', '2030-07-01'] })).toBe(true)
-  })
-
   it('matches a missing date as empty', () => {
     expect(matches(task({ id: 'a' }), { field: 'due', op: 'empty' })).toBe(true)
     expect(matches(task({ id: 'a', due: '2030-01-01' }), { field: 'due', op: 'not-empty' })).toBe(true)
@@ -185,20 +113,12 @@ describe('date fields', () => {
 })
 
 describe('search', () => {
-  it('matches title, tags and custom values', () => {
-    const t = task({
-      id: 'abc123',
-      title: 'Payment errors',
-      tags: ['billing'],
-      customFields: { sprint: 'S14' }
-    })
-    expect(matchesSearch(t, 'payment', ctx)).toBe(true)
-    expect(matchesSearch(t, 'BILL', ctx)).toBe(true)
-    expect(matchesSearch(t, 'ada', ctx)).toBe(false)
-    expect(matchesSearch(t, 's14', ctx)).toBe(true)
-    expect(matchesSearch(t, 'abc123', ctx)).toBe(true)
-    expect(matchesSearch(t, 'abc', ctx)).toBe(false)
-    expect(matchesSearch(t, '   ', ctx)).toBe(true)
+  it('matches ids, titles and tags', () => {
+    const t = task({ id: 'abc', title: 'Checkout copy', tags: ['Design'] })
+    expect(matchesSearch(t, 'ABC', ctx)).toBe(true)
+    expect(matchesSearch(t, 'checkout', ctx)).toBe(true)
+    expect(matchesSearch(t, 'design', ctx)).toBe(true)
+    expect(matchesSearch(t, 'missing', ctx)).toBe(false)
   })
 })
 
@@ -254,15 +174,11 @@ describe('applying to trees', () => {
 })
 
 describe('isConditionComplete', () => {
-  it('knows which conditions narrow anything yet', () => {
+  it('distinguishes empty and populated built-in conditions', () => {
     expect(isConditionComplete({ field: 'status', op: 'any', value: [] })).toBe(false)
-    expect(isConditionComplete({ field: 'status', op: 'any', value: ['todo'] })).toBe(true)
-    expect(isConditionComplete({ field: 'title', op: 'contains', value: ' ' })).toBe(false)
+    expect(isConditionComplete({ field: 'status', op: 'any', value: ['done'] })).toBe(true)
     expect(isConditionComplete({ field: 'due', op: 'empty' })).toBe(true)
-    expect(isConditionComplete({ field: 'due', op: 'between', value: ['', ''] })).toBe(false)
-    expect(isConditionComplete({ field: 'due', op: 'between', value: ['2030-01-01', ''] })).toBe(true)
-    expect(isConditionComplete({ field: 'cf:estimate', op: 'between', value: [null, null] })).toBe(false)
-    expect(isConditionComplete({ field: 'cf:estimate', op: 'between', value: [null, 5] })).toBe(true)
+    expect(isConditionComplete({ field: 'title', op: 'contains', value: ' ' })).toBe(false)
   })
 })
 

@@ -16,11 +16,7 @@ const ALWAYS_SET = ['status', 'priority', 'type', 'project']
 
 /** The fields a board can put in columns: one value, or several, picked from a list. */
 export function groupableFields(setup: FilterSetup): string[] {
-  const builtins = ['status', 'priority', 'tag', 'type', ...(setup.projects.length > 1 ? ['project'] : [])]
-  const custom = setup.ctx.customFields
-    .filter((cf) => cf.type === 'select' || cf.type === 'multiselect')
-    .map((cf) => `cf:${cf.id}`)
-  return [...builtins, ...custom]
+  return ['status', 'priority', 'tag', 'type', ...(setup.projects.length > 1 ? ['project'] : [])]
 }
 
 /** The field the board groups by: the saved one while this scope offers it, the default otherwise. */
@@ -43,14 +39,14 @@ export function groupValues(task: Task, field: string, setup: FilterSetup): stri
  */
 export function boardColumns(setup: FilterSetup, group: GroupState, tasks: Task[]): BoardColumn[] {
   const field = boardField(setup, group)
-  const kind = filterKind(field, setup.ctx.customFields)
+  const kind = filterKind(field)
   const byKey = new Map<string, BoardColumn>()
   for (const option of valueOptions(setup, field)) {
     byKey.set(option.id, { ...option, tasks: [], hidden: false })
   }
   const none: BoardColumn = {
     id: '',
-    label: `No ${filterFieldLabel(field, setup.ctx.customFields)}`,
+    label: `No ${filterFieldLabel(field)}`,
     tasks: [],
     hidden: false
   }

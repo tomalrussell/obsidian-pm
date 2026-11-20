@@ -4,21 +4,13 @@ import { ProgressBar } from '#primitives/ProgressBar'
 import { renderDueChip } from './dueChip'
 import { renderTagChip } from './tagChip'
 
-/** A custom field's value as a card shows it. */
-export interface CardFieldValue {
-  name: string
-  text: string
-}
-
 export interface KanbanCardProps {
-  /** The card fields to show, in order (`priority`, `tags`, `cf:<id>`...). */
+  /** The card fields to show, in order (`priority`, `tags`...). */
   fields: string[]
   task: Task
   priorityColor?: string
   descriptionPreview?: string
   parentTitle?: string
-  /** Keyed by field id, `cf:<id>`. A field without a value here shows nothing. */
-  customValues?: Record<string, CardFieldValue>
   /** Leading slot in the footer, filled when a card has to say where it is from. */
   renderSource?: (parent: HTMLElement) => void
   overdue: boolean
@@ -85,11 +77,6 @@ export class KanbanCard {
         props.renderSource?.(footer)
       } else if (field === 'due' && task.due) {
         renderDueChip(footer, formatDateShort(task.due), props.overdue ? 'overdue' : 'normal', 'sm')
-      } else if (props.customValues?.[field]?.text) {
-        const { name, text } = props.customValues[field]
-        const row = body.createDiv('pm-kanban-card-field')
-        row.createSpan({ cls: 'pm-kanban-card-field-name', text: name })
-        row.createSpan({ cls: 'pm-kanban-card-field-value', text })
       }
     }
     if (footer.childElementCount) body.appendChild(footer)

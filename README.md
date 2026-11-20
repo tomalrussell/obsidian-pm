@@ -63,7 +63,7 @@ Dragging a bar reschedules the task, dragging its edge changes the duration, and
 
 ### Board
 
-One column per status, priority, tag, type or custom field. Dragging a card to another column changes that value, and columns can be reordered or hidden. Cards show priority, tags and due date.
+One column per status, priority, tag or type. Dragging a card to another column changes that value, and columns can be reordered or hidden. Cards show priority, tags and due date.
 
 <video src="https://github.com/user-attachments/assets/316fc43b-6915-499a-a6ad-0680c462d014" autoplay loop muted playsinline width="600"></video>
 
@@ -74,7 +74,6 @@ One column per status, priority, tag, type or custom field. Dragging a card to a
 - Subtasks to any depth
 - Dependencies, within a project or across projects, and milestones
 - Start and due dates, progress, tags
-- Custom fields: text, number, date, select, multi-select, checkbox, URL
 - A Markdown body on every task
 
 **Planning**
@@ -89,7 +88,7 @@ One column per status, priority, tag, type or custom field. Dragging a card to a
 - Independent projects with an overview page showing progress, milestones and properties
 - One view over a project, a folder, the whole vault, or projects picked by hand
 - Archive a project that is done or no longer relevant
-- Filters on any field, custom fields included: is, is not, contains, between, date buckets and ranges
+- Filters on task fields: is, is not, contains, between, date buckets and ranges
 - Saved views: named filter and sort combinations, one of them starred as the view a project opens with
 - Sort by up to three keys in the table and on the board
 - Bulk edit from the table
@@ -98,7 +97,7 @@ One column per status, priority, tag, type or custom field. Dragging a card to a
 **Customizing**
 
 - Five fixed task statuses: `capture`, `next`, `in-progress`, `done`, `someday`
-- Priorities with configurable labels, colors and icons, global or per project
+- Four fixed priorities, highest first: `yesterday`, `high`, `medium`, `low`
 - Per-project overrides for default view, scheduling and archiving
 
 ## File format

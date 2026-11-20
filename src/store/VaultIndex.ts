@@ -1,14 +1,13 @@
 import type { App, Plugin, TAbstractFile } from 'obsidian'
 import { TFile, normalizePath } from 'obsidian'
 import {
-  type CustomFieldDef,
   type PMSettings,
   DEFAULT_STATUSES,
+  normalizePriority,
   today,
   reaches,
   FRONTMATTER_KEY,
   TASK_FRONTMATTER_KEY,
-  customFieldList,
   stringList,
   DEFAULT_PROJECT_COLOR,
   readColor
@@ -24,8 +23,6 @@ export interface ProjectRef {
   color: string
   /** The note's `tags` property, without the leading `#`. */
   tags: string[]
-  /** The custom fields this project declares. */
-  customFields: CustomFieldDef[]
   /** Whether this project is archived. */
   archived: boolean
   /** Days before a completed task is archived. Null inherits the global setting. */
@@ -336,7 +333,6 @@ export class VaultIndex {
       tags: (typeof frontmatter.tags === 'string' ? frontmatter.tags.split(/[\s,]+/) : stringList(frontmatter.tags))
         .map((tag) => tag.replace(/^#/, ''))
         .filter(Boolean),
-      customFields: customFieldList(frontmatter.customFields),
       archived: frontmatter.archived === true,
       autoArchiveDays: ownAutoArchiveDays(frontmatter)
     }
@@ -353,7 +349,7 @@ export class VaultIndex {
       projectPath: this.resolveOwner(path, projectId),
       title: str(frontmatter.title, `Untitled`),
       status: str(frontmatter.status, 'capture'),
-      priority: str(frontmatter.priority, 'medium'),
+      priority: normalizePriority(str(frontmatter.priority, 'medium')),
       start: str(frontmatter.start),
       due: str(frontmatter.due),
       completed: str(frontmatter.completed),

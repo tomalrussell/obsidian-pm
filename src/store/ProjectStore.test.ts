@@ -1316,11 +1316,6 @@ describe('per-project config', () => {
     const { store, vault, app } = newStore()
     const project = await store.createProject('Custom', 'Projects')
     project.config = {
-      priorities: [
-        { id: 'urgent', label: 'Urgent', color: '#ff0000', icon: '' },
-        { id: 'later', label: 'Later', color: '#888888', icon: '' }
-      ],
-      priorityIcons: 'signal',
       defaultView: 'kanban',
       autoSchedule: false
     }
@@ -1331,8 +1326,6 @@ describe('per-project config', () => {
     if (!(file instanceof TFile)) throw new Error('project file missing')
     const reloaded = expectDefined(await store2.loadProject(file))
     expect(reloaded.config).toEqual({
-      priorities: project.config?.priorities,
-      priorityIcons: project.config?.priorityIcons,
       defaultView: project.config?.defaultView,
       autoSchedule: project.config?.autoSchedule
     })

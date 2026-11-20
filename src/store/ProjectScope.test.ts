@@ -145,16 +145,4 @@ describe('ProjectScope', () => {
     expect(scope.config).toEqual(store.configFor(alpha))
     expect(scope.label()).toBe('Alpha')
   })
-
-  it('unions custom fields', async () => {
-    await store.updateProject(alpha, {
-      customFields: [{ id: 'cf1', name: 'Client', type: 'text' }]
-    })
-    await store.updateProject(beta, {
-      customFields: [{ id: 'cf2', name: 'Risk', type: 'text' }]
-    })
-    const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta], store)
-
-    expect(scope.customFields().map((f) => f.id)).toEqual(['cf1', 'cf2'])
-  })
 })

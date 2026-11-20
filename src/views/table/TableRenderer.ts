@@ -130,9 +130,8 @@ export function renderTable(ctx: TableContext): void {
     }
   }
 
-  const customFields = ctx.scope.customFields()
   for (const id of ctx.columns) {
-    const label = viewFieldLabel(id, customFields)
+    const label = viewFieldLabel(id)
     const th = hrow.createEl('th')
     const width = columnWidth(ctx.fields, id)
     const titleMin = id === 'title' ? ctx.fields.table?.widths?.title : undefined

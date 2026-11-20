@@ -23,7 +23,6 @@ import {
   type SelectItem,
   type HiddenProperty
 } from '@dotpm/ui'
-import { renderCustomFieldInput } from './CustomFieldInputs'
 
 export interface TaskFormFieldsContext {
   task: Task
@@ -50,7 +49,7 @@ const typeOptions = (): SelectItem[] => [
  */
 export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFieldsContext): void {
   const { task, project, plugin, rerender, shownExtras } = ctx
-  const { statuses, priorities, priorityIcons, customFields } = plugin.store.configFor(project)
+  const { statuses, priorities, priorityIcons } = plugin.store.configFor(project)
   const grid = container.createDiv('pm-prop-grid')
 
   renderPropRow(
@@ -370,14 +369,5 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
       shownExtras.add(id)
       rerender()
     })
-  }
-
-  if (customFields.length > 0) {
-    const cfSection = container.createDiv('pm-modal-section')
-    cfSection.createEl('h4', { text: `Custom fields`, cls: 'pm-modal-section-title' })
-    const cfGrid = cfSection.createDiv('pm-prop-grid')
-    for (const cf of customFields) {
-      renderPropRow(cfGrid, cf.name, () => renderCustomFieldInput(cf, task, rerender))
-    }
   }
 }

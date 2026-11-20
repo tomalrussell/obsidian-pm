@@ -38,6 +38,16 @@ describe('VaultIndex', () => {
     index = new VaultIndex(app, () => settings)
   })
 
+  it('indexes the legacy top priority as yesterday', async () => {
+    await vault.create('Projects/P.md', projectNote('p1', 'P'))
+    await vault.create(
+      'Projects/P_tasks/urgent.md',
+      '---\npm-task: true\nid: urgent\nprojectId: p1\npriority: critical\n---\n'
+    )
+    index.build()
+    expect(index.taskRefs('Projects/P.md')[0].priority).toBe('yesterday')
+  })
+
   it('finds projects anywhere in the vault, not just under the projects folder', async () => {
     await vault.create('Projects/Roadmap.md', projectNote('p1', 'Roadmap'))
     await vault.create('Work/Clients/Acme.md', projectNote('p2', 'Acme'))

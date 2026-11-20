@@ -1,9 +1,9 @@
-import type { CustomFieldDef, FieldList, ViewFields, ViewMode } from '../types'
+import type { FieldList, ViewFields, ViewMode } from '../types'
 
 /**
  * The built-in fields each presentation can show, in their default order: table columns,
- * what a board card carries, and the text beside a timeline bar. Custom fields follow as
- * `cf:<id>`. `project` exists only while a view covers several projects, and on a board
+ * what a board card carries, and the text beside a timeline bar.
+ * `project` exists only while a view covers several projects, and on a board
  * `subtasks` puts each subtask on a card of its own.
  */
 const BUILT_IN: Record<ViewMode, string[]> = {
@@ -18,9 +18,6 @@ const HIDDEN_BY_DEFAULT: Record<ViewMode, ReadonlySet<string>> = {
   gantt: new Set(['progress', 'dates', 'status', 'priority'])
 }
 
-/** A table shows custom fields until told otherwise; a card or a bar label only once asked. */
-const CUSTOM_SHOWN_BY_DEFAULT: Record<ViewMode, boolean> = { table: true, kanban: false, gantt: false }
-
 export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   project: 130,
   status: 130,
@@ -28,23 +25,20 @@ export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   due: 110,
   progress: 120
 }
-export const CUSTOM_COLUMN_WIDTH = 120
+const FALLBACK_COLUMN_WIDTH = 120
 
-/** What decides which fields exist: the custom fields in scope, and whether it spans projects. */
+/** What decides which fields exist: whether a view spans projects. */
 export interface FieldCatalog {
-  customFields: CustomFieldDef[]
   multi: boolean
 }
 
 export function availableFields(mode: ViewMode, catalog: FieldCatalog): string[] {
   const builtIn = BUILT_IN[mode].filter((id) => id !== 'project' || catalog.multi)
-  return [...builtIn, ...catalog.customFields.map((cf) => `cf:${cf.id}`)]
+  return builtIn
 }
 
 export function defaultFields(mode: ViewMode, catalog: FieldCatalog): string[] {
-  return availableFields(mode, catalog).filter((id) =>
-    id.startsWith('cf:') ? CUSTOM_SHOWN_BY_DEFAULT[mode] : !HIDDEN_BY_DEFAULT[mode].has(id)
-  )
+  return availableFields(mode, catalog).filter((id) => !HIDDEN_BY_DEFAULT[mode].has(id))
 }
 
 /** The title names the row in a table and on a timeline, so it can't be hidden or moved. */
@@ -79,7 +73,7 @@ export function hiddenFields(fields: ViewFields, mode: ViewMode, catalog: FieldC
 /** A table column's width in px; the title takes what is left. */
 export function columnWidth(fields: ViewFields, id: string): number | undefined {
   if (id === 'title') return undefined
-  return fields.table?.widths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? CUSTOM_COLUMN_WIDTH
+  return fields.table?.widths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? FALLBACK_COLUMN_WIDTH
 }
 
 /**
@@ -113,8 +107,7 @@ export function legacyBoardFields(showSubtasks: boolean, showDescription: boolea
 }
 
 /** A field's name as a column header or a row of the Fields popover shows it. */
-export function viewFieldLabel(id: string, customFields: CustomFieldDef[]): string {
-  if (id.startsWith('cf:')) return customFields.find((cf) => `cf:${cf.id}` === id)?.name ?? id.slice(3)
+export function viewFieldLabel(id: string): string {
   switch (id) {
     case 'title':
       return 'Task'

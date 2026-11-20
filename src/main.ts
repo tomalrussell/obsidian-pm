@@ -1,18 +1,17 @@
 import { MarkdownView, Notice, Plugin, WorkspaceLeaf, type ViewState } from 'obsidian'
 import {
-  DEFAULT_PALETTE_COLOR,
   DEFAULT_SETTINGS,
   defaultPriorities,
   defaultStatuses,
-  makeDefaultGroup,
   hydrateFilter,
+  hydrateGroup,
+  hydrateFields,
   hydrateSort,
   legacyBoardFields,
   type PMSettings,
   type Project,
   type Task,
   flattenTasks,
-  readColor,
   compareVersions,
   releaseNotesSince,
   setDateFormat
@@ -327,17 +326,18 @@ export default class PMPlugin extends Plugin {
     this.settings = Object.assign(structuredClone(DEFAULT_SETTINGS), saved ?? {})
     Reflect.deleteProperty(this.settings, 'peopleFolder')
     Reflect.deleteProperty(this.settings, 'globalTeamMembers')
-    for (const key of ['localApiEnabled', 'localApiPort', 'localApiToken', 'collapsedProjects']) {
+    for (const key of ['localApiEnabled', 'localApiPort', 'localApiToken', 'collapsedProjects', 'customFields']) {
       Reflect.deleteProperty(this.settings, key)
     }
     this.settings.statuses = defaultStatuses()
-    if (!saved?.priorities?.length) this.settings.priorities = defaultPriorities()
+    this.settings.priorities = defaultPriorities()
+    this.settings.priorityIcons = 'chevrons'
     if (!this.settings.projectFilters) this.settings.projectFilters = {}
     if (!this.settings.scopeViews) this.settings.scopeViews = {}
     if (!this.settings.collapsedTasks) this.settings.collapsedTasks = {}
     if (!this.settings.excludedFolders) this.settings.excludedFolders = []
 
-    let migrated = ['localApiEnabled', 'localApiPort', 'localApiToken', 'collapsedProjects'].some(
+    let migrated = ['localApiEnabled', 'localApiPort', 'localApiToken', 'collapsedProjects', 'customFields'].some(
       (key) => saved && key in saved
     )
     // Filters were keyed by project path before a view could cover several projects.
@@ -361,23 +361,28 @@ export default class PMPlugin extends Plugin {
       for (const key of legacyBoardKeys) Reflect.deleteProperty(this.settings, key)
       migrated = true
     }
+    const defaultFields = hydrateFields(this.settings.defaultFields)
+    if (JSON.stringify(defaultFields) !== JSON.stringify(this.settings.defaultFields)) {
+      this.settings.defaultFields = defaultFields
+      migrated = true
+    }
     for (const entry of Object.values(this.settings.projectFilters)) {
-      if (!Array.isArray(entry.filter.conditions)) {
-        entry.filter = hydrateFilter(entry.filter)
+      const normalized = {
+        filter: hydrateFilter(entry.filter),
+        group: hydrateGroup(entry.group),
+        fields: hydrateFields(entry.fields ?? this.settings.defaultFields)
+      }
+      if (
+        JSON.stringify(normalized) !==
+        JSON.stringify({ filter: entry.filter, group: entry.group, fields: entry.fields })
+      ) {
+        Object.assign(entry, normalized)
         migrated = true
       }
       if (!Array.isArray(entry.sort)) {
         entry.sort = hydrateSort(entry as unknown as Record<string, unknown>)
         Reflect.deleteProperty(entry, 'sortKey')
         Reflect.deleteProperty(entry, 'sortDir')
-        migrated = true
-      }
-      if (!entry.group) {
-        entry.group = makeDefaultGroup()
-        migrated = true
-      }
-      if (!entry.fields) {
-        entry.fields = structuredClone(this.settings.defaultFields)
         migrated = true
       }
       if (!entry.ganttGranularity) {
@@ -391,8 +396,20 @@ export default class PMPlugin extends Plugin {
     }
 
     for (const view of Object.values(this.settings.scopeViews).flat()) {
-      if (!Array.isArray(view.filter.conditions)) {
-        view.filter = hydrateFilter(view.filter)
+      const normalized = {
+        filter: hydrateFilter(view.filter),
+        ...(view.group ? { group: hydrateGroup(view.group) } : {}),
+        ...(view.fields ? { fields: hydrateFields(view.fields) } : {})
+      }
+      if (
+        JSON.stringify(normalized) !==
+        JSON.stringify({
+          filter: view.filter,
+          ...(view.group ? { group: view.group } : {}),
+          ...(view.fields ? { fields: view.fields } : {})
+        })
+      ) {
+        Object.assign(view, normalized)
         migrated = true
       }
       if (!Array.isArray(view.sort)) {
@@ -401,13 +418,6 @@ export default class PMPlugin extends Plugin {
         Reflect.deleteProperty(view, 'sortDir')
         migrated = true
       }
-    }
-
-    for (const entry of this.settings.priorities) {
-      const color = readColor(entry.color) ?? DEFAULT_PALETTE_COLOR
-      if (color === entry.color) continue
-      entry.color = color
-      migrated = true
     }
 
     // ganttHideDone was a global toggle, now expressed as a per-project status filter.

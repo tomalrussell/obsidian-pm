@@ -1,33 +1,17 @@
 import { ButtonComponent, Menu, ItemView, WorkspaceLeaf } from 'obsidian'
 import type PMPlugin from '#main'
 import { addTabPageItems, refreshTabTitle } from '#ui/tab'
-import {
-  type CustomFieldDef,
-  type PriorityConfig,
-  type PriorityIconSet,
-  type Project,
-  type ProjectConfig,
-  type ProjectPatch,
-  DEFAULT_PALETTE_COLOR,
-  makeId,
-  priorityIconSetLabels,
-  flattenTasks
-} from '@dotpm/core'
+import { type Project, type ProjectConfig, type ProjectPatch } from '@dotpm/core'
 import {
   safeAsync,
-  renderAddButton,
   renderPropRow,
   renderGlyph,
   renderIconControl,
   renderInputControl,
   renderSelectControl,
-  customFieldTypeLabels,
-  renderCustomFieldListEditor,
-  EmptyState,
-  IconButton
+  EmptyState
 } from '@dotpm/ui'
 import { confirmDialog } from '#ui/ModalFactory'
-import { renderPriorityListEditor } from '#ui/PaletteListEditor'
 
 export const PM_PROJECT_EDIT_VIEW_TYPE = 'pm-project-edit'
 
@@ -131,9 +115,7 @@ export class ProjectEditView extends ItemView {
 
     this.renderHeader(project)
     this.renderGeneral(project)
-    this.renderPriorities(project)
     this.renderBehavior(project)
-    this.renderCustomFields(project)
     this.renderDangerZone(project)
   }
 
@@ -225,67 +207,6 @@ export class ProjectEditView extends ItemView {
     })
   }
 
-  private renderPriorities(project: Project): void {
-    this.renderPaletteOverride<PriorityConfig>({
-      heading: `Priorities`,
-      hint: `The priority scale for this project`,
-      toggleLabel: `Use custom priorities instead of the global ones`,
-      addLabel: `Add priority`,
-      get: () => project.config?.priorities,
-      set: (priorities) => this.patchConfig('priorities', priorities),
-      copyGlobal: () => this.plugin.settings.priorities.map((priority) => ({ ...priority })),
-      makeEntry: () => ({
-        id: 'priority-' + makeId().slice(0, 6),
-        label: `New priority`,
-        color: DEFAULT_PALETTE_COLOR,
-        icon: ''
-      }),
-      renderEditor: (container, priorities) =>
-        renderPriorityListEditor(container, {
-          priorities,
-          onChanged: () => this.save({ config: project.config })
-        })
-    })
-  }
-
-  private renderPaletteOverride<T>(opts: {
-    heading: string
-    hint: string
-    toggleLabel: string
-    addLabel: string
-    get: () => T[] | undefined
-    set: (items: T[] | undefined) => void
-    copyGlobal: () => T[]
-    makeEntry: () => T
-    renderEditor: (container: HTMLElement, items: T[]) => void
-  }): void {
-    const section = this.section(opts.heading, opts.hint)
-    const toggle = section.createEl('label', { cls: 'pm-status-toggle' })
-    const checkbox = toggle.createEl('input', { type: 'checkbox' })
-    checkbox.checked = !!opts.get()?.length
-    toggle.createSpan({ text: opts.toggleLabel })
-
-    const editor = section.createDiv('pm-settings-statuses')
-    const footer = section.createDiv()
-    const drawEditor = (): void => {
-      editor.empty()
-      footer.empty()
-      const own = opts.get()
-      if (!own?.length) return
-      opts.renderEditor(editor, own)
-      renderAddButton(footer, opts.addLabel, () => {
-        own.push(opts.makeEntry())
-        opts.set(own)
-        drawEditor()
-      })
-    }
-    checkbox.addEventListener('change', () => {
-      opts.set(checkbox.checked ? opts.copyGlobal() : undefined)
-      drawEditor()
-    })
-    drawEditor()
-  }
-
   private renderBehavior(project: Project): void {
     const section = this.section(`View and scheduling`, `Overrides for this project`)
     const props = section.createDiv('pm-edit-props')
@@ -318,11 +239,6 @@ export class ProjectEditView extends ItemView {
       { value: 'gantt', label: `Timeline` },
       { value: 'kanban', label: `Board` }
     ])
-    row(
-      `Priority icons`,
-      'priorityIcons',
-      Object.entries(priorityIconSetLabels()).map(([value, label]) => ({ value: value as PriorityIconSet, label }))
-    )
     row(`Auto-schedule`, 'autoSchedule', [
       { value: true, label: `On` },
       { value: false, label: `Off` }
@@ -348,94 +264,6 @@ export class ProjectEditView extends ItemView {
       { value: 'vertical', label: `Vertical` },
       { value: 'both', label: `Both` }
     ])
-  }
-
-  private renderCustomFields(project: Project): void {
-    const section = this.section(`Custom fields`, `Extra properties for tasks`)
-
-    const globalFields = this.plugin.settings.customFields.map((field) => ({ field, source: 'vault settings' }))
-    const own = new Set(project.customFields.map((field) => field.id))
-    const notOverridden = globalFields.filter((entry) => !own.has(entry.field.id))
-    if (notOverridden.length > 0) {
-      section.createDiv({ cls: 'pm-section-sublabel', text: `Global defaults` })
-      const globalList = section.createDiv('pm-cf-list')
-      for (const entry of notOverridden) this.renderGlobalField(globalList, project, entry.field, entry.source)
-      section.createDiv({ cls: 'pm-section-sublabel', text: `This project` })
-    }
-
-    const sourceById = new Map(globalFields.map((entry) => [entry.field.id, entry.source]))
-    renderCustomFieldListEditor(section.createDiv('pm-cf-list'), {
-      fields: project.customFields,
-      onChanged: () => this.save({ customFields: project.customFields }),
-      redraw: () => this.render(),
-      renderExtra: (row, field) => {
-        const source = sourceById.get(field.id)
-        if (source) {
-          row.createSpan({ cls: 'pm-cf-source', text: `overrides ${source}` })
-          return
-        }
-        const twin = notOverridden.find((entry) => entry.field.name === field.name && entry.field.type === field.type)
-        if (!twin) return
-        new IconButton(row)
-          .setIcon('git-merge')
-          .setTooltip(`Merge into the ${twin.field.name} from ${twin.source}`)
-          .onClick(() => this.mergeIntoGlobal(project, field, twin.field, twin.source))
-      }
-    })
-  }
-
-  /** Folds a field that duplicates a global one into it, values and all. */
-  private readonly mergeIntoGlobal = safeAsync(
-    async (project: Project, own: CustomFieldDef, target: CustomFieldDef, source: string) => {
-      const ok = await confirmDialog(
-        this.app,
-        `Move this project's ${own.name} values onto the ${target.name} from ${source}, and stop defining it here?`,
-        `Merge`
-      )
-      if (!ok) return
-      const taskIds = flattenTasks(project.tasks).map((flat) => flat.task.id)
-      await this.plugin.store.updateTasks(project, taskIds, (task) => {
-        if (!(own.id in task.customFields)) return null
-        const { [own.id]: value, ...rest } = task.customFields
-        return { customFields: target.id in rest ? rest : { ...rest, [target.id]: value } }
-      })
-      const index = project.customFields.findIndex((field) => field.id === own.id)
-      if (index >= 0) project.customFields.splice(index, 1)
-      await this.plugin.store.updateProject(project, { customFields: project.customFields })
-      this.render()
-    }
-  )
-
-  private renderGlobalField(container: HTMLElement, project: Project, field: CustomFieldDef, source: string): void {
-    const hidden = project.config?.hiddenCustomFields ?? []
-    const isHidden = hidden.includes(field.id)
-    const row = container.createDiv('pm-cf-row pm-cf-row--inherited')
-    row.toggleClass('pm-cf-row--hidden', isHidden)
-
-    row.createSpan({ cls: 'pm-cf-name', text: field.name })
-    row.createSpan({ cls: 'pm-cf-type', text: customFieldTypeLabels()[field.type] })
-    row.createSpan({ cls: 'pm-cf-source', text: `from ${source}` })
-
-    new IconButton(row)
-      .setIcon(isHidden ? 'eye-off' : 'eye')
-      .setTooltip(isHidden ? `Show on this project` : `Hide on this project`)
-      .onClick(() => {
-        const next = isHidden ? hidden.filter((id) => id !== field.id) : [...hidden, field.id]
-        this.patchConfig('hiddenCustomFields', next.length ? next : undefined)
-        this.render()
-      })
-
-    new IconButton(row)
-      .setIcon('pencil')
-      .setTooltip(`Override on this project`)
-      .onClick(() => {
-        // Copy the global field definition before editing it.
-        const copy: CustomFieldDef = { ...field }
-        if (field.options) copy.options = [...field.options]
-        project.customFields.push(copy)
-        this.save({ customFields: project.customFields })
-        this.render()
-      })
   }
 
   private renderDangerZone(project: Project): void {

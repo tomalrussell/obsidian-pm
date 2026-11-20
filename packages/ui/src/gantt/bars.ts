@@ -1,5 +1,4 @@
 import {
-  type CustomFieldDef,
   type PriorityConfig,
   type StatusConfig,
   type Task,
@@ -8,7 +7,6 @@ import {
   getStatusConfig,
   parsePlainDate
 } from '@dotpm/core'
-import { cardCustomValues } from '../views/boardCards'
 import { svgEl } from '#dom'
 import type { GanttCanvas } from './canvas'
 import { BAR_BORDER_RADIUS, BAR_PADDING, HEADER_HEIGHT, ROW_HEIGHT, dateToX } from './TimelineConfig'
@@ -51,12 +49,10 @@ export interface DrawnBar {
 export interface LabelSource {
   statuses: StatusConfig[]
   priorities: PriorityConfig[]
-  customFields: CustomFieldDef[]
 }
 
 /** The label fields other than the title, as the text beside a bar. Empty when there are none or they hold nothing. */
 export function barAsideText(task: Task, fields: string[], source: LabelSource): string {
-  const custom = cardCustomValues(task, source.customFields, fields)
   const parts = fields.map((field) => {
     switch (field) {
       case 'progress':
@@ -68,7 +64,7 @@ export function barAsideText(task: Task, fields: string[], source: LabelSource):
       case 'priority':
         return getPriorityConfig(source.priorities, task.priority)?.label ?? task.priority
       default:
-        return custom[field]?.text ?? ''
+        return ''
     }
   })
   return parts.filter(Boolean).join(', ')

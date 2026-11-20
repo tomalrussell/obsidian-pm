@@ -9,7 +9,6 @@ import {
   type TaskQuery,
   type ResolvedProjectConfig,
   type ViewFields,
-  customFieldOf,
   shownFields,
   flattenTasks,
   matchesQuery,
@@ -22,11 +21,9 @@ import {
   boardCandidates,
   boardColumns,
   boardField,
-  cardCustomValues,
   ChipButton,
   descriptionPreview,
   compareTasks,
-  groupValues,
   KanbanColumn,
   type FilterSetup,
   type KanbanCardData,
@@ -152,7 +149,6 @@ export class KanbanView implements SubView {
       priorityColor,
       descriptionPreview: this.cardFields.includes('description') ? descriptionPreview(task.description) : undefined,
       parentTitle,
-      customValues: cardCustomValues(task, this.scope.customFields(), this.cardFields),
       renderSource: owner
         ? (el) =>
             renderProjectChip(el, {
@@ -217,12 +213,8 @@ export class KanbanView implements SubView {
         return to ? { type: to as TaskType } : null
       case 'tag':
         return { tags: moveValue(task.tags, from, to, keyOf) }
+      default:
+        return null
     }
-    const custom = customFieldOf(field, this.filterContext.customFields)
-    if (!custom) return null
-    const next = custom.type === 'select' ? to : moveValue(groupValues(task, field, this.setup), from, to, keyOf)
-    const customFields = Object.fromEntries(Object.entries(task.customFields).filter(([id]) => id !== custom.id))
-    if (next.length) customFields[custom.id] = next
-    return { customFields }
   }
 }

@@ -1,6 +1,6 @@
 import { parsePlainDate, Temporal, today } from '../dates'
 import type { DateBucket, FilterCondition, FilterState, StatusConfig, Task, TaskQuery } from '../types'
-import { isTerminalStatus, stringifyCustomValue } from '../utils'
+import { isTerminalStatus } from '../utils'
 import { filterKind, filterValue, type FilterContext } from './FilterFields'
 import type { FlatTask } from './TaskTreeOps'
 
@@ -20,18 +20,18 @@ export function matchesQuery(task: Task, query: TaskQuery, ctx: FilterContext): 
   return matchesSearch(task, query.text, ctx)
 }
 
-/** Matches the task id, title, tags and custom field values. */
+/** Matches the task id, title and tags. */
 export function matchesSearch(task: Task, text: string, ctx: FilterContext): boolean {
   const q = text.trim().toLowerCase()
   if (!q) return true
   if (task.id.toLowerCase() === q) return true
   if (task.title.toLowerCase().includes(q)) return true
   if (task.tags.some((tag) => tag.toLowerCase().includes(q))) return true
-  return ctx.customFields.some((cf) => stringifyCustomValue(task.customFields[cf.id]).toLowerCase().includes(q))
+  return false
 }
 
 export function matchesCondition(task: Task, condition: FilterCondition, ctx: FilterContext): boolean {
-  const kind = filterKind(condition.field, ctx.customFields)
+  const kind = filterKind(condition.field)
   if (!kind) return true
   const value = filterValue(task, condition.field, ctx)
   const { op } = condition
@@ -56,18 +56,6 @@ export function matchesCondition(task: Task, condition: FilterCondition, ctx: Fi
       const found = s.toLowerCase().includes(q)
       return op === 'not-contains' ? !found : found
     }
-    case 'number': {
-      const n = typeof value === 'number' ? value : null
-      if (op === 'empty') return n === null
-      const [a, b] = numberValues(condition)
-      if (op === 'between') return a === undefined && b === undefined ? true : inNumberRange(n, a, b)
-      if (a === undefined) return true
-      if (op === 'ne') return n !== a
-      if (n === null) return false
-      if (op === 'gte') return n >= a
-      if (op === 'lte') return n <= a
-      return n === a
-    }
     case 'date': {
       const s = typeof value === 'string' ? value : ''
       if (op === 'empty') return !s
@@ -76,23 +64,11 @@ export function matchesCondition(task: Task, condition: FilterCondition, ctx: Fi
       const bucket = typeof condition.value === 'string' ? (condition.value as DateBucket) : null
       return bucket ? inBucket(task, s, bucket, ctx.statuses) : true
     }
-    case 'checkbox':
-      return op === 'unchecked' ? value !== true : value === true
   }
 }
 
 function stringValues(condition: FilterCondition): string[] {
   return Array.isArray(condition.value) ? condition.value.map(String) : []
-}
-
-function numberValues(condition: FilterCondition): (number | undefined)[] {
-  if (!Array.isArray(condition.value)) return []
-  return condition.value.map((v) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined))
-}
-
-function inNumberRange(n: number | null, from: number | undefined, to: number | undefined): boolean {
-  if (n === null) return false
-  return (from === undefined || n >= from) && (to === undefined || n <= to)
 }
 
 function inRange(date: string, [from, to]: string[]): boolean {
@@ -164,8 +140,6 @@ export function isConditionComplete(condition: FilterCondition): boolean {
   switch (condition.op) {
     case 'empty':
     case 'not-empty':
-    case 'checked':
-    case 'unchecked':
       return true
     case 'contains':
     case 'not-contains':
