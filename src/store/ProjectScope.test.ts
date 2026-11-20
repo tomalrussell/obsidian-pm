@@ -14,9 +14,8 @@ function newStore(): ProjectStore {
 }
 
 describe('scopeKey', () => {
-  it('is stable per spec, and distinguishes a project from its subtree', () => {
+  it('is stable per spec', () => {
     expect(scopeKey({ kind: 'project', path: 'A.md' })).toBe('project:A.md')
-    expect(scopeKey({ kind: 'subtree', path: 'A.md' })).toBe('subtree:A.md')
     expect(scopeKey({ kind: 'vault' })).toBe('vault')
   })
 
@@ -27,20 +26,13 @@ describe('scopeKey', () => {
 })
 
 describe('selectionSpec', () => {
-  const tree: Record<string, string[]> = { 'A.md': ['A1.md', 'A2.md'], 'A1.md': [], 'A2.md': [], 'B.md': [] }
-  const descendantsOf = (path: string): string[] => tree[path] ?? []
-
   it('names one project alone', () => {
-    expect(selectionSpec(['A.md'], descendantsOf)).toEqual({ kind: 'project', path: 'A.md' })
-  })
-
-  it('names a project with exactly its sub-projects as its subtree, in any order', () => {
-    expect(selectionSpec(['A1.md', 'A.md', 'A2.md'], descendantsOf)).toEqual({ kind: 'subtree', path: 'A.md' })
+    expect(selectionSpec(['A.md'])).toEqual({ kind: 'project', path: 'A.md' })
   })
 
   it('picks any other set, keeping its order', () => {
-    expect(selectionSpec(['A.md', 'A1.md'], descendantsOf)).toEqual({ kind: 'picked', paths: ['A.md', 'A1.md'] })
-    expect(selectionSpec(['B.md', 'A.md', 'A1.md', 'A2.md'], descendantsOf)).toEqual({
+    expect(selectionSpec(['A.md', 'A1.md'])).toEqual({ kind: 'picked', paths: ['A.md', 'A1.md'] })
+    expect(selectionSpec(['B.md', 'A.md', 'A1.md', 'A2.md'])).toEqual({
       kind: 'picked',
       paths: ['B.md', 'A.md', 'A1.md', 'A2.md']
     })
@@ -64,33 +56,27 @@ describe('resolveScopePaths', () => {
     index.build()
   })
 
-  it('leaves archived projects out of a folder and the vault, but opens an archived subtree', () => {
-    expect(resolveScopePaths({ kind: 'folder', path: 'Personal' }, index)).toEqual(['Personal/Garden.md'])
-    expect(resolveScopePaths({ kind: 'vault' }, index)).toHaveLength(4)
-    expect(resolveScopePaths({ kind: 'subtree', path: 'Personal/Old.md' }, index)).toEqual([
-      'Personal/Old.md',
+  it('leaves only explicitly archived projects out of folder and vault scopes', () => {
+    expect(resolveScopePaths({ kind: 'folder', path: 'Personal' }, index)).toEqual([
+      'Personal/Garden.md',
       'Personal/Older.md'
     ])
+    expect(resolveScopePaths({ kind: 'vault' }, index)).toHaveLength(5)
   })
 
   it('resolves one project', () => {
     expect(resolveScopePaths({ kind: 'project', path: 'Work/Platform.md' }, index)).toEqual(['Work/Platform.md'])
   })
 
-  it('resolves a project and every level below it, the project first', () => {
-    expect(resolveScopePaths({ kind: 'subtree', path: 'Work/Platform.md' }, index)).toEqual([
-      'Work/Platform.md',
-      'Work/Billing.md',
-      'Work/Deep.md'
+  it('resolves a folder', () => {
+    expect(resolveScopePaths({ kind: 'folder', path: 'Personal' }, index)).toEqual([
+      'Personal/Garden.md',
+      'Personal/Older.md'
     ])
   })
 
-  it('resolves a folder', () => {
-    expect(resolveScopePaths({ kind: 'folder', path: 'Personal' }, index)).toEqual(['Personal/Garden.md'])
-  })
-
   it('resolves the whole vault', () => {
-    expect(resolveScopePaths({ kind: 'vault' }, index)).toHaveLength(4)
+    expect(resolveScopePaths({ kind: 'vault' }, index)).toHaveLength(5)
   })
 
   it('resolves picked projects in the order they were picked, without the ones gone', () => {
@@ -170,37 +156,5 @@ describe('ProjectScope', () => {
     const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta], store)
 
     expect(scope.customFields().map((f) => f.id)).toEqual(['cf1', 'cf2'])
-  })
-})
-
-describe('ProjectScope custom fields down a subtree', () => {
-  let store: ProjectStore
-  let parent: Project
-  let child: Project
-
-  beforeEach(async () => {
-    const fake = makeFakeApp({ liveMetadataCache: true })
-    const app = fake.app as unknown as App
-    const index = new VaultIndex(app, () => SETTINGS)
-    store = new ProjectStore(app, () => SETTINGS, index)
-    parent = await store.createProject('Platform', 'Work')
-    child = await store.createProject('Billing', 'Work')
-    await store.updateProject(child, { parentPath: parent.filePath })
-    await store.updateProject(parent, { customFields: [{ id: 'cf-client', name: 'Client', type: 'text' }] })
-    index.build()
-  })
-
-  it('gives a sub-project the fields its parent declares', () => {
-    expect(store.configFor(child).customFields.map((f) => f.name)).toEqual(['Client'])
-  })
-
-  it('shows one column for a field a parent and its child share', () => {
-    const scope = new ProjectScope({ kind: 'subtree', path: parent.filePath }, [parent, child], store)
-    expect(scope.customFields().map((f) => f.id)).toEqual(['cf-client'])
-  })
-
-  it('leaves the field out of a sub-project that hides it', async () => {
-    await store.updateProject(child, { config: { hiddenCustomFields: ['cf-client'] } })
-    expect(store.configFor(child).customFields).toEqual([])
   })
 })

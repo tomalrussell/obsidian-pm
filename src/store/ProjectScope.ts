@@ -16,7 +16,6 @@ import type { VaultIndex } from './VaultIndex'
 /** What a project view renders. Carried in the view state, so a layout restores it. */
 export type ScopeSpec =
   | { kind: 'project'; path: string }
-  | { kind: 'subtree'; path: string }
   | { kind: 'folder'; path: string }
   | { kind: 'picked'; paths: string[] }
   | { kind: 'vault' }
@@ -38,11 +37,6 @@ export function resolveScopePaths(spec: ScopeSpec, index: VaultIndex): string[] 
   switch (spec.kind) {
     case 'project':
       return index.projectRef(spec.path) ? [spec.path] : []
-    case 'subtree': {
-      if (!index.projectRef(spec.path)) return []
-      const archived = index.isArchived(spec.path)
-      return [spec.path, ...index.descendantRefs(spec.path, archived).map((ref) => ref.path)]
-    }
     case 'folder': {
       const prefix = spec.path === '' ? '' : `${spec.path}/`
       return index.projectPaths().filter((path) => path.startsWith(prefix))
@@ -54,20 +48,9 @@ export function resolveScopePaths(spec: ScopeSpec, index: VaultIndex): string[] 
   }
 }
 
-/**
- * The spec a set of checked projects stands for: one alone is that project, and one with
- * exactly its sub-projects is its subtree, so a sub-project added later joins the view.
- */
-export function selectionSpec(paths: string[], descendantsOf: (path: string) => string[]): ScopeSpec {
-  if (paths.length === 1) return { kind: 'project', path: paths[0] }
-  const chosen = new Set(paths)
-  for (const path of paths) {
-    const descendants = descendantsOf(path)
-    if (descendants.length + 1 === chosen.size && descendants.every((child) => chosen.has(child))) {
-      return { kind: 'subtree', path }
-    }
-  }
-  return { kind: 'picked', paths }
+/** A single selection is a project; multiple selections are an explicit set. */
+export function selectionSpec(paths: string[]): ScopeSpec {
+  return paths.length === 1 ? { kind: 'project', path: paths[0] } : { kind: 'picked', paths }
 }
 
 function unionById<T extends { id: string }>(lists: T[][]): T[] {
@@ -129,8 +112,6 @@ export class ProjectScope {
     switch (this.spec.kind) {
       case 'project':
         return this.primary?.title ?? `Project`
-      case 'subtree':
-        return this.primary ? `${this.primary.title} and sub-projects` : `Project`
       case 'folder':
         return this.spec.path.slice(this.spec.path.lastIndexOf('/') + 1) || `Vault`
       case 'picked':

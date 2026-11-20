@@ -33,7 +33,6 @@ import {
   folderOf,
   ProjectScope,
   projectFolderOf,
-  type ProjectRef,
   resolveScopePaths,
   scopeKey,
   type ScopeSpec,
@@ -97,7 +96,7 @@ import { collapsedTaskIds, setAllCollapsed } from './collapse'
 export const PM_PROJECT_VIEW_TYPE = 'pm-project'
 
 interface ProjectViewState {
-  scope?: ScopeSpec
+  scope?: ScopeSpec | { kind: 'subtree'; path: string }
   /** How a project view was addressed before scopes; still accepted from saved layouts. */
   filePath?: string
   anchor?: string
@@ -136,6 +135,7 @@ interface ViewOption {
 }
 
 function specOf(state: ProjectViewState): ScopeSpec | null {
+  if (state.scope?.kind === 'subtree') return { kind: 'project', path: state.scope.path }
   if (state.scope) return state.scope
   if (state.filePath) return { kind: 'project', path: state.filePath }
   return null
@@ -293,10 +293,7 @@ export class ProjectView extends ItemView {
   private scopeDependsOn(path: string): boolean {
     const projects = this.projectScope?.projects
     if (!projects) return false
-    return projects.some(
-      (project) =>
-        project.filePath === path || this.plugin.index.ancestorRefs(project.filePath).some((ref) => ref.path === path)
-    )
+    return projects.some((project) => project.filePath === path)
   }
 
   /**
@@ -322,7 +319,7 @@ export class ProjectView extends ItemView {
   private async loadScope(): Promise<void> {
     this.ensureInitialized()
     if (!this.spec) return
-    if (this.spec.kind === 'project' || this.spec.kind === 'subtree') this.anchorPath = this.spec.path
+    if (this.spec.kind === 'project') this.anchorPath = this.spec.path
     const paths = resolveScopePaths(this.spec, this.plugin.index)
     this.loadedPaths = paths
     const projects = await this.plugin.store.loadProjects(paths)
@@ -599,7 +596,7 @@ export class ProjectView extends ItemView {
     const common = {
       onSwitch: (anchor: HTMLElement) => this.openSwitcher(anchor, scope, primary),
       switchLabel: `Switch project`,
-      foldLabel: `Parent projects`,
+      foldLabel: `Projects`,
       mode: {
         icon: MODE_ICONS[this.currentView],
         label: modeLabel(this.currentView),
@@ -607,15 +604,12 @@ export class ProjectView extends ItemView {
         onOpen: (anchor: HTMLElement) => this.showModeMenu(anchor, scope, primary)
       }
     }
-    if (kind === 'project' || kind === 'subtree') {
+    if (kind === 'project') {
       renderBreadcrumb(parent, {
         ...common,
         icon: primary.icon,
         color: primary.color,
-        ancestors: this.plugin.index.ancestorRefs(primary.filePath).map((ref) => ({
-          title: ref.title,
-          onOpen: safeAsync((newTab: boolean) => this.goTo({ kind: 'project', path: ref.path }, newTab))
-        })),
+        ancestors: [],
         title: primary.title,
         badge: count > 1 ? `+${count - 1}` : undefined
       })
@@ -672,25 +666,17 @@ export class ProjectView extends ItemView {
   private openSwitcher(anchor: HTMLElement, scope: ProjectScope, primary: Project): void {
     const index = this.plugin.index
     const spec = scope.spec
-    const projects: SwitcherProject[] = []
-    const add = (ref: ProjectRef, parent: string | undefined, folder: string): void => {
-      projects.push({
-        path: ref.path,
-        title: ref.title,
-        icon: ref.icon,
-        color: ref.color,
-        parent,
-        folder,
-        taskCount: index.counts(ref).total
-      })
-      for (const child of index.childRefs(ref.path)) add(child, ref.path, folder)
-    }
-    const roots = index.rootRefs().map((ref) => ({ ref, folder: this.containingFolder(ref.path) }))
-    roots.sort((a, b) => (a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0))
-    for (const { ref, folder } of roots) add(ref, undefined, folder)
-
+    const projects: SwitcherProject[] = index.projectRefs().map((ref) => ({
+      path: ref.path,
+      title: ref.title,
+      icon: ref.icon,
+      color: ref.color,
+      folder: this.containingFolder(ref.path),
+      taskCount: index.counts(ref).total
+    }))
+    projects.sort((a, b) => (a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0))
     const anchorProject = scope.projects.find((project) => project.filePath === this.anchorPath) ?? primary
-    const path = spec.kind === 'project' || spec.kind === 'subtree' ? spec.path : anchorProject.filePath
+    const path = spec.kind === 'project' ? spec.path : anchorProject.filePath
     const folder = this.containingFolder(path)
     const options: { label: string; spec: ScopeSpec }[] = [
       {
@@ -698,7 +684,6 @@ export class ProjectView extends ItemView {
         spec: { kind: 'project', path }
       }
     ]
-    if (index.childRefs(path).length) options.push({ label: `With sub-projects`, spec: { kind: 'subtree', path } })
     options.push(
       {
         label: folder ? `Folder: ${folder}` : `Vault folder`,
@@ -718,8 +703,7 @@ export class ProjectView extends ItemView {
       })),
       onPick: safeAsync((picked: string) => this.goTo({ kind: 'project', path: picked }, false)),
       onShow: safeAsync((paths: string[]) => {
-        const descendantsOf = (of: string): string[] => index.descendantRefs(of).map((ref) => ref.path)
-        return this.goTo(selectionSpec(paths, descendantsOf), false)
+        return this.goTo(selectionSpec(paths), false)
       })
     })
   }

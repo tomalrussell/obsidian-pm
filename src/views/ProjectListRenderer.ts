@@ -13,7 +13,6 @@ import {
 import { safeAsync, CollapseToggle, ProjectRow, projectFieldLabel } from '@dotpm/ui'
 
 const columns = (fields: ProjectListField[]): { label: string; cls?: string }[] => [
-  { label: '' },
   { label: `Project`, cls: 'pm-project-th-title' },
   ...fields.map((field) => ({ label: projectFieldLabel(field) })),
   { label: '' }
@@ -29,14 +28,12 @@ export interface ProjectListContext {
   redraw: () => void
 }
 
-/** Every project the list covers, as trees, with the rolled-up counts a parent row shows. */
+/** Independent projects with their own task counts. */
 export function projectListItems(plugin: PMPlugin): ProjectListItem[] {
   const { index } = plugin
-  const showArchived = plugin.settings.showArchivedProjects
-  const itemOf = (ref: ProjectRef): ProjectListItem => {
-    const children = index.childRefs(ref.path, showArchived)
-    const { total, done } = children.length ? index.rollupCounts(ref) : index.counts(ref)
-    const { overdue, latestDue } = children.length ? index.rollupDueSummary(ref) : index.dueSummary(ref)
+  return index.projectRefs(plugin.settings.showArchivedProjects).map((ref) => {
+    const { total, done } = index.counts(ref)
+    const { overdue, latestDue } = index.dueSummary(ref)
     return {
       path: ref.path,
       title: ref.title,
@@ -45,11 +42,9 @@ export function projectListItems(plugin: PMPlugin): ProjectListItem[] {
       done,
       total,
       overdue,
-      latestDue,
-      children: children.map(itemOf)
+      latestDue
     }
-  }
-  return index.rootRefs(showArchived).map(itemOf)
+  })
 }
 
 /** The rows, each group under a heading row that collapses it; `collapsedGroups` is edited in place. */
@@ -103,24 +98,13 @@ function renderRow(ctx: ProjectListContext, tbody: HTMLElement, row: ProjectList
     title: ref.title,
     icon: ref.icon,
     color: ref.color,
-    depth: row.depth,
-    treeGuides: ctx.plugin.settings.showSubtreeConnections ? row.guides : null,
-    isLastChild: row.isLastChild,
-    childCount: row.childCount,
     fields: ctx.fields,
-    collapsed: row.collapsed,
     archived: index.isArchived(item.path),
     tasksDone: item.done,
     tasksTotal: item.total,
     overdue: item.overdue,
     dueLabel: formatDateShort(item.latestDue),
     dueUrgency: dateUrgency(item.latestDue, item.overdue > 0),
-    onToggleCollapsed: row.collapsible
-      ? safeAsync(async () => {
-          await ctx.plugin.toggleProjectCollapsed(item.path)
-          ctx.redraw()
-        })
-      : undefined,
     onClick: safeAsync(() => ctx.openProject(item.path)),
     onContextMenu: (e) => openProjectContextMenu(ctx, ref, e),
     onActions: (e) => openProjectContextMenu(ctx, ref, e)
@@ -141,14 +125,6 @@ function openProjectContextMenu(ctx: ProjectListContext, ref: ProjectRef, e: Mou
       .setIcon('table')
       .onClick(safeAsync(() => ctx.plugin.router.openScope({ kind: 'project', path: ref.path })))
   )
-  if (ctx.plugin.index.childRefs(ref.path).length) {
-    menu.addItem((item) =>
-      item
-        .setTitle(`Open with sub-projects`)
-        .setIcon('layers')
-        .onClick(safeAsync(() => ctx.plugin.router.openScope({ kind: 'subtree', path: ref.path })))
-    )
-  }
   menu.addItem((item) =>
     item
       .setTitle(`Duplicate project`)

@@ -7,7 +7,6 @@ import {
   type ProjectListView,
   type ProjectProgress,
   type ProjectSortKey,
-  allProjectItems,
   arrangeProjects,
   countProjectFilters,
   isProjectQueryActive,
@@ -158,7 +157,7 @@ export class DashboardView extends ItemView {
       icon: 'library',
       ancestors: [],
       title: `Projects`,
-      foldLabel: `Parent projects`
+      foldLabel: `Projects`
     })
     this.renderViewSlot(header.view)
     this.renderQuerySlot(header.query)
@@ -239,7 +238,7 @@ export class DashboardView extends ItemView {
   }
 
   private filterProps(after?: () => void): ProjectFilterProps {
-    const all = allProjectItems(this.items)
+    const all = this.items
     const progress: Record<ProjectProgress, number> = { 'not-started': 0, 'in-progress': 0, complete: 0 }
     for (const item of all) progress[projectProgress(item)]++
     return {
@@ -425,9 +424,7 @@ export class DashboardView extends ItemView {
   private renderList(): void {
     const { plugin } = this
     this.items = projectListItems(plugin)
-    const { groups, shown, total } = arrangeProjects(this.items, this.state, this.text, (path) =>
-      plugin.isProjectCollapsed(path)
-    )
+    const { groups, shown, total } = arrangeProjects(this.items, this.state, this.text)
     this.shown = shown
     this.syncHeader(shown, total)
     this.bodyEl.empty()

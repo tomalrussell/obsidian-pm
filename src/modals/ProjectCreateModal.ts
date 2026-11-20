@@ -2,14 +2,13 @@ import { App, ButtonComponent, ExtraButtonComponent, Keymap, Modal, setIcon } fr
 import type PMPlugin from '#main'
 import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from '@dotpm/core'
 import { findIgnoringCase, newProjectFolder, projectFilePath } from '#store'
-import { safeAsync, renderPropRow, renderIconControl, renderSelectControl } from '@dotpm/ui'
+import { safeAsync, renderPropRow, renderIconControl } from '@dotpm/ui'
 import { saveShortcutLabel } from '../utils'
 
 interface Draft {
   title: string
   icon: string
   color: string
-  parentPath: string
   description: string
 }
 
@@ -19,7 +18,6 @@ export class ProjectCreateModal extends Modal {
     title: '',
     icon: DEFAULT_PROJECT_ICON,
     color: DEFAULT_PROJECT_COLOR,
-    parentPath: '',
     description: ''
   }
   private header!: HTMLElement
@@ -51,7 +49,6 @@ export class ProjectCreateModal extends Modal {
     const grid = body.createDiv('pm-te-props').createDiv('pm-prop-grid')
     this.renderIcon(grid)
     this.renderColor(grid)
-    this.renderParent(grid)
 
     this.renderDescription(body)
 
@@ -158,37 +155,6 @@ export class ProjectCreateModal extends Modal {
     )
   }
 
-  private renderParent(parent: HTMLElement): void {
-    renderPropRow(
-      parent,
-      `Parent`,
-      () => {
-        const cell = createDiv('pm-prop-value')
-        const draw = (): void => {
-          cell.empty()
-          renderSelectControl({
-            container: cell,
-            value: this.draft.parentPath,
-            placeholder: `No parent`,
-            search: true,
-            options: [
-              { id: '', label: `No parent` },
-              ...this.plugin.index.projectRefs().map((ref) => ({ id: ref.path, label: ref.title, color: ref.color }))
-            ],
-            onChange: (path) => {
-              this.draft.parentPath = path
-              draw()
-              this.refreshValidity()
-            }
-          })
-        }
-        draw()
-        return cell
-      },
-      'corner-up-right'
-    )
-  }
-
   private renderDescription(parent: HTMLElement): void {
     const section = parent.createDiv('pm-modal-section pm-modal-desc-section')
     section.createEl('h4', { text: `Description`, cls: 'pm-modal-section-title' })
@@ -242,7 +208,7 @@ export class ProjectCreateModal extends Modal {
   }
 
   private targetFolder(): string {
-    return newProjectFolder(this.app, this.plugin.settings.projectsFolder, this.draft.parentPath || undefined)
+    return newProjectFolder(this.app, this.plugin.settings.projectsFolder)
   }
 
   private targetPath(title: string): string {
@@ -255,8 +221,7 @@ export class ProjectCreateModal extends Modal {
     const project = await this.plugin.store.createProject(title, this.targetFolder(), {
       icon: this.draft.icon,
       color: this.draft.color,
-      description: this.draft.description,
-      parentPath: this.draft.parentPath || undefined
+      description: this.draft.description
     })
     this.close()
     await this.plugin.router.openProjectLink(project.filePath)

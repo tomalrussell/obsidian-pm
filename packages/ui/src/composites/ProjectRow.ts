@@ -1,25 +1,16 @@
 import { type ProjectListField } from '@dotpm/core'
 import { Chip } from '#primitives/Chip'
-import { CollapseToggle } from '#primitives/CollapseToggle'
 import { IconButton } from '#primitives/IconButton'
 import { ProgressBar } from '#primitives/ProgressBar'
 import { renderDueChip, type DueUrgency } from './dueChip'
 import { renderGlyph } from './properties'
-import { renderTreeGuides } from './treeGuides'
 
 export interface ProjectRowProps {
   title: string
   icon: string
   color: string
-  depth: number
-  /** One entry per indent column: does an ancestor at that column still have rows below it. Null draws no connectors. */
-  treeGuides: boolean[] | null
-  isLastChild: boolean
-  /** Sub-projects below this one. Above zero, the counts are the caller's subtree rollup. */
-  childCount: number
   /** The cells after the title, in order. */
   fields: ProjectListField[]
-  collapsed: boolean
   archived: boolean
   tasksDone: number
   tasksTotal: number
@@ -27,14 +18,12 @@ export interface ProjectRowProps {
   /** Formatted by the caller; empty when nothing in the project has a date. */
   dueLabel: string
   dueUrgency: DueUrgency
-  /** Leave it out while the list can't collapse, such as during a search: the row then has no toggle. */
-  onToggleCollapsed?: () => void
   onClick: () => void
   onContextMenu: (e: MouseEvent) => void
   onActions: (e: MouseEvent) => void
 }
 
-const ROW_IGNORE_SELECTOR = 'button, .pm-chip--interactive, .pm-icon-btn, .pm-collapse-toggle'
+const ROW_IGNORE_SELECTOR = 'button, .pm-chip--interactive, .pm-icon-btn'
 
 export class ProjectRow {
   el: HTMLTableRowElement
@@ -42,20 +31,7 @@ export class ProjectRow {
   constructor(tbody: HTMLElement, props: ProjectRowProps) {
     this.el = tbody.createEl('tr', { cls: 'pm-table-row pm-project-row' })
     if (props.archived) this.el.addClass('pm-table-row--archived')
-    this.el.style.setProperty('--depth', String(props.depth))
-
-    const expand = this.el.createEl('td', { cls: 'pm-table-cell-expand' })
-    const { onToggleCollapsed } = props
-    if (props.childCount > 0 && onToggleCollapsed) {
-      new CollapseToggle(expand, {
-        collapsed: props.collapsed,
-        onToggle: onToggleCollapsed,
-        subject: 'sub-projects'
-      })
-    }
-
     const title = this.el.createEl('td', { cls: 'pm-table-cell-title' })
-    renderTreeGuides(title, props.treeGuides, props.isLastChild)
     const inner = title.createDiv('pm-table-title-inner')
     renderGlyph(inner.createSpan({ cls: 'pm-project-row-icon' }), { icon: props.icon, color: props.color })
     inner.createSpan({ text: props.title, cls: 'pm-task-title-text' })

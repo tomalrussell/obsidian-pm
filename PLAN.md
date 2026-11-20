@@ -11,8 +11,8 @@ Aim for Markdown tasks with fixed statuses, a table, and a status board. Keep pe
 | Persistence               | Notes, YAML, wikilinks, rename handling, caching, sync and queued writes                  | src/store/ProjectStore.ts, VaultIndex.ts  |
 | Tasks                     | Subtasks, dependencies, milestones, dates, progress, recurrence metadata, estimates, logs | packages/core/src/types.ts                |
 | Views                     | Table, Gantt, Kanban, dashboard, overview and editors                                     | src/views, packages/ui                    |
-| Organization              | Nested projects, multi-project scopes, archives, moving and duplication                   | ProjectScope, ProjectStore, ArchiveOps    |
-| Configuration             | Custom fields, priority palettes, inheritance, filtering, grouping, saved views, layouts  | Core configuration and view-state modules |
+| Organization              | Independent projects, multi-project scopes, archives, moving and duplication              | ProjectScope, ProjectStore, ArchiveOps    |
+| Configuration             | Custom fields, priority palettes, filtering, grouping, saved views, layouts               | Core configuration and view-state modules |
 | Automation                | Scheduling, early-finish adjustment, reminders, auto-archiving                            | Scheduler, Notifier, AutoArchiver         |
 | External access (removed) | Local HTTP API, MCP and client library removed                                            | src/api, packages/api                     |
 | Sharing (removed)         | HTML export and browser snapshot viewer removed                                           | Completed                                 |
@@ -64,7 +64,7 @@ Smaller options: reminders, auto-archiving, release-note UI, automatic Markdown 
 2. Export and browser viewer removal: **Completed.** Removed HTML export commands, snapshots and snapshot-only renderers, viewer package, viewer assets and build steps. TaskNotes removal: **Completed.** Removed detection, settings, priority syncing, special import conversion, conversion-only store methods, tests and documentation. Ordinary Markdown note import remains.
 3. Consider status-only Kanban and fixed priorities.
 4. Decide whether to retain scheduling; if unnecessary, remove Gantt, scheduling, dependencies and milestones together.
-5. Consider custom fields, saved views and nested projects.
+5. Project flattening: **Completed.** Projects are independent: removed parent links, ancestor inheritance, project trees, project collapse state and subtree scopes. Task subtasks remain. Custom fields and saved views remain options for later simplification.
 6. API/MCP removal: **Completed.** Removed server, routes, MCP tools, contracts, client, authentication and port settings, API tests and documentation, package publishing trigger and dependencies. Any future agent interface or CLI is deferred.
 
 For each removal, cover controls, types, serialization, API fields, styles, tests and docs. Preserve removed metadata as inert frontmatter where practical. Future steps require a user decision.

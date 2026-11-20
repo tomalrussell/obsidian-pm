@@ -45,8 +45,6 @@ export interface TaskSource {
    * own. Returns the note's new path, or null when the project already owns a folder.
    */
   moveProjectIntoOwnFolder(projectPath: string): Promise<string | null>
-  /** Writes a sub-project's `parent` link again, for when the parent note moved. */
-  repointProjectParent(childPath: string, parentPath: string): Promise<void>
   /** Writes the reference fields of the named notes in place, leaving name and body alone. */
   normalizeTaskRefs(project: Project, taskIds: string[], includeProjectNote: boolean): Promise<void>
   saveProject(project: Project): Promise<void>

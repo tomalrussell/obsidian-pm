@@ -454,11 +454,11 @@ export class StyleguideView extends ItemView {
     const sec = this.section('ProjectRow', 'project-row')
     sec.createDiv({
       cls: 'pm-sg-caption',
-      text: 'The project list: a parent with its rolled-up counts, a child on a tree connector, a collapsed one, and an archived one.'
+      text: 'Independent projects with their task counts, due dates, and archive state.'
     })
     const table = sec.createEl('table', { cls: 'pm-table pm-project-table' })
     const head = table.createEl('thead').createEl('tr')
-    for (const column of ['', 'Project', 'Progress', 'Tasks', 'Due', '']) {
+    for (const column of ['Project', 'Progress', 'Tasks', 'Due', '']) {
       head.createEl('th', { text: column })
     }
     const tbody = table.createEl('tbody')
@@ -466,19 +466,13 @@ export class StyleguideView extends ItemView {
       title: 'Platform',
       icon: '🚀',
       color: '#7a9ec4',
-      depth: 0,
-      treeGuides: [],
-      isLastChild: false,
-      childCount: 2,
       fields: [...PROJECT_LIST_FIELDS],
       archived: false,
-      collapsed: false,
       tasksDone: 12,
       tasksTotal: 40,
       overdue: 0,
       dueLabel: 'Oct 30',
       dueUrgency: 'normal',
-      onToggleCollapsed: noop,
       onClick: noop,
       onContextMenu: noop,
       onActions: noop
@@ -487,19 +481,13 @@ export class StyleguideView extends ItemView {
       title: 'Website relaunch',
       icon: '📋',
       color: '#8b72be',
-      depth: 1,
-      treeGuides: [true],
-      isLastChild: true,
-      childCount: 0,
       fields: [...PROJECT_LIST_FIELDS],
       archived: false,
-      collapsed: false,
       tasksDone: 4,
       tasksTotal: 10,
       overdue: 3,
       dueLabel: 'Jun 20',
       dueUrgency: 'overdue',
-      onToggleCollapsed: noop,
       onClick: noop,
       onContextMenu: noop,
       onActions: noop
@@ -508,19 +496,13 @@ export class StyleguideView extends ItemView {
       title: 'Internal tools',
       icon: '🛠',
       color: '#767491',
-      depth: 0,
-      treeGuides: [],
-      isLastChild: true,
-      childCount: 1,
       fields: [...PROJECT_LIST_FIELDS],
       archived: false,
-      collapsed: true,
       tasksDone: 31,
       tasksTotal: 38,
       overdue: 0,
       dueLabel: '',
       dueUrgency: 'normal',
-      onToggleCollapsed: noop,
       onClick: noop,
       onContextMenu: noop,
       onActions: noop
@@ -529,19 +511,13 @@ export class StyleguideView extends ItemView {
       title: 'Old campaign',
       icon: '📣',
       color: '#c47a7a',
-      depth: 0,
-      treeGuides: [],
-      isLastChild: true,
-      childCount: 0,
       fields: [...PROJECT_LIST_FIELDS],
-      collapsed: false,
       archived: true,
       tasksDone: 8,
       tasksTotal: 8,
       overdue: 0,
       dueLabel: '',
       dueUrgency: 'normal',
-      onToggleCollapsed: noop,
       onClick: noop,
       onContextMenu: noop,
       onActions: noop
@@ -630,11 +606,11 @@ export class StyleguideView extends ItemView {
     this.register(() => header.destroy())
     renderBreadcrumb(header.context, {
       icon: 'folder-kanban',
-      ancestors: [{ title: 'Acme', onOpen: noop }],
+      ancestors: [{ title: 'Projects', onOpen: noop }],
       title: 'Website redesign',
       onSwitch: noop,
       switchLabel: 'Switch project',
-      foldLabel: 'Parent projects',
+      foldLabel: 'Projects',
       mode: { icon: 'table', label: 'Table', tooltip: 'View mode: Table', onOpen: noop }
     })
     new ChipButton(header.view).setIcon('bookmark').setLabel('Sprint 14').setChevron(true)

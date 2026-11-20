@@ -171,19 +171,17 @@ export function renderPanelSections({ section, row }: GalleryLayout): void {
       title: 'Website redesign',
       icon: 'globe',
       color: '#5b8def',
-      parent: 'acme',
       folder: 'Clients',
       taskCount: 318
     },
-    { path: 'checkout', title: 'Checkout', parent: 'acme', folder: 'Clients', taskCount: 86 },
-    { path: 'help', title: 'Help center', parent: 'web', folder: 'Clients', taskCount: 20 },
+    { path: 'checkout', title: 'Checkout', folder: 'Clients', taskCount: 86 },
+    { path: 'help', title: 'Help center', folder: 'Clients', taskCount: 20 },
     { path: 'app', title: 'Mobile app', icon: 'smartphone', color: '#6bb38f', folder: 'Internal', taskCount: 42 }
   ]
   const switcherProps = {
     projects: switcherProjects,
     presets: [
       { label: 'Only Website redesign', active: true, onPick: noop },
-      { label: 'With sub-projects', active: false, onPick: noop },
       { label: 'Folder: Clients', active: false, onPick: noop },
       { label: 'All projects', active: false, onPick: noop }
     ],

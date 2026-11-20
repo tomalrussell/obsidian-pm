@@ -507,9 +507,18 @@ describe('foreign frontmatter', () => {
     ])
   })
 
+  it('preserves old project parent metadata without hydrating a relationship', () => {
+    const fm = { id: 'flat', title: 'Flat', parent: '[[Projects/Old parent]]' }
+    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/Flat.md', 'Flat')
+    expect(project).not.toHaveProperty('parentPath')
+    const foreign = foreignFrontmatter(fm, PROJECT_FRONTMATTER_KEYS)
+    const parsed = parseFrontmatter(serializeProject(project, [], refs, foreign))
+    if (parsed.kind !== 'frontmatter') throw new Error('frontmatter missing')
+    expect(parsed.frontmatter.parent).toBe('[[Projects/Old parent]]')
+  })
+
   it('owns every key the serializers write', () => {
     const project = makeProject('P', 'Projects/P.md')
-    project.parentPath = 'Projects/Parent.md'
     project.config = { defaultView: 'kanban' }
     const task = makeTask({
       id: 't-full',

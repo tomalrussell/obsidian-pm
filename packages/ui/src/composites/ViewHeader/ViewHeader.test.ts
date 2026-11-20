@@ -959,8 +959,8 @@ describe('ViewHeader on a phone', () => {
 describe('project switcher', () => {
   const projects: SwitcherProject[] = [
     { path: 'acme', title: 'Acme', folder: 'Clients', taskCount: 4 },
-    { path: 'web', title: 'Website', parent: 'acme', folder: 'Clients', taskCount: 10 },
-    { path: 'shop', title: 'Shop', parent: 'acme', folder: 'Clients', taskCount: 5 },
+    { path: 'web', title: 'Website', folder: 'Clients', taskCount: 10 },
+    { path: 'shop', title: 'Shop', folder: 'Clients', taskCount: 5 },
     { path: 'ops', title: 'Ops', folder: 'Internal', taskCount: 2 }
   ]
   const open = (props: Partial<ProjectSwitcherProps> = {}): ProjectSwitcherProps => {
@@ -992,7 +992,7 @@ describe('project switcher', () => {
     document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
   }
 
-  it('lists projects under their folders, opening the branch holding the selection', () => {
+  it('lists projects under their folders, showing each independent project', () => {
     open()
     expect(document.body.findAll('.pm-switcher-list .pm-pop-heading').map((el) => el.textContent)).toEqual([
       'Clients',
@@ -1000,26 +1000,18 @@ describe('project switcher', () => {
     ])
     expect(rowTitles()).toEqual(['Acme', 'Website', 'Shop', 'Ops'])
     expect(box('web').checked).toBe(true)
-    expect(box('acme').indeterminate).toBe(true)
+    expect(box('acme').checked).toBe(false)
     expect(line('web').find('.pm-pop-check--hidden')).toBeNull()
   })
 
-  it('keeps a branch without a selection closed, counting what it hides', () => {
-    open({ selected: ['ops'], current: 'ops' })
-    expect(rowTitles()).toEqual(['Acme', 'Ops'])
-    expect(line('acme').find('.pm-pop-item-note')?.textContent).toBe('+2')
-    line('acme').find('.pm-collapse-toggle')?.click()
-    expect(rowTitles()).toEqual(['Acme', 'Website', 'Shop', 'Ops'])
-  })
-
-  it('checks a whole branch from its parent and applies the selection on close', () => {
+  it('checks only the selected project and preserves existing selections', () => {
     const onShow = vi.fn<(paths: string[]) => void>()
     open({ onShow })
     tick('acme')
-    expect(['acme', 'web', 'shop'].map((path) => box(path).checked)).toEqual([true, true, true])
-    expect(document.body.find('.pm-switcher-summary')?.textContent).toBe('3 selected · 19 tasks')
+    expect(['acme', 'web', 'shop'].map((path) => box(path).checked)).toEqual([true, true, false])
+    expect(document.body.find('.pm-switcher-summary')?.textContent).toBe('2 selected · 14 tasks')
     outside()
-    expect(onShow).toHaveBeenCalledExactlyOnceWith(['web', 'acme', 'shop'])
+    expect(onShow).toHaveBeenCalledExactlyOnceWith(['web', 'acme'])
   })
 
   it('applies from its button and discards the selection on Escape', () => {

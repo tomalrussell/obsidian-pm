@@ -59,7 +59,6 @@ import {
   moveTaskAttachmentFolder,
   projectFolderOf,
   projectTaskFolder,
-  resolveVaultLink,
   TASK_FOLDER_NAME,
   projectFilePath
 } from './vaultFs'
@@ -170,12 +169,7 @@ export class ProjectStore implements TaskSource {
   ) {}
 
   configFor(project: Project): ResolvedProjectConfig {
-    const ancestors = this.index?.ancestorRefs(project.filePath) ?? []
-    return resolveProjectConfig(
-      project,
-      this.getSettings(),
-      ancestors.map((ref) => ref.customFields)
-    )
+    return resolveProjectConfig(project, this.getSettings())
   }
 
   private statusesFor(project: Project): StatusConfig[] {
@@ -454,7 +448,6 @@ export class ProjectStore implements TaskSource {
       const hasEmbeddedTasks = Array.isArray(frontmatter.tasks) && frontmatter.tasks.length > 0
 
       const project = hydrateProjectFromFrontmatter(frontmatter, body, file.path, file.basename)
-      project.parentPath = resolveVaultLink(this.app, frontmatter.parent, file.path)
       if (bodyRead) this.hydratedBodies.add(project)
 
       if (hasEmbeddedTasks) {
@@ -925,8 +918,7 @@ export class ProjectStore implements TaskSource {
    * reads as a plain move and the vault listener has nothing left to follow. The note goes
    * through `vault.rename`, not `fileManager.renameFile`: its name does not change, so the
    * wikilinks that name it keep resolving, and Obsidian's link pass stalls for a long time
-   * on a note taking its folder's name. The one link that does name a path, a sub-project's
-   * `parent`, is rewritten here.
+   * on a note taking its folder's name.
    */
   async moveProjectIntoOwnFolder(projectPath: string): Promise<string | null> {
     const file = this.app.vault.getAbstractFileByPath(projectPath)
@@ -954,18 +946,6 @@ export class ProjectStore implements TaskSource {
     await this.app.vault.rename(file, notePath)
     await this.rekeyProject(projectPath, notePath, oldTaskFolder)
     return notePath
-  }
-
-  /** The `parent` link names a path, so a parent that moved has to be written again. */
-  async repointProjectParent(childPath: string, parentPath: string): Promise<void> {
-    const child = this.app.vault.getAbstractFileByPath(childPath)
-    if (!(child instanceof TFile)) return
-    this.markSelfWrite(childPath)
-    await this.app.fileManager.processFrontMatter(child, (fm: Record<string, unknown>) => {
-      fm.parent = `[[${parentPath.replace(/\.md$/, '')}]]`
-    })
-    const live = await this.projectCache.get(childPath)
-    if (live) live.parentPath = parentPath
   }
 
   /**
@@ -1128,7 +1108,6 @@ export class ProjectStore implements TaskSource {
     project.icon = source.icon
     project.customFields = structuredClone(source.customFields)
     project.savedViews = structuredClone(source.savedViews)
-    project.parentPath = source.parentPath
     if (source.config) project.config = structuredClone(source.config)
     project.tasks = cloneTaskForest(source.tasks)
     rebuildTaskIndex(project)
@@ -1487,7 +1466,7 @@ export class ProjectStore implements TaskSource {
   }
 
   async deleteProject(project: Project): Promise<void> {
-    // The whole folder goes, unless a sub-project is nested in it and would go with it.
+    // The whole folder goes, unless another project is stored inside it and would be deleted too.
     const own = projectFolderOf(this.app, project.filePath)
     const holdsOthers = own !== null && this.projectPathsInside(own).some((path) => path !== project.filePath)
     const doomed = own && !holdsOthers ? own : projectTaskFolder(this.app, project.filePath)

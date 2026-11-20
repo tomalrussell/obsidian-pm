@@ -8,10 +8,9 @@ export function projectFilePath(projectTitle: string, folder: string): string {
   return normalizePath(`${folder}/${name}/${name}.md`)
 }
 
-/** Where a new project goes: inside its parent's folder, or the projects folder for a root. */
-export function newProjectFolder(app: App, projectsFolder: string, parentPath: string | undefined): string {
-  if (!parentPath) return projectsFolder || app.vault.getName()
-  return projectFolderOf(app, parentPath) ?? folderOf(parentPath)
+/** Where new independent projects are created. */
+export function newProjectFolder(app: App, projectsFolder: string): string {
+  return projectsFolder || app.vault.getName()
 }
 
 /** The task storage folder inside a project's own folder. */
@@ -123,19 +122,6 @@ export function projectPathForTaskPath(taskPath: string): string | null {
   const folder = parts.join('/')
   if (!folder.endsWith('_tasks')) return null
   return folder.slice(0, -'_tasks'.length) + '.md'
-}
-
-/**
- * Resolves a frontmatter link to a vault path, accepting a bare name as a linkpath too.
- * A wikilink so Obsidian updates it on rename and shows the edge in the graph; undefined
- * when it points nowhere.
- */
-export function resolveVaultLink(app: App, raw: unknown, sourcePath: string): string | undefined {
-  if (typeof raw !== 'string') return undefined
-  const inner = /^\[\[(.+?)\]\]$/.exec(raw.trim())?.[1] ?? raw.trim()
-  const linkpath = inner.split('|')[0].trim()
-  if (!linkpath) return undefined
-  return app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath)?.path ?? undefined
 }
 
 /**

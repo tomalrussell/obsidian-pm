@@ -86,9 +86,9 @@ One column per status, priority, tag, type or custom field. Dragging a card to a
 
 **Organizing**
 
-- Sub-projects, with an overview page per project: progress, milestones, sub-projects, properties
-- One view over a project, its subtree, a folder, the whole vault, or projects picked by hand
-- Archive a project that is done or no longer relevant; its sub-projects go with it
+- Independent projects with an overview page showing progress, milestones and properties
+- One view over a project, a folder, the whole vault, or projects picked by hand
+- Archive a project that is done or no longer relevant
 - Filters on any field, custom fields included: is, is not, contains, between, date buckets and ranges
 - Saved views: named filter and sort combinations, one of them starred as the view a project opens with
 - Sort by up to three keys in the table and on the board

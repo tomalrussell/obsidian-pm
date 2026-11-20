@@ -3,7 +3,6 @@
   overflow: auto;
 }
 
-.pm-overview-crumbs,
 .pm-overview-header,
 .pm-overview-grid {
   max-width: 1160px;
@@ -33,24 +32,6 @@
 .pm-overview-side {
   border-left: 1px solid var(--background-modifier-border);
   padding-left: 24px;
-}
-
-.pm-overview-crumbs {
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
-}
-.pm-overview-crumb {
-  cursor: pointer;
-}
-.pm-overview-crumb:hover {
-  color: var(--text-accent);
-}
-.pm-overview-crumb-sep {
-  color: var(--text-faint);
 }
 
 .pm-overview-header {

@@ -38,7 +38,6 @@ function projectRef(id: string, path: string): ProjectRef {
     color: '',
     tags: [],
     customFields: [],
-    parentPath: undefined,
     archived: false,
     autoArchiveDays: null
   }

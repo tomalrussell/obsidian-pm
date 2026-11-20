@@ -163,14 +163,6 @@ interface ProjectMove {
  */
 export async function migrateProjectLayout(plugin: PMPlugin): Promise<void> {
   const moves: ProjectMove[] = []
-  // Read before the first move: a sub-project's parent link stops resolving once the
-  // parent note moves, so the index can no longer answer who belongs to whom.
-  const childrenOf = new Map<string, string[]>()
-  for (const path of plugin.index.projectPaths(true)) {
-    const children = plugin.index.childRefs(path, true).map((ref) => ref.path)
-    if (children.length) childrenOf.set(path, children)
-  }
-
   for (const path of plugin.index.projectPaths(true)) {
     try {
       const to = await plugin.store.moveProjectIntoOwnFolder(path)
@@ -188,12 +180,6 @@ export async function migrateProjectLayout(plugin: PMPlugin): Promise<void> {
   }
 
   if (moves.length === 0) return
-
-  for (const { from, to } of moves) {
-    for (const child of childrenOf.get(from) ?? []) {
-      await plugin.store.repointProjectParent(movedPath(child, moves) ?? child, to)
-    }
-  }
 
   remapProjectSettings(plugin, moves)
   retargetOpenViews(plugin, moves)
@@ -216,22 +202,20 @@ function movedPath(path: string, moves: ProjectMove[]): string | null {
 
 /** Per-project filters, saved views and collapsed state are keyed by the project's path. */
 function remapProjectSettings(plugin: PMPlugin, moves: ProjectMove[]): void {
-  const { projectFilters, scopeViews, collapsedTasks, collapsedProjects } = plugin.settings
+  const { projectFilters, scopeViews, collapsedTasks } = plugin.settings
 
   for (const { from, to } of moves) {
-    for (const kind of ['project', 'subtree']) {
-      const oldKey = `${kind}:${from}`
-      const newKey = `${kind}:${to}`
-      const filter = projectFilters[oldKey]
-      if (filter) {
-        projectFilters[newKey] = filter
-        Reflect.deleteProperty(projectFilters, oldKey)
-      }
-      const views = scopeViews[oldKey]
-      if (views) {
-        scopeViews[newKey] = views
-        Reflect.deleteProperty(scopeViews, oldKey)
-      }
+    const oldKey = `project:${from}`
+    const newKey = `project:${to}`
+    const filter = projectFilters[oldKey]
+    if (filter) {
+      projectFilters[newKey] = filter
+      Reflect.deleteProperty(projectFilters, oldKey)
+    }
+    const views = scopeViews[oldKey]
+    if (views) {
+      scopeViews[newKey] = views
+      Reflect.deleteProperty(scopeViews, oldKey)
     }
 
     const collapsed = collapsedTasks[from]
@@ -239,9 +223,6 @@ function remapProjectSettings(plugin: PMPlugin, moves: ProjectMove[]): void {
       collapsedTasks[to] = collapsed
       Reflect.deleteProperty(collapsedTasks, from)
     }
-
-    const at = collapsedProjects.indexOf(from)
-    if (at !== -1) collapsedProjects[at] = to
   }
 }
 

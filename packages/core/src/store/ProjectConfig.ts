@@ -5,16 +5,12 @@ import { flattenTasks } from './TaskTreeOps'
 /**
  * Status options are fixed. Other settings use project overrides or global defaults.
  * In-use priorities missing from both palettes remain available as placeholder entries.
- * Custom fields inherit down the ancestor chain, root-most first.
+ * Custom fields combine global defaults with project declarations.
  */
-export function resolveProjectConfig(
-  project: Project,
-  settings: PMSettings,
-  ancestorFields: CustomFieldDef[][] = []
-): ResolvedProjectConfig {
+export function resolveProjectConfig(project: Project, settings: PMSettings): ResolvedProjectConfig {
   const config = project.config
   return {
-    customFields: resolveCustomFields(project, settings, ancestorFields),
+    customFields: resolveCustomFields(project, settings),
     statuses: DEFAULT_STATUSES,
     priorities: withInUseExtras(
       config?.priorities?.length ? config.priorities : settings.priorities,
@@ -51,12 +47,8 @@ export function mergeById<T extends { id: string }>(lists: T[][]): T[] {
   return merged
 }
 
-function resolveCustomFields(
-  project: Project,
-  settings: PMSettings,
-  ancestorFields: CustomFieldDef[][]
-): CustomFieldDef[] {
-  const fields = mergeById([settings.customFields, ...ancestorFields, project.customFields])
+function resolveCustomFields(project: Project, settings: PMSettings): CustomFieldDef[] {
+  const fields = mergeById([settings.customFields, project.customFields])
   const hidden = project.config?.hiddenCustomFields
   if (!hidden?.length) return fields
   const own = new Set(project.customFields.map((field) => field.id))

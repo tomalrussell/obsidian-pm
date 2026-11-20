@@ -69,9 +69,7 @@ export interface Project {
   updatedAt: string
   filePath: string // resolved vault path
   savedViews: SavedView[]
-  /** The project this one sits under, resolved from its `parent` link. */
-  parentPath?: string
-  /** Kept out of lists, pickers and sweeps. Sub-projects follow their parent. */
+  /** Kept out of lists, pickers and sweeps. */
   archived?: boolean
   /** Per-project overrides for the global settings. Absent fields inherit. */
   config?: ProjectConfig
@@ -81,10 +79,7 @@ export interface Project {
 
 /** Tasks are excluded: they change through the task mutators, never a whole-project write. */
 export type ProjectPatch = Partial<
-  Pick<
-    Project,
-    'title' | 'description' | 'color' | 'icon' | 'customFields' | 'savedViews' | 'config' | 'parentPath' | 'archived'
-  >
+  Pick<Project, 'title' | 'description' | 'color' | 'icon' | 'customFields' | 'savedViews' | 'config' | 'archived'>
 >
 
 export const FILTER_OPS = [
@@ -183,7 +178,7 @@ export type ProjectListField = (typeof PROJECT_LIST_FIELDS)[number]
 /** What the project list shows. Archived projects follow `PMSettings.showArchivedProjects`. */
 export interface ProjectListState {
   filter: ProjectListFilter
-  /** Empty keeps the order of the project tree. */
+  /** Empty keeps the stored project order. */
   sort: ProjectSortRule[]
   group: ProjectGroupBy
   /** The columns shown after the title, in order. Left out while every column shows in the default order. */
@@ -348,8 +343,6 @@ export interface PMSettings {
   scopeViews: Record<string, SavedView[]>
   /** Collapsed task ids per project path. Lives here so a toggle doesn't rewrite task files. */
   collapsedTasks: Record<string, string[]>
-  /** Paths of projects whose sub-projects are collapsed in the project list. */
-  collapsedProjects: string[]
   /** Whether the project list shows archived projects. */
   showArchivedProjects: boolean
   projectList: ProjectListState
@@ -419,7 +412,6 @@ export const DEFAULT_SETTINGS: PMSettings = {
   defaultFields: {},
   scopeViews: {},
   collapsedTasks: {},
-  collapsedProjects: [],
   showArchivedProjects: false,
   projectList: makeDefaultProjectList(),
   projectListViews: [],

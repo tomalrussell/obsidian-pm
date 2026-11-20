@@ -327,16 +327,19 @@ export default class PMPlugin extends Plugin {
     this.settings = Object.assign(structuredClone(DEFAULT_SETTINGS), saved ?? {})
     Reflect.deleteProperty(this.settings, 'peopleFolder')
     Reflect.deleteProperty(this.settings, 'globalTeamMembers')
-    for (const key of ['localApiEnabled', 'localApiPort', 'localApiToken']) Reflect.deleteProperty(this.settings, key)
+    for (const key of ['localApiEnabled', 'localApiPort', 'localApiToken', 'collapsedProjects']) {
+      Reflect.deleteProperty(this.settings, key)
+    }
     this.settings.statuses = defaultStatuses()
     if (!saved?.priorities?.length) this.settings.priorities = defaultPriorities()
     if (!this.settings.projectFilters) this.settings.projectFilters = {}
     if (!this.settings.scopeViews) this.settings.scopeViews = {}
     if (!this.settings.collapsedTasks) this.settings.collapsedTasks = {}
-    if (!this.settings.collapsedProjects) this.settings.collapsedProjects = []
     if (!this.settings.excludedFolders) this.settings.excludedFolders = []
 
-    let migrated = ['localApiEnabled', 'localApiPort', 'localApiToken'].some((key) => saved && key in saved)
+    let migrated = ['localApiEnabled', 'localApiPort', 'localApiToken', 'collapsedProjects'].some(
+      (key) => saved && key in saved
+    )
     // Filters were keyed by project path before a view could cover several projects.
     for (const key of Object.keys(this.settings.projectFilters)) {
       if (key.includes(':')) continue
@@ -433,6 +436,7 @@ export default class PMPlugin extends Plugin {
    * stale, and a key that names no path at all is kept rather than guessed at.
    */
   private scopeKeyResolves(key: string): boolean {
+    if (key.startsWith('subtree:')) return false
     const separator = key.indexOf(':')
     if (separator === -1) return true
     return key
@@ -441,7 +445,7 @@ export default class PMPlugin extends Plugin {
       .every((path) => path === '' || this.app.vault.getAbstractFileByPath(path) !== null)
   }
 
-  /** Flags the note; sub-projects follow it without a write of their own. */
+  /** Archives or restores this project. */
   async setProjectArchived(path: string, archived: boolean): Promise<void> {
     const project = await this.store.loadProjectByPath(path)
     if (!project) return
@@ -532,29 +536,12 @@ export default class PMPlugin extends Plugin {
       if (kept.length !== ids.length) dirty = true
       cleanedCollapsed[path] = kept
     }
-    const collapsedProjects = this.settings.collapsedProjects.filter((path) =>
-      this.app.vault.getAbstractFileByPath(path)
-    )
-    if (collapsedProjects.length !== this.settings.collapsedProjects.length) dirty = true
     if (dirty) {
       this.settings.projectFilters = cleaned
       this.settings.scopeViews = cleanedScopeViews
       this.settings.collapsedTasks = cleanedCollapsed
-      this.settings.collapsedProjects = collapsedProjects
       await this.saveSettings()
     }
-  }
-
-  isProjectCollapsed(path: string): boolean {
-    return this.settings.collapsedProjects.includes(path)
-  }
-
-  async toggleProjectCollapsed(path: string): Promise<void> {
-    const collapsed = this.settings.collapsedProjects
-    const at = collapsed.indexOf(path)
-    if (at === -1) collapsed.push(path)
-    else collapsed.splice(at, 1)
-    await this.saveSettings()
   }
 
   async saveSettings(): Promise<void> {

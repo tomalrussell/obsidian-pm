@@ -8,10 +8,6 @@ import {
 } from '../types'
 import { sameValue } from './ViewState'
 
-/**
- * One project as the project list sees it, with its sub-projects. `done`, `total`,
- * `overdue` and `latestDue` already roll up the sub-projects for a parent.
- */
 export interface ProjectListItem {
   path: string
   title: string
@@ -22,28 +18,17 @@ export interface ProjectListItem {
   total: number
   overdue: number
   latestDue: string
-  children: ProjectListItem[]
 }
 
 export interface ProjectListRow {
   item: ProjectListItem
-  depth: number
-  /** One entry per indent column: does an ancestor at that column still have rows below it. */
-  guides: boolean[]
-  isLastChild: boolean
-  /** Sub-projects that made it into the list. */
-  childCount: number
-  /** Whether its sub-projects are hidden right now; never while a query is on, which opens them all. */
-  collapsed: boolean
-  /** False while a query is on, since the query decides what shows. */
-  collapsible: boolean
 }
 
 export interface ProjectListGroup {
   /** The folder or tag the group stands for; `''` for no folder or no tag. Null when the list isn't grouped. */
   key: string | null
   rows: ProjectListRow[]
-  /** Projects in the group that match, not counting ancestors kept to show where they sit. */
+  /** Projects in the group matching the query. */
   count: number
 }
 
@@ -91,80 +76,43 @@ function compareItems(a: ProjectListItem, b: ProjectListItem, sort: ProjectSortR
 
 const compareText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
 
-/** Every project in the trees, sub-projects included. */
-export function allProjectItems(roots: ProjectListItem[]): ProjectListItem[] {
-  return roots.flatMap((item) => [item, ...allProjectItems(item.children)])
-}
-
 /** Each tag used by any project, with how many projects carry it, by name. */
 export function projectTagCounts(roots: ProjectListItem[]): { tag: string; count: number }[] {
   const counts = new Map<string, number>()
-  for (const item of allProjectItems(roots)) for (const tag of item.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
+  for (const item of roots) for (const tag of item.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
   return [...counts].map(([tag, count]) => ({ tag, count })).sort((a, b) => compareText(a.tag, b.tag))
 }
 
-/**
- * The project list as it is drawn: grouped when asked, each group a tree of rows in sort
- * order. A query keeps a project when it or a sub-project matches, so a match is always
- * shown under its parents, and it opens every collapsed parent on the way.
- */
+/** Flat projects, filtered and sorted within each optional folder or tag group. */
 export function arrangeProjects(
-  roots: ProjectListItem[],
+  items: ProjectListItem[],
   state: ProjectListState,
-  text: string,
-  isCollapsed: (path: string) => boolean
+  text: string
 ): { groups: ProjectListGroup[]; shown: number; total: number } {
-  const active = isProjectQueryActive(state.filter, text)
-  const hit = new Set(
-    allProjectItems(roots)
-      .filter((item) => matches(item, state.filter, text))
-      .map((item) => item.path)
-  )
-  const kept = (item: ProjectListItem): boolean => hit.has(item.path) || item.children.some(kept)
-  const ordered = (items: ProjectListItem[]): ProjectListItem[] =>
-    items.filter(kept).sort((a, b) => compareItems(a, b, state.sort))
-
-  const flatten = (items: ProjectListItem[], trail: boolean[], rows: ProjectListRow[]): ProjectListRow[] => {
-    const list = ordered(items)
-    list.forEach((item, i) => {
-      const isLastChild = i === list.length - 1
-      const children = ordered(item.children)
-      const collapsed = children.length > 0 && !active && isCollapsed(item.path)
-      rows.push({
-        item,
-        depth: trail.length,
-        guides: trail,
-        isLastChild,
-        childCount: children.length,
-        collapsed,
-        collapsible: !active
-      })
-      if (children.length && !collapsed) flatten(item.children, [...trail, !isLastChild], rows)
-    })
-    return rows
-  }
-  const countIn = (items: ProjectListItem[]): number =>
-    allProjectItems(items).filter((item) => hit.has(item.path)).length
-
-  const total = allProjectItems(roots).length
+  const shown = items.filter((item) => matches(item, state.filter, text))
+  const rows = (projects: ProjectListItem[]): ProjectListRow[] =>
+    [...projects].sort((a, b) => compareItems(a, b, state.sort)).map((item) => ({ item }))
   if (state.group === 'none') {
-    const rows = flatten(roots, [], [])
-    return { groups: rows.length ? [{ key: null, rows, count: countIn(roots) }] : [], shown: hit.size, total }
+    return {
+      groups: shown.length ? [{ key: null, rows: rows(shown), count: shown.length }] : [],
+      shown: shown.length,
+      total: items.length
+    }
   }
-
   const byKey = new Map<string, ProjectListItem[]>()
-  for (const root of roots) {
-    const keys = state.group === 'folder' ? [root.folder] : root.tags.length ? root.tags : ['']
-    for (const key of keys) byKey.set(key, [...(byKey.get(key) ?? []), root])
+  for (const item of shown) {
+    const keys = state.group === 'folder' ? [item.folder] : item.tags.length ? item.tags : ['']
+    for (const key of keys) byKey.set(key, [...(byKey.get(key) ?? []), item])
   }
   const keys = [...byKey.keys()].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : compareText(a, b)))
-  const groups = keys
-    .map((key) => {
-      const members = byKey.get(key) ?? []
-      return { key, rows: flatten(members, [], []), count: countIn(members) }
-    })
-    .filter((group) => group.rows.length)
-  return { groups, shown: hit.size, total }
+  return {
+    groups: keys.map((key) => {
+      const projects = byKey.get(key) ?? []
+      return { key, rows: rows(projects), count: projects.length }
+    }),
+    shown: shown.length,
+    total: items.length
+  }
 }
 
 /** The columns as the project list keeps them: undefined once every column shows in the default order. */

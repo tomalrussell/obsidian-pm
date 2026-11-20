@@ -14,10 +14,8 @@ import {
   dateUrgency,
   isTerminalStatus
 } from '@dotpm/core'
-import type { ProjectRef } from '#store'
 import {
   safeAsync,
-  Chip,
   EmptyState,
   ProgressBar,
   renderPropRow,
@@ -52,8 +50,6 @@ export class ProjectOverviewView extends ItemView {
   private project: Project | null = null
   private description = new Component()
   private container!: HTMLElement
-  /** Parent and sub-projects as last drawn, so an unrelated index change doesn't repaint. */
-  private treeSignature = ''
 
   constructor(leaf: WorkspaceLeaf, plugin: PMPlugin) {
     super(leaf)
@@ -101,11 +97,6 @@ export class ProjectOverviewView extends ItemView {
         this.render()
       })
     )
-    this.register(
-      this.plugin.index.onChange(() => {
-        if (this.project && this.treeSignature !== this.signTree(this.project)) this.render()
-      })
-    )
     return Promise.resolve()
   }
 
@@ -138,7 +129,6 @@ export class ProjectOverviewView extends ItemView {
     const project = this.project
     if (!project) return
     this.container.empty()
-    this.treeSignature = this.signTree(project)
 
     const config = this.plugin.store.configFor(project)
     const tasks = flattenTasks(project.tasks)
@@ -146,7 +136,6 @@ export class ProjectOverviewView extends ItemView {
       .filter((task) => !task.archived)
     const rollup = summarize(tasks, config)
 
-    this.renderBreadcrumbs(project)
     this.renderArchivedBanner(project)
     this.renderHeader(project, rollup)
     const grid = this.container.createDiv('pm-overview-grid')
@@ -156,34 +145,13 @@ export class ProjectOverviewView extends ItemView {
     this.renderMetrics(main, project, rollup)
     this.renderDescription(main, project)
     this.renderMilestones(main, tasks, config)
-    this.renderSubProjects(main, project)
     this.renderProperties(side, project, rollup)
-  }
-
-  private signTree(project: Project): string {
-    const parent = this.plugin.index.parentOf(project.filePath)?.path ?? ''
-    const archived = this.plugin.index.isArchived(project.filePath) ? 'archived' : ''
-    return `${parent}|${archived}|${this.children(project)
-      .map((child) => child.path)
-      .join(',')}`
-  }
-
-  /** An archived project shows its sub-projects, which are archived with it; a live one shows the live ones. */
-  private children(project: Project): ProjectRef[] {
-    const archived = this.plugin.index.isArchived(project.filePath)
-    return this.plugin.index.childRefs(project.filePath, archived || this.plugin.settings.showArchivedProjects)
   }
 
   private renderArchivedBanner(project: Project): void {
     if (!this.plugin.index.isArchived(project.filePath)) return
     const banner = this.container.createDiv('pm-overview-banner')
-    const ancestor = this.plugin.index.ancestorRefs(project.filePath).find((ref) => ref.archived)
-    banner.createSpan({
-      text:
-        project.archived || !ancestor
-          ? `This project is archived. It stays out of the project list, pickers and reminders.`
-          : `This project is archived with "${ancestor.title}". Unarchive that project to bring it back.`
-    })
+    banner.createSpan({ text: `This project is archived. It stays out of the project list, pickers and reminders.` })
     if (project.archived) {
       new ButtonComponent(banner)
         .setButtonText(`Unarchive`)
@@ -199,19 +167,17 @@ export class ProjectOverviewView extends ItemView {
 
     const identity = header.createDiv('pm-overview-identity')
     identity.createDiv({ cls: 'pm-overview-title', text: project.title })
-    const children = this.children(project).length
     const bits = [
       rollup.total === 1
         ? `${rollup.done} of ${rollup.total} task done`
         : `${rollup.done} of ${rollup.total} tasks done`
     ]
-    if (children) bits.push(children === 1 ? `${children} sub-project` : `${children} sub-projects`)
     identity.createDiv({ cls: 'pm-overview-subline', text: bits.join(' · ') })
 
     if (!this.plugin.index.isArchived(project.filePath)) {
       new ButtonComponent(header)
         .setButtonText(`Archive`)
-        .setTooltip(`Archive this project and its sub-projects`)
+        .setTooltip(`Archive this project`)
         .onClick(safeAsync(() => this.plugin.setProjectArchived(project.filePath, true)))
     }
     new ButtonComponent(header)
@@ -232,24 +198,6 @@ export class ProjectOverviewView extends ItemView {
     head.createSpan({ cls: 'pm-section-label', text: title })
     if (note) head.createSpan({ cls: 'pm-overview-note', text: note })
     return section
-  }
-
-  private renderBreadcrumbs(project: Project): void {
-    const chain: ProjectRef[] = []
-    for (let ref = this.plugin.index.parentOf(project.filePath); ref; ref = this.plugin.index.parentOf(ref.path)) {
-      chain.unshift(ref)
-    }
-    if (chain.length === 0) return
-    const bar = this.container.createDiv('pm-overview-crumbs')
-    for (const crumb of chain) {
-      const link = bar.createSpan({ cls: 'pm-overview-crumb', text: crumb.title })
-      link.addEventListener(
-        'click',
-        safeAsync(() => this.plugin.router.openProjectOverview(crumb.path))
-      )
-      bar.createSpan({ cls: 'pm-overview-crumb-sep', text: '/' })
-    }
-    bar.createSpan({ text: project.title })
   }
 
   private renderMetrics(parent: HTMLElement, project: Project, rollup: Rollup): void {
@@ -341,31 +289,6 @@ export class ProjectOverviewView extends ItemView {
     renderMilestoneTimeline(section, points, posOf(now))
   }
 
-  private renderSubProjects(parent: HTMLElement, project: Project): void {
-    const children = this.children(project)
-    if (children.length === 0) return
-    const section = this.section(parent, `Sub-projects`)
-    for (const child of children) {
-      const { total, done } = this.plugin.index.rollupCounts(child)
-      const row = section.createDiv('pm-overview-child')
-      renderGlyph(row.createSpan({ cls: 'pm-overview-child-icon' }), { icon: child.icon, color: child.color })
-      row.createSpan({ cls: 'pm-overview-child-title', text: child.title })
-      if (this.plugin.index.isArchived(child.path)) {
-        new Chip(row).setLabel(`Archived`).setVariant('outline').setSize('sm')
-      }
-      new ProgressBar(row)
-        .setSize('sm')
-        .setValue(total ? (done / total) * 100 : 0)
-        .setColor(child.color)
-        .setShowLabel(true)
-      row.createSpan({ cls: 'pm-overview-child-count', text: `${done}/${total}` })
-      row.addEventListener(
-        'click',
-        safeAsync(() => this.plugin.router.openProjectLink(child.path))
-      )
-    }
-  }
-
   private renderProperties(parent: HTMLElement, project: Project, rollup: Rollup): void {
     const section = this.section(parent, `Properties`)
     const list = section.createDiv('pm-overview-props')
@@ -388,16 +311,6 @@ export class ProjectOverviewView extends ItemView {
 
     prop(`Latest due`, !rollup.latestDue, `No dates`, (value) => {
       renderDueChip(value, formatDateLong(rollup.latestDue), dateUrgency(rollup.latestDue, rollup.overdue > 0))
-    })
-
-    const parentRef = this.plugin.index.parentOf(project.filePath)
-    prop(`Parent`, !parentRef, `No parent`, (value) => {
-      if (!parentRef) return
-      const link = value.createSpan({ cls: 'pm-overview-crumb', text: parentRef.title })
-      link.addEventListener(
-        'click',
-        safeAsync(() => this.plugin.router.openProjectOverview(parentRef.path))
-      )
     })
 
     const customFields = this.plugin.store.configFor(project).customFields

@@ -90,21 +90,19 @@ describe('migrateProjectLayout', () => {
       ganttGranularity: 'week',
       nonWorkingDays: {}
     }
-    settings.scopeViews['subtree:Projects/Roadmap.md'] = []
+    settings.scopeViews['project:Projects/Roadmap.md'] = []
     settings.collapsedTasks['Projects/Roadmap.md'] = ['t1']
-    settings.collapsedProjects.push('Projects/Roadmap.md')
 
     await migrateProjectLayout(plugin)
 
     expect(settings.projectFilters['project:Projects/Roadmap/Roadmap.md']).toBeDefined()
     expect(settings.projectFilters['project:Projects/Roadmap.md']).toBeUndefined()
-    expect(settings.scopeViews['subtree:Projects/Roadmap/Roadmap.md']).toBeDefined()
+    expect(settings.scopeViews['project:Projects/Roadmap/Roadmap.md']).toBeDefined()
     expect(settings.collapsedTasks['Projects/Roadmap/Roadmap.md']).toEqual(['t1'])
-    expect(settings.collapsedProjects).toEqual(['Projects/Roadmap/Roadmap.md'])
   })
 
   it('retargets the tabs the workspace restored before it ran', async () => {
-    const scoped = fakeLeaf({ scope: { kind: 'subtree', path: 'Projects/Roadmap.md' } })
+    const scoped = fakeLeaf({ scope: { kind: 'project', path: 'Projects/Roadmap.md' } })
     const overview = fakeLeaf({ filePath: 'Projects/Roadmap.md' })
     const task = fakeLeaf({ filePath: 'Projects/Roadmap_tasks/design.md', projectPath: 'Projects/Roadmap.md' })
     const unrelated = fakeLeaf({ filePath: 'Notes/idea.md' })
@@ -112,34 +110,11 @@ describe('migrateProjectLayout', () => {
 
     await migrateProjectLayout(plugin)
 
-    expect(scoped.state.scope).toEqual({ kind: 'subtree', path: 'Projects/Roadmap/Roadmap.md' })
+    expect(scoped.state.scope).toEqual({ kind: 'project', path: 'Projects/Roadmap/Roadmap.md' })
     expect(overview.state.filePath).toBe('Projects/Roadmap/Roadmap.md')
     expect(task.state.filePath).toBe('Projects/Roadmap/_tasks/design.md')
     expect(task.state.projectPath).toBe('Projects/Roadmap/Roadmap.md')
     expect(unrelated.state.filePath).toBe('Notes/idea.md')
-  })
-
-  it('repoints a sub-project at its parent new path', async () => {
-    const { plugin, app } = await legacyVault([])
-    await app.vault.create(
-      'Projects/Q3.md',
-      [
-        '---',
-        'pm-project: true',
-        'id: p2',
-        'title: Q3',
-        'parent: "[[Projects/Roadmap]]"',
-        'taskIds: []',
-        '---',
-        ''
-      ].join('\n')
-    )
-    plugin.index.build()
-
-    await migrateProjectLayout(plugin)
-
-    const child = expectDefined(await plugin.store.loadProjectByPath('Projects/Q3/Q3.md'))
-    expect(child.parentPath).toBe('Projects/Roadmap/Roadmap.md')
   })
 
   it('does nothing on a second run', async () => {

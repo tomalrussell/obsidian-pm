@@ -55,7 +55,7 @@ describe('VaultIndex', () => {
     expect(index.projectPaths()).toEqual(['Projects/Roadmap.md'])
   })
 
-  it('attributes tasks in a project folder to that project, and nests sub-projects', async () => {
+  it('attributes tasks in a project folder to that project, keeps projects independent', async () => {
     await vault.create('Projects/Roadmap/Roadmap.md', projectNote('p1', 'Roadmap'))
     await vault.create('Projects/Roadmap/_tasks/one.md', taskNote('t1', 'One', 'p1'))
     await vault.create('Projects/Roadmap/_tasks/Archive/two.md', taskNote('t2', 'Two', 'p1'))
@@ -66,7 +66,6 @@ describe('VaultIndex', () => {
     expect(index.projectPaths()).toEqual(['Projects/Roadmap/Q3/Q3.md', 'Projects/Roadmap/Roadmap.md'])
     expect(index.projectPathForTask('Projects/Roadmap/_tasks/one.md')).toBe('Projects/Roadmap/Roadmap.md')
     expect(index.projectPathForTask('Projects/Roadmap/_tasks/Archive/two.md')).toBe('Projects/Roadmap/Roadmap.md')
-    expect(index.childRefs('Projects/Roadmap/Roadmap.md').map((ref) => ref.path)).toEqual(['Projects/Roadmap/Q3/Q3.md'])
   })
 
   it('skips excluded folders', async () => {
@@ -166,120 +165,17 @@ describe('VaultIndex', () => {
     expect(index.dueSummary(ref).overdue).toBe(1)
   })
 
-  describe('nesting', () => {
-    it('reads the parent from a wikilink and reports roots and children', async () => {
-      await vault.create('Platform.md', projectNote('p1', 'Platform'))
-      await vault.create('Work/Billing.md', projectNote('p2', 'Billing', 'parent: "[[Platform]]"\n'))
-      await vault.create('Work/Search.md', projectNote('p3', 'Search', 'parent: "[[Platform]]"\n'))
-      index.build()
+  it('ignores old parent links for project visibility and task counts', async () => {
+    await vault.create('A.md', projectNote('p1', 'A', 'archived: true\n'))
+    await vault.create('B.md', projectNote('p2', 'B', 'parent: "[[A]]"\n'))
+    await vault.create('A_tasks/a.md', taskNote('t1', 'A1', 'p1', 'done'))
+    await vault.create('B_tasks/b.md', taskNote('t2', 'B1', 'p2'))
+    index.build()
 
-      expect(index.rootRefs().map((r) => r.title)).toEqual(['Platform'])
-      expect(index.childRefs('Platform.md').map((r) => r.title)).toEqual(['Billing', 'Search'])
-      expect(index.parentOf('Work/Billing.md')?.title).toBe('Platform')
-    })
-
-    it('accepts a full path in the parent link', async () => {
-      await vault.create('Work/Platform.md', projectNote('p1', 'Platform'))
-      await vault.create('Billing.md', projectNote('p2', 'Billing', 'parent: "[[Work/Platform]]"\n'))
-      index.build()
-
-      expect(index.parentOf('Billing.md')?.path).toBe('Work/Platform.md')
-    })
-
-    it('treats a project with an unresolvable parent as a root', async () => {
-      await vault.create('Billing.md', projectNote('p2', 'Billing', 'parent: "[[Nowhere]]"\n'))
-      index.build()
-
-      expect(index.rootRefs().map((r) => r.title)).toEqual(['Billing'])
-    })
-
-    it('breaks a parent cycle instead of hanging', async () => {
-      await vault.create('A.md', projectNote('p1', 'A', 'parent: "[[B]]"\n'))
-      await vault.create('B.md', projectNote('p2', 'B', 'parent: "[[A]]"\n'))
-      index.build()
-
-      expect(index.rootRefs().length).toBe(1)
-      expect(index.descendantRefs(index.rootRefs()[0].path).length).toBe(1)
-    })
-
-    it('collects descendants through several levels', async () => {
-      await vault.create('A.md', projectNote('p1', 'A'))
-      await vault.create('B.md', projectNote('p2', 'B', 'parent: "[[A]]"\n'))
-      await vault.create('C.md', projectNote('p3', 'C', 'parent: "[[B]]"\n'))
-      index.build()
-
-      expect(index.descendantRefs('A.md').map((r) => r.title)).toEqual(['B', 'C'])
-    })
-
-    it('rolls task counts up through the subtree', async () => {
-      await vault.create('A.md', projectNote('p1', 'A'))
-      await vault.create('A_tasks/a.md', taskNote('t1', 'A1', 'p1', 'done'))
-      await vault.create('B.md', projectNote('p2', 'B', 'parent: "[[A]]"\n'))
-      await vault.create('B_tasks/b.md', taskNote('t2', 'B1', 'p2'))
-      await vault.create('B_tasks/c.md', taskNote('t3', 'B2', 'p2', 'done'))
-      index.build()
-
-      const root = expectDefined(index.projectRef('A.md'))
-      expect(index.counts(root)).toEqual({ total: 1, done: 1 })
-      expect(index.rollupCounts(root)).toEqual({ total: 3, done: 2 })
-    })
-
-    it('rolls overdue tasks and the last due date up through the subtree', async () => {
-      await vault.create('A.md', projectNote('p1', 'A'))
-      await vault.create('A_tasks/a.md', taskNote('t1', 'A1', 'p1', 'todo', '2020-01-05'))
-      await vault.create('B.md', projectNote('p2', 'B', 'parent: "[[A]]"\n'))
-      await vault.create('B_tasks/b.md', taskNote('t2', 'B1', 'p2', 'todo', '2020-02-01'))
-      await vault.create('B_tasks/c.md', taskNote('t3', 'B2', 'p2', 'done', '2020-03-01'))
-      index.build()
-
-      const root = expectDefined(index.projectRef('A.md'))
-      expect(index.dueSummary(root)).toEqual({ overdue: 1, latestDue: '2020-01-05' })
-      expect(index.rollupDueSummary(root)).toEqual({ overdue: 2, latestDue: '2020-03-01' })
-    })
-
-    it('leaves an archived project and its children out unless asked', async () => {
-      await vault.create('A.md', projectNote('p1', 'A', 'archived: true\n'))
-      await vault.create('B.md', projectNote('p2', 'B', 'parent: "[[A]]"\n'))
-      await vault.create('C.md', projectNote('p3', 'C'))
-      await vault.create('D.md', projectNote('p4', 'D', 'parent: "[[C]]"\narchived: true\n'))
-      index.build()
-
-      expect(index.projectRefs().map((r) => r.title)).toEqual(['C'])
-      expect(index.projectRefs(true).map((r) => r.title)).toEqual(['A', 'B', 'C', 'D'])
-      expect(index.rootRefs().map((r) => r.title)).toEqual(['C'])
-      expect(index.rootRefs(true).map((r) => r.title)).toEqual(['A', 'C'])
-      expect(index.childRefs('A.md').map((r) => r.title)).toEqual([])
-      expect(index.childRefs('A.md', true).map((r) => r.title)).toEqual(['B'])
-      expect(index.childRefs('C.md').map((r) => r.title)).toEqual([])
-      expect(index.descendantRefs('A.md', true).map((r) => r.title)).toEqual(['B'])
-      expect(index.isArchived('A.md')).toBe(true)
-      expect(index.isArchived('B.md')).toBe(true)
-      expect(index.isArchived('C.md')).toBe(false)
-      expect(index.isArchived('D.md')).toBe(true)
-      expect(expectDefined(index.projectRef('B.md')).archived).toBe(false)
-      expect(index.parentOf('B.md')?.title).toBe('A')
-    })
-
-    it('follows an archive flag added after the build', async () => {
-      const note = await vault.create('A.md', projectNote('p1', 'A'))
-      await vault.create('B.md', projectNote('p2', 'B', 'parent: "[[A]]"\n'))
-      index.build()
-      index.register(fakePlugin())
-
-      await vault.process(note, (c) => c.replace('title: A', 'title: A\narchived: true'))
-      expect(index.projectRefs().map((r) => r.title)).toEqual([])
-      expect(index.isArchived('B.md')).toBe(true)
-    })
-
-    it('follows a parent link added after the build', async () => {
-      await vault.create('A.md', projectNote('p1', 'A'))
-      const child = await vault.create('B.md', projectNote('p2', 'B'))
-      index.build()
-      index.register(fakePlugin())
-
-      await vault.process(child, (c) => c.replace('title: B', 'title: B\nparent: "[[A]]"'))
-      expect(index.childRefs('A.md').map((r) => r.title)).toEqual(['B'])
-    })
+    expect(index.projectRefs().map((ref) => ref.title)).toEqual(['B'])
+    expect(index.isArchived('A.md')).toBe(true)
+    expect(index.isArchived('B.md')).toBe(false)
+    expect(index.counts(expectDefined(index.projectRef('B.md')))).toEqual({ total: 1, done: 0 })
   })
 
   describe('cross-project references', () => {

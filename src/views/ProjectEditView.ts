@@ -11,8 +11,7 @@ import {
   DEFAULT_PALETTE_COLOR,
   makeId,
   priorityIconSetLabels,
-  flattenTasks,
-  mergeById
+  flattenTasks
 } from '@dotpm/core'
 import {
   safeAsync,
@@ -199,40 +198,8 @@ export class ProjectEditView extends ItemView {
       return cell
     })
 
-    renderPropRow(props, `Parent`, () => {
-      const cell = createDiv('pm-prop-value')
-      const excluded = new Set([
-        project.filePath,
-        ...this.plugin.index.descendantRefs(project.filePath, true).map((ref) => ref.path)
-      ])
-      renderSelectControl({
-        container: cell,
-        value: project.parentPath ?? '',
-        placeholder: `No parent`,
-        search: true,
-        options: [
-          { id: '', label: `No parent` },
-          ...this.plugin.index
-            .projectRefs(true)
-            .filter((ref) => !excluded.has(ref.path))
-            .filter((ref) => ref.path === project.parentPath || !this.plugin.index.isArchived(ref.path))
-            .map((ref) => ({ id: ref.path, label: ref.title, color: ref.color }))
-        ],
-        onChange: (path) => {
-          this.save({ parentPath: path || undefined })
-          this.render()
-        }
-      })
-      return cell
-    })
-
     renderPropRow(props, `Archived`, () => {
       const cell = createDiv('pm-prop-value')
-      const ancestor = this.plugin.index.ancestorRefs(project.filePath).find((ref) => ref.archived)
-      if (!project.archived && ancestor) {
-        cell.createSpan({ text: `Yes, with "${ancestor.title}"` })
-        return cell
-      }
       renderSelectControl({
         container: cell,
         value: project.archived ? 'yes' : 'no',
@@ -383,36 +350,20 @@ export class ProjectEditView extends ItemView {
     ])
   }
 
-  /**
-   * The whole chain the project inherits from, nearest ancestor winning. Unfiltered: a
-   * hidden field still needs a row to unhide, and an overridden one names its source.
-   */
-  private inheritedFields(project: Project): { field: CustomFieldDef; source: string }[] {
-    const ancestors = this.plugin.index.ancestorRefs(project.filePath)
-    return mergeById([
-      this.plugin.settings.customFields.map((field) => ({
-        id: field.id,
-        field,
-        source: `vault settings`
-      })),
-      ...ancestors.map((ref) => ref.customFields.map((field) => ({ id: field.id, field, source: ref.title })))
-    ])
-  }
-
   private renderCustomFields(project: Project): void {
     const section = this.section(`Custom fields`, `Extra properties for tasks`)
 
-    const inherited = this.inheritedFields(project)
+    const globalFields = this.plugin.settings.customFields.map((field) => ({ field, source: 'vault settings' }))
     const own = new Set(project.customFields.map((field) => field.id))
-    const notOverridden = inherited.filter((entry) => !own.has(entry.field.id))
+    const notOverridden = globalFields.filter((entry) => !own.has(entry.field.id))
     if (notOverridden.length > 0) {
-      section.createDiv({ cls: 'pm-section-sublabel', text: `Inherited` })
-      const inheritedList = section.createDiv('pm-cf-list')
-      for (const entry of notOverridden) this.renderInheritedField(inheritedList, project, entry.field, entry.source)
+      section.createDiv({ cls: 'pm-section-sublabel', text: `Global defaults` })
+      const globalList = section.createDiv('pm-cf-list')
+      for (const entry of notOverridden) this.renderGlobalField(globalList, project, entry.field, entry.source)
       section.createDiv({ cls: 'pm-section-sublabel', text: `This project` })
     }
 
-    const sourceById = new Map(inherited.map((entry) => [entry.field.id, entry.source]))
+    const sourceById = new Map(globalFields.map((entry) => [entry.field.id, entry.source]))
     renderCustomFieldListEditor(section.createDiv('pm-cf-list'), {
       fields: project.customFields,
       onChanged: () => this.save({ customFields: project.customFields }),
@@ -428,13 +379,13 @@ export class ProjectEditView extends ItemView {
         new IconButton(row)
           .setIcon('git-merge')
           .setTooltip(`Merge into the ${twin.field.name} from ${twin.source}`)
-          .onClick(() => this.mergeIntoInherited(project, field, twin.field, twin.source))
+          .onClick(() => this.mergeIntoGlobal(project, field, twin.field, twin.source))
       }
     })
   }
 
-  /** Folds a field that duplicates an inherited one into it, values and all. */
-  private readonly mergeIntoInherited = safeAsync(
+  /** Folds a field that duplicates a global one into it, values and all. */
+  private readonly mergeIntoGlobal = safeAsync(
     async (project: Project, own: CustomFieldDef, target: CustomFieldDef, source: string) => {
       const ok = await confirmDialog(
         this.app,
@@ -455,7 +406,7 @@ export class ProjectEditView extends ItemView {
     }
   )
 
-  private renderInheritedField(container: HTMLElement, project: Project, field: CustomFieldDef, source: string): void {
+  private renderGlobalField(container: HTMLElement, project: Project, field: CustomFieldDef, source: string): void {
     const hidden = project.config?.hiddenCustomFields ?? []
     const isHidden = hidden.includes(field.id)
     const row = container.createDiv('pm-cf-row pm-cf-row--inherited')
@@ -478,7 +429,7 @@ export class ProjectEditView extends ItemView {
       .setIcon('pencil')
       .setTooltip(`Override on this project`)
       .onClick(() => {
-        // Copied, not aliased: the definition belongs to the ancestor's indexed frontmatter.
+        // Copy the global field definition before editing it.
         const copy: CustomFieldDef = { ...field }
         if (field.options) copy.options = [...field.options]
         project.customFields.push(copy)

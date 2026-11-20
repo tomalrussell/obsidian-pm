@@ -20,7 +20,7 @@ export interface BreadcrumbProps {
   color?: string
   ancestors: CrumbAncestor[]
   title: string
-  /** A short count after the title, such as "+3" for the sub-projects in view. */
+  /** A short count after the title, such as "+3" for additional projects in view. */
   badge?: string
   /** Tints the title, for a view whose projects a parent path can't describe. */
   scoped?: boolean
