@@ -1110,51 +1110,6 @@ describe('ProjectStore bulk mutators', () => {
   })
 })
 
-describe('ProjectStore.moveTaskToProject', () => {
-  it('moves the task and its subtasks into the target project, keeping their ids', async () => {
-    const { store, vault, app } = newStore()
-    const from = await store.createProject('From', 'Projects')
-    const to = await store.createProject('To', 'Work')
-    const parent = await addNamed(store, from, 'Parent')
-    const child = await addNamed(store, from, 'Child', parent.id)
-
-    await store.moveTaskToProject(from, to, parent.id)
-
-    expect(from.tasks).toHaveLength(0)
-    expect(to.tasks.map((t) => t.id)).toEqual([parent.id])
-    expect(to.tasks[0].subtasks.map((t) => t.id)).toEqual([child.id])
-    expect(vault.getAbstractFileByPath('Projects/From/_tasks/parent.md')).toBeNull()
-    expect(vault.getAbstractFileByPath('Work/To/_tasks/parent.md')).not.toBeNull()
-    expect(vault.getAbstractFileByPath('Work/To/_tasks/child.md')).not.toBeNull()
-
-    const store2 = new ProjectStore(app, () => SETTINGS)
-    const reloaded = await store2.loadProject(fileAt(app, to.filePath))
-    expect(flattenTasks(reloaded?.tasks ?? []).map((f) => f.task.id)).toEqual([parent.id, child.id])
-  })
-
-  it('writes the target project id into the moved task file', async () => {
-    const { store, app } = newStore()
-    const from = await store.createProject('From', 'Projects')
-    const to = await store.createProject('To', 'Work')
-    const task = await addNamed(store, from, 'Solo')
-
-    await store.moveTaskToProject(from, to, task.id)
-
-    const content = await app.vault.cachedRead(fileAt(app, 'Work/To/_tasks/solo.md'))
-    expect(content).toContain('projectId: "[[To|To]]"')
-  })
-
-  it('does nothing when the source and target are the same project', async () => {
-    const { store } = newStore()
-    const project = await store.createProject('Same', 'Projects')
-    const task = await addNamed(store, project, 'Stay')
-
-    await store.moveTaskToProject(project, project, task.id)
-
-    expect(project.tasks.map((t) => t.id)).toEqual([task.id])
-  })
-})
-
 describe('ProjectStore project cache', () => {
   it('returns the cached instance on repeated loads', async () => {
     const { store, vault } = newStore()
@@ -1298,51 +1253,6 @@ describe('ProjectStore project folders', () => {
     expect(project.filePath).toBe('Projects/Roadmap/Roadmap.md')
     expect(task.filePath).toBe('Projects/Roadmap/_tasks/design.md')
     expect(app.vault.getAbstractFileByPath('Projects/Roadmap/_tasks/design.md')).toBeInstanceOf(TFile)
-  })
-
-  it('moves a project that still sits beside its task folder into its own folder', async () => {
-    const { store, app } = newIndexedStore()
-    await app.vault.create(
-      'Projects/Legacy.md',
-      ['---', 'pm-project: true', 'id: p1', 'title: Legacy', 'taskIds: []', '---', ''].join('\n')
-    )
-    await app.vault.createFolder('Projects/Legacy_tasks')
-    await app.vault.create(
-      'Projects/Legacy_tasks/first.md',
-      ['---', 'pm-task: true', 'id: t1', 'title: First', 'status: todo', '---', ''].join('\n')
-    )
-
-    const live = expectDefined(await store.loadProjectByPath('Projects/Legacy.md'))
-
-    const moved = await store.moveProjectIntoOwnFolder('Projects/Legacy.md')
-
-    expect(moved).toBe('Projects/Legacy/Legacy.md')
-    expect(live.tasks[0].filePath).toBe('Projects/Legacy/_tasks/first.md')
-    expect(app.vault.getAbstractFileByPath('Projects/Legacy/_tasks/first.md')).toBeInstanceOf(TFile)
-    expect(app.vault.getAbstractFileByPath('Projects/Legacy.md')).toBeNull()
-    expect(app.vault.getAbstractFileByPath('Projects/Legacy_tasks')).toBeNull()
-
-    const reloaded = await store.loadProjectByPath('Projects/Legacy/Legacy.md')
-    expect(flattenTasks(expectDefined(reloaded).tasks).map((f) => f.task.title)).toEqual(['First'])
-  })
-
-  it('moves a project sitting at the vault root into a folder beside it', async () => {
-    const { store, app } = newIndexedStore()
-    await app.vault.create(
-      'Stress test.md',
-      ['---', 'pm-project: true', 'id: p1', 'title: Stress test', 'taskIds: []', '---', ''].join('\n')
-    )
-
-    const moved = await store.moveProjectIntoOwnFolder('Stress test.md')
-
-    expect(moved).toBe('Stress test/Stress test.md')
-    expect(app.vault.getAbstractFileByPath('Stress test/Stress test.md')).toBeInstanceOf(TFile)
-  })
-
-  it('leaves a project that already owns its folder alone', async () => {
-    const { store } = newStore()
-    const project = await store.createProject('Roadmap', 'Projects')
-    await expect(store.moveProjectIntoOwnFolder(project.filePath)).resolves.toBeNull()
   })
 
   it('trashes the whole folder when a project is deleted', async () => {

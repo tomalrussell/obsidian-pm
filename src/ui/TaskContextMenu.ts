@@ -2,7 +2,7 @@ import { Menu } from 'obsidian'
 import type PMPlugin from '#main'
 import { type Task, type Project } from '@dotpm/core'
 import { safeAsync } from '@dotpm/ui'
-import { openTaskModal, confirmDialog, openProjectPicker } from './ModalFactory'
+import { openTaskModal, confirmDialog } from './ModalFactory'
 
 export interface TaskMenuContext {
   plugin: PMPlugin
@@ -35,27 +35,6 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
             await ctx.onRefresh()
           }
         })
-      })
-  )
-  menu.addItem((item) =>
-    item
-      .setTitle(`Move to project`)
-      .setIcon('folder-input')
-      .onClick(() => {
-        const targets = ctx.plugin.index.projectRefs().filter((ref) => ref.path !== ctx.project.filePath)
-        if (!targets.length) {
-          return
-        }
-        openProjectPicker(
-          ctx.plugin,
-          targets,
-          safeAsync(async (ref) => {
-            const target = await ctx.plugin.store.loadProjectByPath(ref.path)
-            if (!target) return
-            await ctx.plugin.store.moveTaskToProject(ctx.project, target, task.id)
-            await ctx.onRefresh()
-          })
-        )
       })
   )
   menu.addSeparator()

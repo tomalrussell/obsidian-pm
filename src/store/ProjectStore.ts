@@ -56,7 +56,6 @@ import {
   moveTaskAttachmentFolder,
   projectFolderOf,
   projectTaskFolder,
-  TASK_FOLDER_NAME,
   projectFilePath
 } from './vaultFs'
 import { loadTasksFromFolder, readNote } from './TaskLoader'
@@ -157,15 +156,6 @@ export class ProjectStore {
       // Upgrade-only: 'full' wins over 'fm', never the reverse.
       if (map.get(id) === 'full') continue
       map.set(id, kind)
-    }
-  }
-
-  private markSubtreeDirty(project: Project, taskId: string, kind: DirtyKind): void {
-    const task = findTaskById(project, taskId)
-    if (!task) return
-    this.markDirty(project, [taskId], kind)
-    for (const ft of flattenTasks(task.subtasks)) {
-      this.markDirty(project, [ft.task.id], kind)
     }
   }
 
@@ -719,41 +709,6 @@ export class ProjectStore {
   }
 
   /**
-   * The task folder moves first: once it is gone from beside the note, the rename below
-   * reads as a plain move and the vault listener has nothing left to follow. The note goes
-   * through `vault.rename`, not `fileManager.renameFile`: its name does not change, so the
-   * wikilinks that name it keep resolving, and Obsidian's link pass stalls for a long time
-   * on a note taking its folder's name.
-   */
-  async moveProjectIntoOwnFolder(projectPath: string): Promise<string | null> {
-    const file = this.app.vault.getAbstractFileByPath(projectPath)
-    if (!(file instanceof TFile) || projectFolderOf(this.app, projectPath)) return null
-
-    const dir = folderOf(projectPath)
-    const target = normalizePath(dir ? `${dir}/${file.basename}` : file.basename)
-    if (this.app.vault.getAbstractFileByPath(target) instanceof TFile) return null
-
-    const oldTaskFolder = projectTaskFolder(this.app, projectPath)
-    const tasks = this.app.vault.getAbstractFileByPath(oldTaskFolder)
-    await this.ensureFolder(target)
-    if (tasks instanceof TFolder) {
-      const tasksTarget = normalizePath(`${target}/${TASK_FOLDER_NAME}`)
-      if (!this.app.vault.getAbstractFileByPath(tasksTarget)) {
-        this.markSelfWrite(tasks.path)
-        this.markSelfWrite(tasksTarget)
-        await this.app.vault.rename(tasks, tasksTarget)
-      }
-    }
-
-    const notePath = normalizePath(`${target}/${file.name}`)
-    this.markSelfWrite(projectPath)
-    this.markSelfWrite(notePath)
-    await this.app.vault.rename(file, notePath)
-    await this.rekeyProject(projectPath, notePath, oldTaskFolder)
-    return notePath
-  }
-
-  /**
    * Writes the reference fields of the named notes, and nothing else: a note keeps its
    * name, its body and every other property. A note whose references already say what
    * they would be written as is left alone, so nothing is written twice.
@@ -879,58 +834,6 @@ export class ProjectStore {
     rebuildTaskIndex(project)
     this.markAllDirty(project, 'fm')
     await this.saveProject(project)
-  }
-
-  /**
-   * Hand a task and its subtasks to another project: the files move into that project's
-   * folder and the task ids stay put, so dependencies pointing at it keep resolving.
-   */
-  async moveTaskToProject(
-    from: Project,
-    to: Project,
-    taskId: string,
-    newParentId: string | null = null
-  ): Promise<void> {
-    if (from.filePath === to.filePath) return
-    const task = findTaskById(from, taskId)
-    if (!task) return
-
-    const oldParentId = findParentId(from, taskId)
-    deleteTaskFromTree(from.tasks, taskId)
-    indexRemoveSubtree(from, task)
-    if (oldParentId) this.markDirty(from, [oldParentId], 'full')
-
-    const targetFolder = projectTaskFolder(this.app, to.filePath)
-    await this.ensureFolder(targetFolder)
-    for (const moved of [task, ...flattenTasks(task.subtasks).map((ft) => ft.task)]) {
-      // The file lands in the target folder under the same name; dropping filePath here
-      // would lose the body of a task whose description was never read.
-      if (moved.filePath) {
-        const fileName = moved.filePath.slice(moved.filePath.lastIndexOf('/') + 1)
-        const dest = uniqueChildPath(
-          this.app,
-          moved.archived ? normalizePath(targetFolder + '/Archive') : targetFolder,
-          fileName
-        )
-        const file = this.app.vault.getAbstractFileByPath(moved.filePath)
-        if (file instanceof TFile) {
-          if (moved.archived) await this.ensureFolder(normalizePath(targetFolder + '/Archive'))
-          this.markSelfWrite(moved.filePath)
-          this.markSelfWrite(dest)
-          await this.app.fileManager.renameFile(file, dest)
-          await moveTaskAttachmentFolder(this.app, moved.filePath, dest)
-          moved.filePath = dest
-        }
-      }
-    }
-
-    addTaskToTree(to.tasks, task, newParentId)
-    indexAddSubtree(to, task, newParentId)
-    this.markSubtreeDirty(to, task.id, 'full')
-    if (newParentId) this.markDirty(to, [newParentId], 'full')
-
-    await this.saveProject(from)
-    await this.saveProject(to)
   }
 
   async moveTask(project: Project, taskId: string, newParentId: string | null): Promise<void> {

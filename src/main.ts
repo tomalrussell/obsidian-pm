@@ -33,7 +33,7 @@ import {
 } from './ui/ModalFactory'
 import { planArchive } from './components/ArchiveCompleted'
 import { IdRepair } from './components/IdRepair'
-import { migrateBoardCardConfig, migrateProjects, migrateProjectLayout, migrateTaskRefs } from './migration'
+import { migrateBoardCardConfig, migrateProjects, migrateTaskRefs } from './migration'
 
 export default class PMPlugin extends Plugin {
   settings: PMSettings = { ...DEFAULT_SETTINGS }
@@ -386,7 +386,6 @@ export default class PMPlugin extends Plugin {
   /** The startup work that reads the index: migration and pruning. */
   private async startupSweep(): Promise<void> {
     await migrateProjects(this)
-    await migrateProjectLayout(this)
     await migrateTaskRefs(this)
     await migrateBoardCardConfig(this)
     await this.idRepair.check()
