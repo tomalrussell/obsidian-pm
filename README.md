@@ -2,6 +2,12 @@
 
 Less project management, still an Obsidian plugin.
 
+Build locally, straight to a vault, watching for changes:
+
+```bash
+VAULT_PATH=~/org/ pnpm dev
+```
+
 Forked from https://github.com/dotpm/obsidian-pm
 
 [![License](https://img.shields.io/github/license/dotpm/obsidian-pm)](LICENSE)
