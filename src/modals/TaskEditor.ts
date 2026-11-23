@@ -48,7 +48,6 @@ export class TaskEditor {
   private persistPromise: Promise<void> | null = null
   private noteSuggest: NoteLinkSuggest | null = null
   private descResizeObserver: ResizeObserver | null = null
-  private shownExtras = new Set<string>()
   private saveKeyHandler: KeymapEventHandler | null = null
   private containerEl: HTMLElement | null = null
   private titleInput: HTMLTextAreaElement | null = null
@@ -384,7 +383,6 @@ export class TaskEditor {
         this.parentId = id
       },
       rerender: () => this.render(),
-      shownExtras: this.shownExtras,
       openTask: (path) => this.openLinkedTask(path)
     })
 

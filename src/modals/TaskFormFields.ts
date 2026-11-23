@@ -18,10 +18,8 @@ import {
   renderDateControl,
   renderInputControl,
   renderMultiSelect,
-  renderAddProperty,
   renderDepRow,
-  type SelectItem,
-  type HiddenProperty
+  type SelectItem
 } from '@dotpm/ui'
 
 export interface TaskFormFieldsContext {
@@ -31,7 +29,6 @@ export interface TaskFormFieldsContext {
   parentId: string | null
   setParentId: (id: string | null) => void
   rerender: () => void
-  shownExtras: Set<string>
   /** Leaves the editor for the task a dependency names. */
   openTask: (path: string) => void
 }
@@ -43,12 +40,11 @@ const typeOptions = (): SelectItem[] => [
 ]
 
 /**
- * The property grid. Core properties always show; the rest hide when empty behind "Add
- * property". Single-selects and dates re-render the form on change; multi-selects mutate
+ * The property grid. Single-selects and dates re-render the form on change; multi-selects mutate
  * the task in place and refresh their own chips.
  */
 export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFieldsContext): void {
-  const { task, project, plugin, rerender, shownExtras } = ctx
+  const { task, project, plugin, rerender } = ctx
   const { statuses, priorities, priorityIcons } = plugin.store.configFor(project)
   const grid = container.createDiv('pm-prop-grid')
 
@@ -272,66 +268,62 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
   )
   tagsRow.addClass('pm-prop-row--wide')
 
-  if (task.dependencies.length > 0 || shownExtras.has('depends')) {
-    const ownTasks = flattenTasks(project.tasks)
-      .map((f) => f.task)
-      .filter((other) => other.id !== task.id)
-    const ownIds = new Set(ownTasks.map((other) => other.id))
-    // Tasks in other projects can be depended on too, so the picker offers the whole
-    // vault, this project first and everything else labelled with its project.
-    const foreign = plugin.index
-      .allTaskRefs()
-      .filter((ref) => ref.id !== task.id && !ownIds.has(ref.id))
-      .map((ref) => ({
-        id: ref.id,
-        label: ref.projectPath
-          ? `${ref.title}  ·  ${plugin.index.projectRef(ref.projectPath)?.title ?? ''}`.trimEnd()
-          : ref.title
-      }))
-    const allTasks: { id: string; label: string }[] = [
-      ...ownTasks.map((other) => ({ id: other.id, label: other.title })),
-      ...foreign
-    ]
-    const titleOf = (id: string) => allTasks.find((entry) => entry.id === id)?.label ?? id
-    const depRow = renderPropRow(
-      grid,
-      `Depends on`,
-      () => {
-        const cell = createDiv('pm-prop-value')
-        renderMultiSelect({
-          container: cell,
-          search: true,
-          addLabel: `Add dependency`,
-          addLabelMore: `Add another`,
-          placeholder: `Search tasks…`,
-          depsList: true,
-          labelFor: titleOf,
-          linkFor: (id) => {
-            const path = plugin.index.task(id)?.path
-            return path ? { path, open: () => ctx.openTask(path) } : null
-          },
-          selected: () => task.dependencies.filter((id) => allTasks.some((entry) => entry.id === id)),
-          options: () => {
-            // Built once per open, not once per candidate. A predecessor chain can leave
-            // this project and come back, so every candidate is checked against the vault.
-            const edges = plugin.index.dependentsMap()
-            return allTasks.filter(
-              (entry) => task.dependencies.includes(entry.id) || !reaches(edges, task.id, entry.id)
-            )
-          },
-          add: (id) => {
-            if (!task.dependencies.includes(id)) task.dependencies.push(id)
-          },
-          remove: (id) => {
-            task.dependencies = task.dependencies.filter((d) => d !== id)
-          }
-        })
-        return cell
-      },
-      'link-2'
-    )
-    depRow.addClass('pm-prop-row--wide')
-  }
+  const ownTasks = flattenTasks(project.tasks)
+    .map((f) => f.task)
+    .filter((other) => other.id !== task.id)
+  const ownIds = new Set(ownTasks.map((other) => other.id))
+  // Tasks in other projects can be depended on too, so the picker offers the whole
+  // vault, this project first and everything else labelled with its project.
+  const foreign = plugin.index
+    .allTaskRefs()
+    .filter((ref) => ref.id !== task.id && !ownIds.has(ref.id))
+    .map((ref) => ({
+      id: ref.id,
+      label: ref.projectPath
+        ? `${ref.title}  ·  ${plugin.index.projectRef(ref.projectPath)?.title ?? ''}`.trimEnd()
+        : ref.title
+    }))
+  const allTasks: { id: string; label: string }[] = [
+    ...ownTasks.map((other) => ({ id: other.id, label: other.title })),
+    ...foreign
+  ]
+  const titleOf = (id: string) => allTasks.find((entry) => entry.id === id)?.label ?? id
+  const depRow = renderPropRow(
+    grid,
+    `Depends on`,
+    () => {
+      const cell = createDiv('pm-prop-value')
+      renderMultiSelect({
+        container: cell,
+        search: true,
+        addLabel: `Add dependency`,
+        addLabelMore: `Add another`,
+        placeholder: `Search tasks…`,
+        depsList: true,
+        labelFor: titleOf,
+        linkFor: (id) => {
+          const path = plugin.index.task(id)?.path
+          return path ? { path, open: () => ctx.openTask(path) } : null
+        },
+        selected: () => task.dependencies.filter((id) => allTasks.some((entry) => entry.id === id)),
+        options: () => {
+          // Built once per open, not once per candidate. A predecessor chain can leave
+          // this project and come back, so every candidate is checked against the vault.
+          const edges = plugin.index.dependentsMap()
+          return allTasks.filter((entry) => task.dependencies.includes(entry.id) || !reaches(edges, task.id, entry.id))
+        },
+        add: (id) => {
+          if (!task.dependencies.includes(id)) task.dependencies.push(id)
+        },
+        remove: (id) => {
+          task.dependencies = task.dependencies.filter((d) => d !== id)
+        }
+      })
+      return cell
+    },
+    'link-2'
+  )
+  depRow.addClass('pm-prop-row--wide')
 
   // The other side of a dependency, which is otherwise only visible from the task that
   // declared it, and invisible altogether when that task is in another project.
@@ -357,17 +349,5 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
       'link-2'
     )
     blocksRow.addClass('pm-prop-row--wide')
-  }
-
-  const hidden: HiddenProperty[] = []
-  if (task.dependencies.length === 0 && !shownExtras.has('depends')) {
-    hidden.push({ id: 'depends', label: `Depends on`, icon: 'link-2' })
-  }
-  if (hidden.length > 0) {
-    const addCell = grid.createDiv('pm-prop-add-cell')
-    renderAddProperty(addCell, hidden, (id) => {
-      shownExtras.add(id)
-      rerender()
-    })
   }
 }

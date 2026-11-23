@@ -621,10 +621,6 @@ button.pm-icon-trigger {
 .pm-prop-row--wide {
   grid-column: 1 / -1;
 }
-.pm-prop-add-cell {
-  grid-column: 1 / -1;
-  padding-top: 2px;
-}
 
 @media (max-width: 520px) {
   .pm-prop-grid {
