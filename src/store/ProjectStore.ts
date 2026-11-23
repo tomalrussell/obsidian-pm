@@ -24,8 +24,6 @@ import {
   indexSetParent,
   rebuildTaskIndex,
   addTaskToTree,
-  cloneTaskForest,
-  cloneTaskSubtree,
   deleteTaskFromTree,
   flattenTasks,
   moveTaskInTree,
@@ -62,13 +60,7 @@ import {
   projectFilePath
 } from './vaultFs'
 import { loadTasksFromFolder, readNote } from './TaskLoader'
-import {
-  TaskFileNameConflictError,
-  UnreadableNoteError,
-  assignCopyName,
-  resolveTaskPath,
-  uniqueChildPath
-} from './taskFiles'
+import { TaskFileNameConflictError, UnreadableNoteError, resolveTaskPath, uniqueChildPath } from './taskFiles'
 
 export interface ImportNoteOptions {
   status: TaskStatus
@@ -868,66 +860,6 @@ export class ProjectStore {
     return 'imported'
   }
 
-  async duplicateTask(project: Project, sourceId: string, includeSubtasks: boolean): Promise<Task | null> {
-    const source = findTaskById(project, sourceId)
-    if (!source) return null
-    const copy = cloneTaskSubtree(source, includeSubtasks)
-    // Filenames come from the title slug within one flat folder, so a clone keeping
-    // the source title would write over the original. Reserve a free "(copy)" title
-    // for every node, checking the clones we're adding so siblings don't collide.
-    const baseFolder = projectTaskFolder(this.app, project.filePath)
-    const claimed = new Set<string>()
-    const usedTitles = new Set(flattenTasks(project.tasks).map((f) => f.task.title))
-    const claimName = (task: Task): void => {
-      const folder = task.archived ? normalizePath(baseFolder + '/Archive') : baseFolder
-      assignCopyName(this.app, task, folder, usedTitles, claimed)
-    }
-    // A clone has no file yet, and its in-memory description must be written verbatim.
-    claimName(copy)
-    this.hydratedBodies.add(copy)
-    for (const ft of flattenTasks(copy.subtasks)) {
-      claimName(ft.task)
-      this.hydratedBodies.add(ft.task)
-    }
-    const parentId = findParentId(project, sourceId)
-    addTaskToTree(project.tasks, copy, parentId)
-    moveTaskInTree(project.tasks, copy.id, sourceId, 'after')
-    indexAddSubtree(project, copy, parentId)
-    this.markSubtreeDirty(project, copy.id, 'full')
-    if (parentId) this.markDirty(project, [parentId], 'full')
-    await this.saveProject(project)
-    return copy
-  }
-
-  /**
-   * A full copy of a project under a new title, created beside the source: every task
-   * cloned with a fresh id, dependencies inside the project remapped to the clones, and
-   * the description, palette, saved views, and settings carried over. A dependency on
-   * another project's task still targets that task.
-   */
-  async duplicateProject(source: Project, title: string): Promise<Project> {
-    const dir = folderOf(projectFolderOf(this.app, source.filePath) ?? source.filePath)
-    const filePath = projectFilePath(title, dir)
-    if (findIgnoringCase(this.app, filePath) || findIgnoringCase(this.app, folderOf(filePath))) {
-      throw new Error(`A project named "${title}" already exists here.`)
-    }
-
-    await this.loadProjectBody(source)
-    for (const { task } of flattenTasks(source.tasks)) await this.loadTaskBody(task)
-
-    const project = makeProject(title, filePath)
-    project.description = source.description
-    project.color = source.color
-    project.icon = source.icon
-    if (source.config) project.config = structuredClone(source.config)
-    project.tasks = cloneTaskForest(source.tasks)
-    rebuildTaskIndex(project)
-    this.hydratedBodies.add(project)
-    for (const { task } of flattenTasks(project.tasks)) this.hydratedBodies.add(task)
-    await this.saveProject(project)
-    return project
-  }
-
   async reassignIds(project: Project, taskIds: string[], newProjectId: boolean): Promise<void> {
     const mapping = new Map<string, string>()
     for (const id of taskIds) {
@@ -1034,30 +966,35 @@ export class ProjectStore {
     else if (!nowComplete && wasComplete) patch.completed = ''
   }
 
+  /** Applies a patch to a task and marks what it touches for the next save. */
+  private applyPatch(project: Project, task: Task, patch: Partial<Task>): void {
+    this.stampCompletion(project, task, patch)
+    const oldTitle = task.title
+    updateTaskInTree(project.tasks, task.id, patch)
+    const titleChanged = patch.title !== undefined && patch.title !== oldTitle
+    // A title change renames the file, forcing saveTaskFile's rename branch.
+    this.markDirty(project, [task.id], patchNeedsBodyRewrite(patch) || titleChanged ? 'full' : 'fm')
+    if (patch.description !== undefined) this.hydratedBodies.add(task)
+    // The rename breaks direct children's Parent link.
+    if (titleChanged) {
+      const subIds = task.subtasks.map((sub) => sub.id)
+      this.markDirty(project, subIds, 'full')
+    }
+  }
+
   async updateTask(project: Project, taskId: string, patch: Partial<Task>): Promise<void> {
     const task = findTaskById(project, taskId)
-    const oldTitle = task?.title
-    if (task && patch.title !== undefined && patch.title !== oldTitle) {
+    if (!task) return this.saveProject(project)
+    if (patch.title !== undefined && patch.title !== task.title) {
       // The note the retitle would move onto is checked before the task changes, so a
       // refused rename leaves nothing behind for the next save to retry.
       const conflict = this.findTaskFileConflict(project, { ...task, ...patch })
       if (conflict) throw conflict
     }
-    if (task) this.stampCompletion(project, task, patch)
     // The editor saves the whole task, so snapshot the subtree to diff against.
-    const oldSubtree = task && patch.subtasks !== undefined ? flattenTasks(task.subtasks).map((f) => f.task) : []
-    updateTaskInTree(project.tasks, taskId, patch)
-    const titleChanged = task && patch.title !== undefined && patch.title !== oldTitle
-    // A title change renames the file, forcing saveTaskFile's rename branch.
-    const kind: DirtyKind = patchNeedsBodyRewrite(patch) || titleChanged ? 'full' : 'fm'
-    this.markDirty(project, [taskId], kind)
-    if (task && patch.description !== undefined) this.hydratedBodies.add(task)
-    if (task && patch.subtasks !== undefined) {
-      await this.reconcileSubtasks(project, task, oldSubtree)
-    } else if (task && titleChanged) {
-      // The rename breaks direct children's Parent link.
-      for (const sub of task.subtasks) this.markDirty(project, [sub.id], 'full')
-    }
+    const oldSubtree = patch.subtasks !== undefined ? flattenTasks(task.subtasks).map((f) => f.task) : []
+    this.applyPatch(project, task, patch)
+    if (patch.subtasks !== undefined) await this.reconcileSubtasks(project, task, oldSubtree)
     await this.saveProject(project)
   }
 
@@ -1103,19 +1040,8 @@ export class ProjectStore {
       const task = findTaskById(project, id)
       if (!task) continue
       const raw = typeof patch === 'function' ? patch(task) : patch
-      if (!raw) continue
       // Copy before stamping so one task's completion date doesn't bleed onto the next.
-      const p = { ...raw }
-      this.stampCompletion(project, task, p)
-      const oldTitle = task.title
-      updateTaskInTree(project.tasks, id, p)
-      const titleChanged = p.title !== undefined && p.title !== oldTitle
-      const kind: DirtyKind = patchNeedsBodyRewrite(p) || titleChanged ? 'full' : 'fm'
-      this.markDirty(project, [id], kind)
-      if (p.description !== undefined) this.hydratedBodies.add(task)
-      if (titleChanged) {
-        for (const sub of task.subtasks) this.markDirty(project, [sub.id], 'full')
-      }
+      if (raw) this.applyPatch(project, task, { ...raw })
     }
     await this.saveProject(project)
   }

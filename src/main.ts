@@ -34,8 +34,7 @@ import {
   openProjectPicker,
   openTaskPicker,
   openImportModal,
-  confirmDialog,
-  promptText
+  confirmDialog
 } from './ui/ModalFactory'
 import { AutoArchiver } from './components/AutoArchiver'
 import { IdRepair } from './components/IdRepair'
@@ -149,17 +148,6 @@ export default class PMPlugin extends Plugin {
       name: `Create new subtask`,
       callback: () => {
         this.pickProjectThenCreateTask('pick-parent')
-      }
-    })
-
-    this.addCommand({
-      id: 'duplicate-project',
-      name: `Duplicate project`,
-      callback: () => {
-        this.pickProject(
-          safeAsync((project) => this.duplicateProjectFlow(project)),
-          false
-        )
       }
     })
 
@@ -441,20 +429,6 @@ export default class PMPlugin extends Plugin {
     const project = await this.store.loadProjectByPath(path)
     if (!project) return
     await this.store.updateProject(project, { archived: archived || undefined })
-  }
-
-  /** Prompts for a title, copies the project with fresh task ids, and opens the copy. */
-  async duplicateProjectFlow(source: Project): Promise<void> {
-    const title = await promptText(this.app, `Duplicate "${source.title}" as`, `Project name`, `${source.title} copy`)
-    if (!title) return
-    let copy: Project
-    try {
-      copy = await this.store.duplicateProject(source, title)
-    } catch (e) {
-      console.error('[PM] Failed to duplicate project:', e)
-      return
-    }
-    await this.router.openProjectOverview(copy.filePath)
   }
 
   /** A project with no window of its own archives everything it has finished. */

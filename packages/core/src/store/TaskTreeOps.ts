@@ -1,5 +1,4 @@
 import type { Task } from '../types'
-import { makeId } from '../types'
 
 export interface FlatTask {
   task: Task
@@ -62,51 +61,6 @@ export function addTaskToTree(tasks: Task[], newTask: Task, parentId: string | n
   const parent = findTask(tasks, parentId)
   if (parent) parent.subtasks.push(newTask)
   else tasks.push(newTask)
-}
-
-/**
- * Deep-clone a subtree with fresh ids, timestamps, and no file paths. Dependencies
- * within the cloned subtree are remapped to the new ids; ones pointing outside it
- * (and all of them when includeSubtasks is false) still target the originals.
- */
-export function cloneTaskSubtree(source: Task, includeSubtasks: boolean): Task {
-  const idMap = new Map<string, string>()
-  const clone = cloneNode(source, includeSubtasks, idMap)
-  if (includeSubtasks) remapDeps(clone, idMap)
-  return clone
-}
-
-/**
- * Deep-clone a whole task forest with fresh ids, sharing one id map so a dependency
- * between any two tasks in it is remapped, whichever roots they sit under. Dependencies
- * pointing outside the forest still target the originals.
- */
-export function cloneTaskForest(roots: Task[]): Task[] {
-  const idMap = new Map<string, string>()
-  const clones = roots.map((root) => cloneNode(root, true, idMap))
-  for (const clone of clones) remapDeps(clone, idMap)
-  return clones
-}
-
-function cloneNode(source: Task, includeSubtasks: boolean, idMap: Map<string, string>): Task {
-  const now = new Date().toISOString()
-  const newId = makeId()
-  idMap.set(source.id, newId)
-  return {
-    ...source,
-    id: newId,
-    filePath: undefined,
-    createdAt: now,
-    updatedAt: now,
-    subtasks: includeSubtasks ? source.subtasks.map((s) => cloneNode(s, true, idMap)) : [],
-    dependencies: [...source.dependencies],
-    tags: [...source.tags]
-  }
-}
-
-function remapDeps(task: Task, idMap: Map<string, string>): void {
-  task.dependencies = task.dependencies.map((id) => idMap.get(id) ?? id)
-  for (const sub of task.subtasks) remapDeps(sub, idMap)
 }
 
 /** Reorders among siblings only; the two tasks must share a parent. */

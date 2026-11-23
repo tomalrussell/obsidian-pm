@@ -2,7 +2,7 @@ import { Menu } from 'obsidian'
 import type PMPlugin from '#main'
 import { type Task, type Project } from '@dotpm/core'
 import { safeAsync } from '@dotpm/ui'
-import { openTaskModal, confirmDialog, confirmDuplicateSubtasks, openProjectPicker } from './ModalFactory'
+import { openTaskModal, confirmDialog, openProjectPicker } from './ModalFactory'
 
 export interface TaskMenuContext {
   plugin: PMPlugin
@@ -36,23 +36,6 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
           }
         })
       })
-  )
-  menu.addItem((item) =>
-    item
-      .setTitle(`Duplicate task`)
-      .setIcon('copy')
-      .onClick(
-        safeAsync(async () => {
-          let includeSubtasks = false
-          if (task.subtasks.length > 0) {
-            const choice = await confirmDuplicateSubtasks(ctx.plugin.app, task.title)
-            if (choice === null) return
-            includeSubtasks = choice === 'with-subtasks'
-          }
-          await ctx.plugin.store.duplicateTask(ctx.project, task.id, includeSubtasks)
-          await ctx.onRefresh()
-        })
-      )
   )
   menu.addItem((item) =>
     item

@@ -1,5 +1,5 @@
-import { type App, TFile, normalizePath } from 'obsidian'
-import { type Task, TASK_SLUG_MAX_LENGTH, taskFilePath } from '@dotpm/core'
+import { type App, normalizePath } from 'obsidian'
+import { type Task, taskFilePath } from '@dotpm/core'
 import { findIgnoringCase } from './vaultFs'
 
 /** A basename of this exact length that prefixes the title's slug is kept as-is. */
@@ -63,27 +63,4 @@ export function uniqueChildPath(app: App, folder: string, fileName: string, clai
     candidate = normalizePath(`${folder}/${base} ${n}${ext}`)
   }
   return candidate
-}
-
-/** Retitles a clone with a free "(copy)" title, so it can't write over the note it was copied from. */
-export function assignCopyName(
-  app: App,
-  task: Task,
-  folder: string,
-  usedTitles: Set<string>,
-  claimed: Set<string>
-): void {
-  const base = task.title.replace(/(?: \(copy(?: \d+)?\))+$/, '')
-  for (let n = 1; ; n++) {
-    const suffix = n === 1 ? ' (copy)' : ` (copy ${n})`
-    const room = TASK_SLUG_MAX_LENGTH - suffix.length
-    const title = (base.length > room ? base.slice(0, room).trimEnd() : base) + suffix
-    const path = normalizePath(taskFilePath(title, folder))
-    if (!usedTitles.has(title) && !claimed.has(path) && !(app.vault.getAbstractFileByPath(path) instanceof TFile)) {
-      usedTitles.add(title)
-      claimed.add(path)
-      task.title = title
-      return
-    }
-  }
 }

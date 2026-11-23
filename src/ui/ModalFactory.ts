@@ -14,13 +14,6 @@ export function confirmDialog(app: App, message: string, confirmLabel = `Delete`
   })
 }
 
-export function confirmDuplicateSubtasks(app: App, taskTitle: string): Promise<'with-subtasks' | 'task-only' | null> {
-  return new Promise((resolve) => {
-    const modal = new DuplicateSubtasksModal(app, taskTitle, resolve)
-    modal.open()
-  })
-}
-
 /** Returns the trimmed string, or null if cancelled or empty. */
 export function promptText(app: App, label: string, placeholder = '', initial = ''): Promise<string | null> {
   return new Promise((resolve) => {
@@ -148,59 +141,6 @@ class ConfirmModal extends Modal {
 
   onClose(): void {
     this.finish(false)
-    this.contentEl.empty()
-  }
-}
-
-class DuplicateSubtasksModal extends Modal {
-  private resolved = false
-
-  constructor(
-    app: App,
-    private taskTitle: string,
-    private resolve: (value: 'with-subtasks' | 'task-only' | null) => void
-  ) {
-    super(app)
-  }
-
-  private finish(value: 'with-subtasks' | 'task-only' | null): void {
-    if (this.resolved) return
-    this.resolved = true
-    this.resolve(value)
-  }
-
-  onOpen(): void {
-    const { contentEl } = this
-    this.modalEl.addClass('pm-confirm-modal')
-
-    contentEl.createEl('p', {
-      text: `Duplicate "${this.taskTitle}" with its subtasks?`,
-      cls: 'pm-confirm-text'
-    })
-
-    const btnRow = contentEl.createDiv('pm-modal-btn-row')
-
-    new ButtonComponent(btnRow).setButtonText(`Cancel`).onClick(() => {
-      this.finish(null)
-      this.close()
-    })
-
-    new ButtonComponent(btnRow).setButtonText(`Task only`).onClick(() => {
-      this.finish('task-only')
-      this.close()
-    })
-
-    new ButtonComponent(btnRow)
-      .setButtonText(`With subtasks`)
-      .setCta()
-      .onClick(() => {
-        this.finish('with-subtasks')
-        this.close()
-      })
-  }
-
-  onClose(): void {
-    this.finish(null)
     this.contentEl.empty()
   }
 }

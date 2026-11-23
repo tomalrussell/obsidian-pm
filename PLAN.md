@@ -15,7 +15,7 @@ Removed metadata (recurrence, time tracking, custom fields, assignees and simila
 | Table         | Sortable, filterable task table with bulk actions, row editing and subtask tree                         | `src/views/table`, `packages/ui`               |
 | Gantt         | Task bars, milestones, drag move/resize with undo, dependency linking, cycle checks. Weekends are always hidden. Dates are manual. | `src/views/gantt`, `packages/ui/src/gantt`     |
 | Kanban        | Fixed status columns, with column visibility, order and hide-empty controls                            | `src/views/KanbanView.ts`, `packages/ui/src/views` |
-| Projects      | Independent projects (no hierarchy), multi-project scopes, overview, dashboard, archive, move, duplicate | `ProjectScope`, `ArchiveOps`, `ProjectOverviewView`, `DashboardView` |
+| Projects      | Independent projects (no hierarchy), multi-project scopes, overview, dashboard, archive, move | `ProjectScope`, `ArchiveOps`, `ProjectOverviewView`, `DashboardView` |
 | View state    | Field visibility and order, last-used filters and sorting. No saved or named views.                    | `packages/core/src/store/View*.ts`             |
 | Editing       | Task modal and editor, subtasks panel, context menu, note-link suggest, create task from selection    | `src/modals`, `src/ui`                         |
 | Import        | Convert existing Markdown notes into tasks                                                             | `ImportModal`                                  |
@@ -30,7 +30,7 @@ Line counts are approximate.
 
 | Module                             | Lines | Concern                                                                                      |
 | ---------------------------------- | ----- | -------------------------------------------------------------------------------------------- |
-| `src/store/ProjectStore.ts`        | 1470  | Persistence mixed with import, duplication, moves, archives, attachments and undo            |
+| `src/store/ProjectStore.ts`        | 1170  | Persistence mixed with import, moves, archives and attachments                               |
 | `src/views/ProjectView.ts`         | 1220  | Hosts all three views plus header, filters, scope handling and toolbars. Most likely to hold dead code after the removals |
 | `src/store/VaultIndex.ts`          | 500   | Needed. Review only for leftover code from removed features.                                 |
 | `src/views/DashboardView.ts`       | 490   | Separate surface from the three core views                                                   |
@@ -68,14 +68,15 @@ Ordered by payoff for the effort. Each step is independent, and each is a user d
    - Deleted the `TaskSource` interface (84 lines). It only mirrored `ProjectStore`'s public methods, and nothing else implements it. Callers now type against `ProjectStore`.
    - Moved task file naming and the two error classes to `taskFiles.ts`, and the folder and note loading to `TaskLoader.ts`.
    - `moveTask`, `archiveTask` and `deleteTask` now call their plural versions.
-   - `ProjectStore.ts` is 1,240 lines, down from 1,473. **Still to do:** copy and import (`duplicateTask`, `duplicateProject`, `reassignIds`, `importNoteAsTask`, `moveTaskToProject`) and the vault-sync code (rename following, reload, self-write tracking). Both need access to the store's private dirty and hydration state, so splitting them means passing that state in explicitly. `updateTask` and `updateTasks` also duplicate the patch logic and could share a helper.
+   - Removed task and project duplication: the store methods, the command, the context-menu entries, the confirm modal, the clone helpers, the copy-naming helper and their tests. `updateTask` and `updateTasks` now share one `applyPatch` helper.
+   - `ProjectStore.ts` is 1,166 lines, down from 1,473. **Still to do:** import and move (`importNoteAsTask`, `moveTaskToProject`, `reassignIds`) and the vault-sync code (rename following, reload, self-write tracking). Both need the store's private dirty and hydration state, so splitting them means passing that state in explicitly. The sync code is the better candidate. Cutting `importNoteAsTask` or `moveTaskToProject` outright would shrink the store more than splitting it.
 
 3. **Split `ProjectView`.** Pull the per-view toolbar and header logic into the Table, Gantt and Kanban views. The host should only route, scope and hold shared filter state.
 
 4. **Candidate feature cuts, largest first.** Pick any, in any order.
    - Dashboard and project overview: fold what's useful into the project header, or drop them. This removes about 800 lines and one navigation level.
    - Undo/redo outside Gantt: keep Gantt undo only if the command set can shrink.
-   - Project duplication and project moving: keep archive only.
+   - Project moving and task moving between projects: keep archive only.
    - Import notes as tasks: drop it if tasks are created in the plugin from now on.
    - Automatic Markdown editor replacement: opening a task via the plugin remains. This also removes `monkey-around`.
    - Auto-archiver: replace with the manual archive command.
@@ -128,7 +129,7 @@ A milestone is a dated gate that tasks block. It is not a task container.
 ### Steps
 
 1. **Model and hydration.** Force `subtasks = []` for milestones in `YamlHydrator`. Don't read `start` or `progress` for a milestone. Add tests in `yaml-round-trip.test.ts` for a milestone note carrying subtask, start and progress properties.
-2. **Store guards.** Reject adding subtasks to a milestone in `ProjectStore` (`reconcileSubtasks`, move and duplicate paths). Refuse to change a task that has subtasks into a milestone. Test both.
+2. **Store guards.** Reject adding subtasks to a milestone in `ProjectStore` (`reconcileSubtasks` and the move paths). Refuse to change a task that has subtasks into a milestone. Test both.
 3. **Editor and commands.** In `TaskFormFields`, hide the subtasks panel and parent picker for milestones. Drop the start date and progress controls. Make `new-subtask` and the context menu skip milestones.
 4. **Kanban.** Filter milestones out in `boardColumns.ts`, and remove the milestone card variant in `KanbanCard.ts`. Update the board tests.
 5. **Blocking filter.** Add the `milestone` field and the `blockedMilestones` context function in core, with tests in `TaskFilter.test.ts`. Add its picker, listing the project's milestones, to `filterPopover.ts`. Build the context in each of the three views, and check the multi-project scope (milestone ids resolve across projects only if dependencies can).

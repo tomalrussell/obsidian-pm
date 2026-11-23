@@ -783,7 +783,6 @@ describe('ProjectStore task index', () => {
     await store.updateTask(project, b.id, { title: 'Beta renamed' })
     await store.moveTask(project, c.id, b.id)
     const d = await addNamed(store, project, 'Delta')
-    await store.duplicateTask(project, a.id, true)
     await store.deleteTask(project, d.id)
 
     const fresh = buildTaskIndex(project.tasks)
@@ -792,49 +791,6 @@ describe('ProjectStore task index', () => {
       expect(project.taskIndex.get(id)?.parentId).toBe(entry.parentId)
       expect(project.taskIndex.get(id)?.task).toBe(entry.task)
     }
-  })
-
-  it('duplicates a task with subtasks without colliding on filenames', async () => {
-    const { store, vault } = newStore()
-    const project = await store.createProject('Dup', 'Projects')
-    const parent = await addNamed(store, project, 'Parent')
-    await addNamed(store, project, 'subtask', parent.id)
-
-    const copy = await store.duplicateTask(project, parent.id, true)
-    expect(copy).not.toBeNull()
-
-    const paths = flattenTasks(project.tasks).map((f) => f.task.filePath)
-    expect(new Set(paths).size).toBe(paths.length)
-    for (const p of paths) {
-      expect(p).toBeTruthy()
-      expect(vault.getAbstractFileByPath(expectDefined(p))).toBeInstanceOf(TFile)
-    }
-  })
-
-  it('disambiguates the copy title when the same task is duplicated twice', async () => {
-    const { store } = newStore()
-    const project = await store.createProject('Dup2', 'Projects')
-    const task = await addNamed(store, project, 'Task')
-
-    const first = await store.duplicateTask(project, task.id, false)
-    const second = await store.duplicateTask(project, task.id, false)
-
-    expect(first?.title).toBe('Task (copy)')
-    expect(second?.title).toBe('Task (copy 2)')
-  })
-
-  it('counts up instead of stacking suffixes when a copy is duplicated', async () => {
-    const { store } = newStore()
-    const project = await store.createProject('Dup4', 'Projects')
-    const task = await addNamed(store, project, 'Task')
-
-    const first = expectDefined(await store.duplicateTask(project, task.id, false))
-    const second = await store.duplicateTask(project, first.id, false)
-    const third = await store.duplicateTask(project, second?.id ?? '', false)
-
-    expect(first.title).toBe('Task (copy)')
-    expect(second?.title).toBe('Task (copy 2)')
-    expect(third?.title).toBe('Task (copy 3)')
   })
 
   it('survives a reload: rebuilt index after load matches the in-memory tree', async () => {
@@ -908,27 +864,6 @@ describe('ProjectStore editor subtask save', () => {
         .map((f) => f.task.title)
         .sort()
     ).toEqual(['Alpha renamed', 'Parent'])
-  })
-})
-
-describe('ProjectStore duplicate long titles', () => {
-  it('duplicates a long-titled task without hanging and keeps filenames unique', async () => {
-    const { store, vault } = newStore()
-    const project = await store.createProject('Dup3', 'Projects')
-    const longTitle = 'This is a very long task title that comfortably exceeds the sixty character filename slug cap'
-    const parent = await addNamed(store, project, longTitle)
-    await addNamed(store, project, 'subtask', parent.id)
-
-    // The base is trimmed so the "(copy N)" suffix survives the slug cap and both
-    // copies get distinct titles and files.
-    expect(await store.duplicateTask(project, parent.id, true)).not.toBeNull()
-    expect(await store.duplicateTask(project, parent.id, true)).not.toBeNull()
-
-    const paths = flattenTasks(project.tasks).map((f) => f.task.filePath)
-    expect(new Set(paths).size).toBe(paths.length)
-    for (const p of paths) {
-      expect(vault.getAbstractFileByPath(expectDefined(p))).toBeInstanceOf(TFile)
-    }
   })
 })
 
@@ -1668,52 +1603,6 @@ describe('ProjectStore.reassignIds', () => {
     const alphaContent = await app.vault.cachedRead(fileAt(app, expectDefined(alpha.filePath)))
     expect(alphaContent).toContain('projectId: "[[Roadmap|Roadmap]]"')
     expect(alphaContent).not.toContain(oldProjectId)
-  })
-})
-
-describe('ProjectStore.duplicateProject', () => {
-  it('clones every task with fresh ids and remaps dependencies between roots', async () => {
-    const { store, app } = newStore()
-    const source = await store.createProject('Roadmap', 'Projects')
-    const alpha = await addNamed(store, source, 'Alpha')
-    const beta = await addNamed(store, source, 'Beta')
-    await store.updateTask(source, beta.id, { dependencies: [alpha.id, 'elsewhere1'] })
-
-    const copy = await store.duplicateProject(source, 'Roadmap copy')
-
-    expect(copy.filePath).toBe('Projects/Roadmap copy/Roadmap copy.md')
-    expect(copy.id).not.toBe(source.id)
-    const copyAlpha = expectDefined(copy.tasks.find((t) => t.title === 'Alpha'))
-    const copyBeta = expectDefined(copy.tasks.find((t) => t.title === 'Beta'))
-    expect(copyAlpha.id).not.toBe(alpha.id)
-    expect(copyBeta.dependencies).toEqual([copyAlpha.id, 'elsewhere1'])
-    expect(fileAt(app, 'Projects/Roadmap copy/_tasks/alpha.md')).toBeInstanceOf(TFile)
-
-    expect(source.tasks.map((t) => t.id)).toEqual([alpha.id, beta.id])
-    expect(expectDefined(findTask(source.tasks, beta.id)).dependencies).toEqual([alpha.id, 'elsewhere1'])
-  })
-
-  it('carries project settings and descriptions over', async () => {
-    const { store, app } = newStore()
-    const source = await store.createProject('Roadmap', 'Projects')
-    source.config = { defaultView: 'kanban' }
-    await store.updateProject(source, { description: 'The plan.' })
-    const alpha = await addNamed(store, source, 'Alpha')
-    await store.updateTask(source, alpha.id, { description: 'Alpha body.' })
-
-    const copy = await store.duplicateProject(source, 'Roadmap copy')
-
-    expect(copy.config).toEqual({ defaultView: 'kanban' })
-    expect(copy.description).toBe('The plan.')
-    const copyAlphaContent = await app.vault.cachedRead(fileAt(app, 'Projects/Roadmap copy/_tasks/alpha.md'))
-    expect(copyAlphaContent).toContain('Alpha body.')
-  })
-
-  it('refuses a title already taken beside the source', async () => {
-    const { store } = newStore()
-    const source = await store.createProject('Roadmap', 'Projects')
-
-    await expect(store.duplicateProject(source, 'Roadmap')).rejects.toThrow('already exists')
   })
 })
 
