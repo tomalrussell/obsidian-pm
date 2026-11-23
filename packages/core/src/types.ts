@@ -4,10 +4,8 @@ import type { TaskIndex } from './store/TaskIndex'
 export type TaskStatus = string
 export type TaskPriority = string
 export type GanttGranularity = 'day' | 'week' | 'month' | 'quarter' | 'year'
-export type GanttWeekLabel = 'weekNumber' | 'dateRange' | 'both'
 export type ViewMode = 'table' | 'gantt' | 'kanban'
 export const GANTT_GRANULARITIES: GanttGranularity[] = ['day', 'week', 'month', 'quarter', 'year']
-export type LineBorders = 'none' | 'horizontal' | 'vertical' | 'both'
 export type DateBucket = 'overdue' | 'today' | 'this-week' | 'this-month'
 export type SortDir = 'asc' | 'desc'
 export type DueUrgency = 'normal' | 'near' | 'overdue'
@@ -57,13 +55,12 @@ export interface Project {
   /** Kept out of lists, pickers and sweeps. */
   archived?: boolean
   /** Per-project overrides for the global settings. Absent fields inherit. */
-  config?: ProjectConfig
   /** Not serialized. Rebuilt on load, maintained by the store's mutators. */
   taskIndex: TaskIndex
 }
 
 /** Tasks are excluded: they change through the task mutators, never a whole-project write. */
-export type ProjectPatch = Partial<Pick<Project, 'title' | 'description' | 'color' | 'icon' | 'config' | 'archived'>>
+export type ProjectPatch = Partial<Pick<Project, 'title' | 'description' | 'color' | 'icon' | 'archived'>>
 
 export const FILTER_OPS = [
   'any',
@@ -153,26 +150,6 @@ export interface StatusConfig {
   complete: boolean
 }
 
-/** Overrides a project may set in its own file. An absent field falls back to the global settings. */
-export interface ProjectConfig {
-  defaultView?: ViewMode
-  showSubtreeConnections?: boolean
-  lineBorders?: LineBorders
-}
-
-/**
- * A project's config with every fallback applied. Views and modals read this rather
- * than the global settings, so another task source can supply its own configuration.
- */
-export interface ResolvedProjectConfig {
-  statuses: StatusConfig[]
-  priorities: PriorityConfig[]
-  priorityIcons: PriorityIconSet
-  defaultView: ViewMode
-  showSubtreeConnections: boolean
-  lineBorders: LineBorders
-}
-
 export interface PriorityConfig {
   id: TaskPriority
   label: string
@@ -180,38 +157,15 @@ export interface PriorityConfig {
   icon: string
 }
 
-export type PriorityIconSet = 'chevrons' | 'signal' | 'arrows' | 'alerts' | 'none'
-
-/** One icon per rank, highest priority first. Ranks past the fifth carry no icon. */
-export const PRIORITY_ICON_SETS: Record<PriorityIconSet, string[]> = {
-  chevrons: ['chevrons-up', 'chevron-up', 'equal', 'chevron-down', 'chevrons-down'],
-  signal: ['signal', 'signal-high', 'signal-medium', 'signal-low', 'signal-zero'],
-  arrows: ['arrow-up', 'arrow-up-right', 'arrow-right', 'arrow-down-right', 'arrow-down'],
-  alerts: ['octagon-alert', 'triangle-alert', 'circle-alert', 'info', 'circle-small'],
-  none: []
-}
+/** One icon per priority rank, highest first. */
+export const PRIORITY_ICONS = ['chevrons-up', 'chevron-up', 'equal', 'chevron-down', 'chevrons-down']
 
 export interface PMSettings {
-  /** Where new projects are created. Projects are discovered vault-wide, wherever they live. */
-  projectsFolder: string
   /** Folders discovery skips, for templates and archives holding pm-project notes. */
   excludedFolders: string[]
   defaultView: ViewMode
   ganttGranularity: GanttGranularity
-  ganttWeekLabel: GanttWeekLabel
-  statuses: StatusConfig[]
-  priorities: PriorityConfig[]
-  /** Icons for priorities that don't carry their own. */
-  priorityIcons: PriorityIconSet
-  showSubtreeConnections: boolean
-  lineBorders: LineBorders
-  showTagColors: boolean
-  /** Moment-style tokens for every date label. Empty uses the default date format. */
-  dateFormat: string
-  saveTaskOnClose: boolean
   taskEditorSurface: 'modal' | 'tab'
-  /** Key shortcut to create or save tasks and projects. */
-  editorSaveModifier: 'Shift' | 'Mod'
   /** Where a project link lands: its overview page or its tasks in the default view. */
   projectSurface: 'overview' | 'tasks'
   /** Keyed by scope key, e.g. `project:Projects/Roadmap.md`. */
@@ -240,31 +194,11 @@ export const DEFAULT_PRIORITIES: PriorityConfig[] = [
   { id: 'low', label: 'low', color: '#79b58d', icon: '' }
 ]
 
-/** The default palettes for a vault that has none yet. */
-export function defaultStatuses(): StatusConfig[] {
-  return DEFAULT_STATUSES.map((status) => ({ ...status }))
-}
-
-export function defaultPriorities(): PriorityConfig[] {
-  return DEFAULT_PRIORITIES.map((priority) => ({ ...priority }))
-}
-
 export const DEFAULT_SETTINGS: PMSettings = {
-  projectsFolder: 'Projects',
   excludedFolders: [],
   defaultView: 'table',
   ganttGranularity: 'week',
-  ganttWeekLabel: 'weekNumber',
-  statuses: DEFAULT_STATUSES,
-  priorities: DEFAULT_PRIORITIES,
-  priorityIcons: 'chevrons',
-  showSubtreeConnections: true,
-  lineBorders: 'none',
-  showTagColors: true,
-  dateFormat: '',
-  saveTaskOnClose: true,
   taskEditorSurface: 'modal',
-  editorSaveModifier: 'Shift',
   projectSurface: 'overview',
   projectFilters: {},
   defaultFields: {},

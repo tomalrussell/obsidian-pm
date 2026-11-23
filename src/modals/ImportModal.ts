@@ -1,13 +1,13 @@
 import { App, ButtonComponent, Modal, TFile } from 'obsidian'
 import type PMPlugin from '#main'
 import {
-  type PriorityConfig,
   type Project,
-  type StatusConfig,
   type TaskStatus,
   type TaskPriority,
   getDefaultStatusId,
-  getDefaultPriorityId
+  getDefaultPriorityId,
+  DEFAULT_PRIORITIES,
+  DEFAULT_STATUSES
 } from '@dotpm/core'
 interface FileItem {
   file: TFile
@@ -37,20 +37,11 @@ export class ImportModal extends Modal {
     private plugin: PMPlugin
   ) {
     super(app)
-    this.defaultStatus = getDefaultStatusId(plugin.settings.statuses)
-    this.defaultPriority = getDefaultPriorityId(plugin.settings.priorities)
-  }
-
-  /** The target project's palettes, or the global ones until setProject has run. */
-  private get palettes(): { statuses: StatusConfig[]; priorities: PriorityConfig[] } {
-    return this.project ? this.plugin.store.configFor(this.project) : this.plugin.settings
+    this.defaultStatus = getDefaultStatusId(DEFAULT_STATUSES)
+    this.defaultPriority = getDefaultPriorityId(DEFAULT_PRIORITIES)
   }
 
   onOpen(): void {
-    const palettes = this.palettes
-    this.defaultStatus = getDefaultStatusId(palettes.statuses)
-    this.defaultPriority = getDefaultPriorityId(palettes.priorities)
-
     const { contentEl } = this
     contentEl.empty()
     contentEl.addClass('import-modal')
@@ -155,7 +146,7 @@ export class ImportModal extends Modal {
 
     const statusSelect = statusGroup.createEl('select')
 
-    this.palettes.statuses.forEach((s) => {
+    DEFAULT_STATUSES.forEach((s) => {
       const option = statusSelect.createEl('option', { text: s.label })
       option.value = s.id
       if (s.id === this.defaultStatus) option.selected = true
@@ -170,7 +161,7 @@ export class ImportModal extends Modal {
 
     const prioritySelect = priorityGroup.createEl('select')
 
-    this.palettes.priorities.forEach((p) => {
+    DEFAULT_PRIORITIES.forEach((p) => {
       const option = prioritySelect.createEl('option', { text: p.label })
       option.value = p.id
       if (p.id === this.defaultPriority) option.selected = true

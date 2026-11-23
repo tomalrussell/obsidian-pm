@@ -19,11 +19,13 @@ import {
   flattenTasks,
   getDefaultStatusId,
   getDefaultPriorityId,
-  getPriorityConfig
+  getPriorityConfig,
+  DEFAULT_PRIORITIES,
+  DEFAULT_STATUSES
 } from '@dotpm/core'
 import { TaskFileNameConflictError } from '#store'
 import { safeAsync, renderGlyph } from '@dotpm/ui'
-import { saveShortcutLabel } from '../utils'
+import { SAVE_MODIFIER, SAVE_SHORTCUT_LABEL } from '../utils'
 import { confirmDialog, openTaskByPath } from '#ui/ModalFactory'
 import { renderTaskFormFields } from './TaskFormFields'
 import { renderSubtasksPanel } from './SubtasksPanel'
@@ -71,10 +73,9 @@ export class TaskEditor {
         this.parentId = entry?.parentId ?? null
       }
     } else {
-      const config = plugin.store.configFor(project)
       this.task = makeTask({
-        status: getDefaultStatusId(config.statuses),
-        priority: getDefaultPriorityId(config.priorities),
+        status: getDefaultStatusId(DEFAULT_STATUSES),
+        priority: getDefaultPriorityId(DEFAULT_PRIORITIES),
         type: parentId ? 'subtask' : 'task',
         ...defaults
       })
@@ -104,13 +105,7 @@ export class TaskEditor {
   }
 
   handleClose(): void {
-    if (
-      this.plugin.settings.saveTaskOnClose &&
-      !this.isNew &&
-      !this.cancelled &&
-      !this.saved &&
-      this.task.title.trim()
-    ) {
+    if (!this.isNew && !this.cancelled && !this.saved && this.task.title.trim()) {
       const conflict = this.plugin.store.findTaskFileConflict(this.project, this.task)
       if (conflict) {
         console.error(`Task not saved: a note named "${conflict.fileName}" already exists.`)
@@ -141,25 +136,6 @@ export class TaskEditor {
     })()
     this.persistPromise = p
     return p
-  }
-
-  private async insertAttachments(
-    descArea: HTMLTextAreaElement,
-    items: { blob: Blob; name: string }[],
-    autoResize: () => void
-  ): Promise<void> {
-    for (const { blob, name } of items) {
-      try {
-        const buffer = await blob.arrayBuffer()
-        const file = await this.plugin.store.saveTaskAttachment(this.project, this.task, name, buffer)
-        const snippet = `![[${file.name}]]`
-        descArea.setRangeText(snippet, descArea.selectionStart, descArea.selectionEnd, 'end')
-        this.task.description = descArea.value
-        autoResize()
-      } catch (err) {
-        console.error('Failed to save attachment', err)
-      }
-    }
   }
 
   /**
@@ -304,7 +280,7 @@ export class TaskEditor {
     contentEl.empty()
 
     const header = contentEl.createDiv('pm-te-header')
-    const prio = getPriorityConfig(this.plugin.store.configFor(this.project).priorities, this.task.priority)
+    const prio = getPriorityConfig(DEFAULT_PRIORITIES, this.task.priority)
     if (prio?.color) header.setCssProps({ '--pm-accent-strip': prio.color })
     const crumb = header.createDiv('pm-te-crumb')
     if (this.project.icon) {
@@ -369,7 +345,7 @@ export class TaskEditor {
       autosizeTitle()
     })
     titleInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !Keymap.isModifier(e, this.plugin.settings.editorSaveModifier)) e.preventDefault()
+      if (e.key === 'Enter' && !Keymap.isModifier(e, SAVE_MODIFIER)) e.preventDefault()
     })
     window.setTimeout(autosizeTitle, 0)
 
@@ -491,44 +467,6 @@ export class TaskEditor {
     })
     descArea.addEventListener('blur', () => showPreview())
 
-    descArea.addEventListener('paste', (e) => {
-      const items = e.clipboardData?.items
-      if (!items) return
-      const attachments: { blob: Blob; name: string }[] = []
-      for (const item of Array.from(items)) {
-        if (item.kind === 'file' && item.type.startsWith('image/')) {
-          const file = item.getAsFile()
-          if (file) {
-            const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-            const sub = (item.type.split('/')[1] || 'png').split('+')[0]
-            const ext = sub === 'jpeg' ? 'jpg' : sub
-            attachments.push({ blob: file, name: `Pasted-${stamp}.${ext}` })
-          }
-        }
-      }
-      if (attachments.length === 0) return
-      e.preventDefault()
-      void this.insertAttachments(descArea, attachments, autoResize)
-    })
-
-    descSection.addEventListener('dragover', (e) => {
-      if (!e.dataTransfer) return
-      if (!Array.from(e.dataTransfer.types).includes('Files')) return
-      e.preventDefault()
-    })
-
-    descSection.addEventListener('drop', (e) => {
-      const files = e.dataTransfer?.files
-      if (!files || files.length === 0) return
-      e.preventDefault()
-      if (descArea.classList.contains('pm-hidden')) {
-        showEdit()
-        descArea.selectionStart = descArea.selectionEnd = descArea.value.length
-      }
-      const attachments = Array.from(files).map((f) => ({ blob: f, name: f.name }))
-      void this.insertAttachments(descArea, attachments, autoResize)
-    })
-
     this.noteSuggest?.destroy()
     this.noteSuggest = new NoteLinkSuggest(this.app, descArea, (newValue) => {
       this.task.description = newValue
@@ -598,9 +536,7 @@ export class TaskEditor {
       window.setTimeout(autoResize, 0)
     }
 
-    renderSubtasksPanel(body, this.task, this.plugin.store.configFor(this.project).statuses, (path) =>
-      this.openLinkedTask(path)
-    )
+    renderSubtasksPanel(body, this.task, DEFAULT_STATUSES, (path) => this.openLinkedTask(path))
 
     const footer = contentEl.createDiv('pm-te-footer')
 
@@ -626,9 +562,8 @@ export class TaskEditor {
       this.host.close()
     })
 
-    const modifier = this.plugin.settings.editorSaveModifier
     const saveBtn = new ButtonComponent(footer)
-      .setButtonText(this.isNew ? `Create (${saveShortcutLabel(modifier)})` : `Save (${saveShortcutLabel(modifier)})`)
+      .setButtonText(this.isNew ? `Create (${SAVE_SHORTCUT_LABEL})` : `Save (${SAVE_SHORTCUT_LABEL})`)
       .setCta()
     let saving = false
     const doSave = async () => {
@@ -660,7 +595,7 @@ export class TaskEditor {
     })
 
     if (this.saveKeyHandler) this.host.scope.unregister(this.saveKeyHandler)
-    this.saveKeyHandler = this.host.scope.register([modifier], 'Enter', () => {
+    this.saveKeyHandler = this.host.scope.register([SAVE_MODIFIER], 'Enter', () => {
       void doSave()
       return false
     })

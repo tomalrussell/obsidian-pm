@@ -2,7 +2,7 @@ import {
   type PriorityConfig,
   type StatusConfig,
   type Task,
-  formatDateShort,
+  formatDate,
   getPriorityConfig,
   getStatusConfig,
   parsePlainDate
@@ -58,7 +58,7 @@ export function barAsideText(task: Task, fields: string[], source: LabelSource):
       case 'progress':
         return task.progress > 0 ? `${task.progress}%` : ''
       case 'dates':
-        return [task.start, task.due].filter(Boolean).map(formatDateShort).join(' - ')
+        return [task.start, task.due].filter(Boolean).map(formatDate).join(' - ')
       case 'status':
         return getStatusConfig(source.statuses, task.status)?.label ?? task.status
       case 'priority':

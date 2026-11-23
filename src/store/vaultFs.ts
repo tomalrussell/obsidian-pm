@@ -8,10 +8,8 @@ export function projectFilePath(projectTitle: string, folder: string): string {
   return normalizePath(`${folder}/${name}/${name}.md`)
 }
 
-/** Where new independent projects are created. */
-export function newProjectFolder(app: App, projectsFolder: string): string {
-  return projectsFolder || app.vault.getName()
-}
+/** Where new projects are created. */
+export const PROJECTS_FOLDER = 'dotpm'
 
 /** The task storage folder inside a project's own folder. */
 export const TASK_FOLDER_NAME = '_tasks'
@@ -46,25 +44,6 @@ export function projectTaskFolder(app: App, projectPath: string): string {
   const own = projectFolderOf(app, projectPath)
   if (own) return normalizePath(`${own}/${TASK_FOLDER_NAME}`)
   return normalizePath(projectPath.replace(/\.md$/, '_tasks'))
-}
-
-/**
- * Keeps a task's attachment folder with its note across renames and archiving. A no-op
- * when there is no such folder or the destination is taken; returns null when nothing moved.
- */
-export async function moveTaskAttachmentFolder(
-  app: App,
-  oldTaskFilePath: string,
-  newTaskFilePath: string
-): Promise<{ from: string; to: string } | null> {
-  const from = normalizePath(oldTaskFilePath.replace(/\.md$/, ''))
-  const to = normalizePath(newTaskFilePath.replace(/\.md$/, ''))
-  if (from === to) return null
-  const folder = app.vault.getAbstractFileByPath(from)
-  if (!(folder instanceof TFolder)) return null
-  if (app.vault.getAbstractFileByPath(to)) return null
-  await app.vault.rename(folder, to)
-  return { from, to }
 }
 
 /**

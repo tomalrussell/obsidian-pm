@@ -1,7 +1,15 @@
 import { type KeymapEventHandler, type Scope } from 'obsidian'
 import { confirmDialog } from '#ui/ModalFactory'
 import type PMPlugin from '#main'
-import { type TaskQuery, type Project, type SortRule, type ViewFields, shownFields } from '@dotpm/core'
+import {
+  type TaskQuery,
+  type Project,
+  type SortRule,
+  type ViewFields,
+  shownFields,
+  DEFAULT_PRIORITIES,
+  DEFAULT_STATUSES
+} from '@dotpm/core'
 import type { ProjectScope } from '#store'
 import { safeAsync } from '@dotpm/ui'
 import type { SubView } from '../SubView'
@@ -188,16 +196,12 @@ export class TableView implements SubView {
   }
 
   private makeTableContext() {
-    const config = this.scope.config
     return {
       container: this.container,
       scope: this.scope,
       plugin: this.plugin,
-      statuses: config.statuses,
-      priorities: config.priorities,
-      priorityIcons: config.priorityIcons,
-      showSubtreeConnections: config.showSubtreeConnections,
-      lineBorders: config.lineBorders,
+      statuses: DEFAULT_STATUSES,
+      priorities: DEFAULT_PRIORITIES,
       collapsedIds: collapsedTaskIds(this.plugin.settings, this.scope.projects),
       columns: shownFields(this.fields, 'table', this.scope.fieldCatalog()),
       state: this.state,

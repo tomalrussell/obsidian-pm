@@ -7,7 +7,7 @@ import {
   type ProjectListGroup,
   type ProjectListItem,
   type ProjectListRow,
-  formatDateShort,
+  formatDate,
   dateUrgency
 } from '@dotpm/core'
 import { safeAsync, CollapseToggle, ProjectRow, projectFieldLabel } from '@dotpm/ui'
@@ -55,7 +55,6 @@ export function renderProjectTable(
   collapsedGroups: Set<string>
 ): void {
   const wrapper = ctx.contentEl.createDiv('pm-table-wrapper')
-  wrapper.setAttr('data-borders', ctx.plugin.settings.lineBorders)
   const table = wrapper.createEl('table', { cls: 'pm-table pm-project-table' })
   const headRow = table.createEl('thead').createEl('tr')
   const header = columns(ctx.fields)
@@ -103,7 +102,7 @@ function renderRow(ctx: ProjectListContext, tbody: HTMLElement, row: ProjectList
     tasksDone: item.done,
     tasksTotal: item.total,
     overdue: item.overdue,
-    dueLabel: formatDateShort(item.latestDue),
+    dueLabel: formatDate(item.latestDue),
     dueUrgency: dateUrgency(item.latestDue, item.overdue > 0),
     onClick: safeAsync(() => ctx.openProject(item.path)),
     onContextMenu: (e) => openProjectContextMenu(ctx, ref, e),

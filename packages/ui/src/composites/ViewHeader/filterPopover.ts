@@ -8,7 +8,6 @@ import {
   type FilterOp,
   type FilterState,
   type PriorityConfig,
-  type PriorityIconSet,
   type Task,
   BUILTIN_FILTER_FIELDS,
   OPS_BY_KIND,
@@ -31,7 +30,6 @@ export interface FilterSetup {
   tasks: Task[]
   ctx: FilterContext
   priorities: PriorityConfig[]
-  priorityIcons: PriorityIconSet
   /** The projects in view, when there are several; the project field is offered only then. */
   projects: { id: string; title: string; color?: string }[]
 }
@@ -71,7 +69,7 @@ export function valueOptions(setup: FilterSetup, field: string): ValueOption[] {
       return setup.priorities.map((p) => ({
         id: p.id,
         label: p.label,
-        icon: priorityIcon(setup.priorities, p.id, setup.priorityIcons),
+        icon: priorityIcon(setup.priorities, p.id),
         color: p.color
       }))
     case 'type':

@@ -159,15 +159,6 @@ describe('project round-trip', () => {
     }
   })
 
-  it('ignores obsolete project status and priority palettes', () => {
-    const config = {
-      statuses: [{ id: 'todo', label: 'To do', color: 'red' }],
-      priorities: [{ id: 'high', label: 'High', color: '#f80' }]
-    }
-    const project = hydrateProjectFromFrontmatter({ config }, '# P', 'Projects/P.md', 'P')
-    expect(project.config).toBeUndefined()
-  })
-
   it('reads the description from a note that carries it only as a property', () => {
     const project = hydrateProjectFromFrontmatter({ description: 'From properties' }, '# P', 'Projects/P.md', 'P')
     expect(project.description).toBe('From properties')
@@ -386,7 +377,6 @@ describe('legacy custom field view settings', () => {
 describe('serializer ownership', () => {
   it('owns every active key it writes', () => {
     const project = makeProject('P', 'Projects/P.md')
-    project.config = { defaultView: 'kanban' }
     const task = makeTask({ id: 'full', title: 'Full', completed: '2026-04-01' })
     expect(
       Object.keys(buildTaskFrontmatter(task, project, null, refs)).filter((key) => !TASK_FRONTMATTER_KEYS.has(key))

@@ -184,22 +184,6 @@ button.pm-chip-btn--active:hover {
   font-style: italic;
 }
 
-/* Optional grid, off unless asked for. The header keeps its own bottom rule in every mode. */
-.pm-table-wrapper[data-borders='horizontal'] .pm-table-row,
-.pm-table-wrapper[data-borders='both'] .pm-table-row {
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-.pm-table-wrapper[data-borders='vertical'] th,
-.pm-table-wrapper[data-borders='vertical'] td,
-.pm-table-wrapper[data-borders='both'] th,
-.pm-table-wrapper[data-borders='both'] td {
-  border-right: 1px solid var(--background-modifier-border);
-}
-.pm-table-wrapper[data-borders='vertical'] tr > :last-child,
-.pm-table-wrapper[data-borders='both'] tr > :last-child {
-  border-right: none;
-}
-
 .pm-table-cell {
   padding: 8px 10px;
   vertical-align: middle;

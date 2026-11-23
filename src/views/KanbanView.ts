@@ -5,13 +5,14 @@ import {
   type FilterContext,
   type SortRule,
   type TaskQuery,
-  type ResolvedProjectConfig,
   type ViewFields,
   shownFields,
   flattenTasks,
   matchesQuery,
   dueUrgency,
-  getPriorityConfig
+  getPriorityConfig,
+  DEFAULT_PRIORITIES,
+  DEFAULT_STATUSES
 } from '@dotpm/core'
 import type { ProjectScope } from '#store'
 import {
@@ -30,8 +31,6 @@ import type { SubView } from './SubView'
 
 export class KanbanView implements SubView {
   private dragTask: Task | null = null
-  /** Resolved once per board render. */
-  private config!: ResolvedProjectConfig
   private filterContext!: FilterContext
   /** The card fields, resolved once per board render. */
   private cardFields: string[] = []
@@ -54,7 +53,6 @@ export class KanbanView implements SubView {
   }
 
   private renderBoard(): void {
-    this.config = this.scope.config
     this.filterContext = this.scope.filterContext()
     this.cardFields = shownFields(this.fields, 'kanban', this.scope.fieldCatalog())
     this.container.empty()
@@ -93,11 +91,11 @@ export class KanbanView implements SubView {
   private visibleTasks(): Task[] {
     return boardCandidates(this.scope.tasks(), this.cardFields)
       .filter((task) => matchesQuery(task, this.query, this.filterContext))
-      .sort((a, b) => compareTasks(a, b, this.sort, this.config.statuses, this.config.priorities))
+      .sort((a, b) => compareTasks(a, b, this.sort, DEFAULT_STATUSES, DEFAULT_PRIORITIES))
   }
 
   private buildCardData(task: Task): KanbanCardData {
-    const priorityConfig = getPriorityConfig(this.config.priorities, task.priority)
+    const priorityConfig = getPriorityConfig(DEFAULT_PRIORITIES, task.priority)
     const priorityColor =
       priorityConfig && task.priority !== 'medium' && task.priority !== 'low' ? priorityConfig.color : undefined
 
@@ -122,8 +120,7 @@ export class KanbanView implements SubView {
               onClick: safeAsync(() => this.plugin.router.openProjectLink(owner.filePath))
             })
         : undefined,
-      overdue: dueUrgency(task, this.config.statuses) === 'overdue',
-      showTagColors: this.plugin.settings.showTagColors
+      overdue: dueUrgency(task, DEFAULT_STATUSES) === 'overdue'
     }
   }
 
@@ -157,7 +154,7 @@ export class KanbanView implements SubView {
   private async handleDrop(taskId: string, status: string): Promise<void> {
     const task = this.dragTask
     if (!task || task.id !== taskId || task.status === status) return
-    if (!this.config.statuses.some((option) => option.id === status)) return
+    if (!DEFAULT_STATUSES.some((option) => option.id === status)) return
     const owner = this.scope.projectOf(taskId)
     if (!owner) return
     await this.plugin.store.updateTask(owner, task.id, { status })

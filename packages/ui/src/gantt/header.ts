@@ -1,7 +1,7 @@
 import type { GanttCanvas } from './canvas'
 import { HEADER_HEIGHT, dateToX, dayX, getWeekNumber, isHiddenDay } from './TimelineConfig'
 import { svgEl } from '#dom'
-import { Temporal, type GanttWeekLabel, formatDateRange } from '@dotpm/core'
+import { Temporal } from '@dotpm/core'
 
 const MONTHS = [
   'January',
@@ -17,13 +17,6 @@ const MONTHS = [
   'November',
   'December'
 ]
-
-function formatWeekLabel(weekStart: Temporal.PlainDate, days: number, weekNum: number, mode: GanttWeekLabel): string {
-  if (mode === 'weekNumber') return `W${weekNum}`
-  const range = formatDateRange(weekStart, weekStart.add({ days: days - 1 }))
-  if (mode === 'dateRange') return range
-  return `W${weekNum}: ${range}`
-}
 
 export function renderTimelineHeader(ctx: GanttCanvas): void {
   const g = svgEl('g', { class: 'pm-gantt-header' })
@@ -74,8 +67,6 @@ function renderWeekHeader(g: SVGGElement, ctx: GanttCanvas): void {
   // Aligned to real Mondays so the header ticks match the grid lines.
   const offsetToMonday = startDate.dayOfWeek === 1 ? 0 : 8 - startDate.dayOfWeek
 
-  const labelMode = ctx.weekLabel
-
   if (offsetToMonday > 0) {
     const weekNum = getWeekNumber(startDate)
     const w = dayX(ctx.cfg, offsetToMonday)
@@ -84,7 +75,7 @@ function renderWeekHeader(g: SVGGElement, ctx: GanttCanvas): void {
       y: 44,
       class: 'pm-gantt-header-week'
     })
-    text.textContent = formatWeekLabel(startDate, offsetToMonday, weekNum, labelMode)
+    text.textContent = `W${weekNum}`
     g.appendChild(text)
   }
 
@@ -100,7 +91,7 @@ function renderWeekHeader(g: SVGGElement, ctx: GanttCanvas): void {
       y: 44,
       class: 'pm-gantt-header-week'
     })
-    text.textContent = formatWeekLabel(d, daysInWeek, weekNum, labelMode)
+    text.textContent = `W${weekNum}`
     g.appendChild(text)
     g.appendChild(
       svgEl('line', {

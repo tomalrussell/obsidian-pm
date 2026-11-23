@@ -1,9 +1,9 @@
 import { App, ButtonComponent, ExtraButtonComponent, Keymap, Modal, setIcon } from 'obsidian'
 import type PMPlugin from '#main'
 import { DEFAULT_PROJECT_COLOR, DEFAULT_PROJECT_ICON } from '@dotpm/core'
-import { findIgnoringCase, newProjectFolder, projectFilePath } from '#store'
+import { PROJECTS_FOLDER, findIgnoringCase, projectFilePath } from '#store'
 import { safeAsync, renderPropRow, renderIconControl } from '@dotpm/ui'
-import { saveShortcutLabel } from '../utils'
+import { SAVE_MODIFIER, SAVE_SHORTCUT_LABEL } from '../utils'
 
 interface Draft {
   title: string
@@ -54,7 +54,7 @@ export class ProjectCreateModal extends Modal {
 
     this.renderFooter(contentEl)
 
-    this.scope.register([this.plugin.settings.editorSaveModifier], 'Enter', () => {
+    this.scope.register([SAVE_MODIFIER], 'Enter', () => {
       this.create()
       return false
     })
@@ -106,7 +106,7 @@ export class ProjectCreateModal extends Modal {
       this.refreshValidity()
     })
     this.titleInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !Keymap.isModifier(e, this.plugin.settings.editorSaveModifier)) e.preventDefault()
+      if (e.key === 'Enter' && !Keymap.isModifier(e, SAVE_MODIFIER)) e.preventDefault()
     })
     window.setTimeout(autosize, 0)
   }
@@ -182,7 +182,7 @@ export class ProjectCreateModal extends Modal {
 
     new ButtonComponent(footer).setButtonText(`Cancel`).onClick(() => this.close())
     this.submit = new ButtonComponent(footer)
-      .setButtonText(`Create project (${saveShortcutLabel(this.plugin.settings.editorSaveModifier)})`)
+      .setButtonText(`Create project (${SAVE_SHORTCUT_LABEL})`)
       .setCta()
       .onClick(() => this.create())
   }
@@ -208,7 +208,7 @@ export class ProjectCreateModal extends Modal {
   }
 
   private targetFolder(): string {
-    return newProjectFolder(this.app, this.plugin.settings.projectsFolder)
+    return PROJECTS_FOLDER
   }
 
   private targetPath(title: string): string {

@@ -10,7 +10,7 @@ const SETTINGS: PMSettings = { ...DEFAULT_SETTINGS }
 
 function newStore(): ProjectStore {
   const { app } = makeFakeApp()
-  return new ProjectStore(app as unknown as App, () => SETTINGS)
+  return new ProjectStore(app as unknown as App)
 }
 
 describe('scopeKey', () => {
@@ -103,46 +103,26 @@ describe('ProjectScope', () => {
   })
 
   it('lists the tasks of every project in scope order', () => {
-    const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta], store)
+    const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta])
     expect(scope.tasks().map((t) => t.title)).toEqual(['Alpha one', 'Beta one'])
   })
 
   it('answers which project owns a task', () => {
-    const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta], store)
+    const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta])
     expect(scope.projectOf(beta.tasks[0].id)).toBe(beta)
     expect(scope.projectOf('nope')).toBeNull()
   })
 
   it('takes the primary project as the target for new work', () => {
-    const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta], store)
+    const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta])
     expect(scope.primary).toBe(alpha)
     expect(scope.isMulti).toBe(true)
   })
 
-  it('keeps the fixed status options across projects', async () => {
-    const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta], store)
-
-    const ids = scope.config.statuses.map((s) => s.id)
-    expect(ids.slice(0, DEFAULT_SETTINGS.statuses.length)).toEqual(DEFAULT_SETTINGS.statuses.map((s) => s.id))
-    expect(ids).toEqual(DEFAULT_SETTINGS.statuses.map((s) => s.id))
-  })
-
-  it('uses the fixed status options for every project', async () => {
-    const scope = new ProjectScope({ kind: 'vault' }, [alpha, beta], store)
-
-    expect(scope.configOf(beta.tasks[0].id).statuses.map((s) => s.id)).toEqual(
-      DEFAULT_SETTINGS.statuses.map((s) => s.id)
-    )
-    expect(scope.configOf(alpha.tasks[0].id).statuses.map((s) => s.id)).toEqual(
-      DEFAULT_SETTINGS.statuses.map((s) => s.id)
-    )
-  })
-
   it('leaves a single-project scope reading exactly like the project', () => {
-    const scope = new ProjectScope({ kind: 'project', path: alpha.filePath }, [alpha], store)
+    const scope = new ProjectScope({ kind: 'project', path: alpha.filePath }, [alpha])
     expect(scope.isMulti).toBe(false)
     expect(scope.tasks()).toBe(alpha.tasks)
-    expect(scope.config).toEqual(store.configFor(alpha))
     expect(scope.label()).toBe('Alpha')
   })
 })

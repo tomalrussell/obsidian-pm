@@ -4,7 +4,6 @@ import { addTabPageItems, refreshTabTitle } from '#ui/tab'
 import {
   type GanttGranularity,
   type Project,
-  type ResolvedProjectConfig,
   type SortRule,
   type TaskQuery,
   type ViewFields,
@@ -19,7 +18,9 @@ import {
   makeDefaultFilter,
   makeDefaultSort,
   sameValue,
-  matchesQuery
+  matchesQuery,
+  DEFAULT_PRIORITIES,
+  DEFAULT_STATUSES
 } from '@dotpm/core'
 import {
   folderOf,
@@ -96,10 +97,10 @@ function ends(list: { label: string }[]): [string, string] | undefined {
   return list.length ? [list[0].label, list[list.length - 1].label] : undefined
 }
 
-const sortFields = (config?: ResolvedProjectConfig): SortField[] => [
+const sortFields = (): SortField[] => [
   { id: 'title', label: `Task` },
-  { id: 'status', label: `Status`, ends: config && ends(config.statuses) },
-  { id: 'priority', label: `Priority`, ends: config && ends(config.priorities) },
+  { id: 'status', label: `Status`, ends: ends(DEFAULT_STATUSES) },
+  { id: 'priority', label: `Priority`, ends: ends(DEFAULT_PRIORITIES) },
   { id: 'due', label: `Due` },
   { id: 'progress', label: `Progress` }
 ]
@@ -279,8 +280,6 @@ export class ProjectView extends ItemView {
       this.renderEmptyScope()
       return
     }
-    // A settings edit may have changed a palette, which the scope has resolved and kept.
-    this.projectScope.invalidate()
     refreshTabTitle(this.leaf)
     // Rebuilding the header would drop the caret out of the search box.
     if (this.headerEl.contains(activeDocument.activeElement)) this.syncHeader()
@@ -295,14 +294,14 @@ export class ProjectView extends ItemView {
     const paths = resolveScopePaths(this.spec, this.plugin.index)
     this.loadedPaths = paths
     const projects = await this.plugin.store.loadProjects(paths)
-    this.projectScope = new ProjectScope(this.spec, projects, this.plugin.store)
+    this.projectScope = new ProjectScope(this.spec, projects)
     if (!this.projectScope.primary) {
       this.renderEmptyScope()
       return
     }
     if (this.defaultViewAppliedFor !== this.projectScope.key) {
       this.defaultViewAppliedFor = this.projectScope.key
-      this.currentView = this.projectScope.config.defaultView
+      this.currentView = this.plugin.settings.defaultView
     }
     this.loadFilterFromSettings()
     this.zoom = clampZoom(Number(this.app.loadLocalStorage(this.zoomKey())) || 100)
@@ -651,7 +650,7 @@ export class ProjectView extends ItemView {
       after?.()
     }
     return {
-      fields: sortFields(this.projectScope?.config),
+      fields: sortFields(),
       sort: this.sort,
       onChange: sorted,
       onReset: () => {
@@ -998,13 +997,11 @@ export class ProjectView extends ItemView {
   private filterSetup(): FilterSetup | null {
     const scope = this.projectScope
     if (!scope) return null
-    const config = scope.config
     return {
       filter: this.query.filter,
       tasks: flattenTasks(scope.tasks()).map((flat) => flat.task),
       ctx: scope.filterContext(),
-      priorities: config.priorities,
-      priorityIcons: config.priorityIcons,
+      priorities: DEFAULT_PRIORITIES,
       projects: scope.isMulti
         ? scope.projects.map((project) => ({ id: project.id, title: project.title, color: project.color }))
         : []

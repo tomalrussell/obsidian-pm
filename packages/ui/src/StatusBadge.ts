@@ -5,7 +5,6 @@ import {
   type TaskPriority,
   type StatusConfig,
   type PriorityConfig,
-  type PriorityIconSet,
   getStatusConfig,
   getPriorityConfig,
   priorityIcon
@@ -67,7 +66,6 @@ export function renderPriorityBadge(
   container: HTMLElement,
   task: Task,
   priorities: PriorityConfig[],
-  iconSet: PriorityIconSet,
   onChange: (priority: TaskPriority) => void
 ): HTMLElement {
   const config = getPriorityConfig(priorities, task.priority)
@@ -75,14 +73,14 @@ export function renderPriorityBadge(
     .setLabel(formatBadgeText(config?.icon, config?.label ?? task.priority))
     .setColor(config?.color ?? 'var(--text-muted)')
     .setVariant('plain')
-  const icon = priorityIcon(priorities, task.priority, iconSet)
+  const icon = priorityIcon(priorities, task.priority)
   if (isIconName(icon)) badge.setLeadingIcon(icon)
   badge.onClick((e) => {
     const menu = createMenu()
     for (const p of priorities) {
       addPaletteMenuItem(
         menu,
-        { ...p, namedIcon: priorityIcon(priorities, p.id, iconSet) },
+        { ...p, namedIcon: priorityIcon(priorities, p.id) },
         { checked: p.id === task.priority, onClick: () => onChange(p.id) }
       )
     }

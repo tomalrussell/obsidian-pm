@@ -30,7 +30,7 @@ async function idRefVault(): Promise<{ plugin: PMPlugin; app: App }> {
   const settings: PMSettings = structuredClone(DEFAULT_SETTINGS)
   const index = new VaultIndex(typed, () => settings)
   index.build()
-  const store = new ProjectStore(typed, () => settings, index)
+  const store = new ProjectStore(typed, index)
   const plugin = { app, index, store, settings, saveSettings: async () => {} } as unknown as PMPlugin
   return { plugin, app: typed }
 }
@@ -57,7 +57,7 @@ describe('migrateTaskRefs', () => {
 
     await migrateTaskRefs(plugin)
 
-    const store = new ProjectStore(app, () => structuredClone(DEFAULT_SETTINGS))
+    const store = new ProjectStore(app)
     const reloaded = expectDefined(await store.loadProjectByPath('Projects/Roadmap/Roadmap.md'))
     expect(reloaded.tasks.map((t) => t.id)).toEqual(['t1'])
     expect(reloaded.tasks[0].subtasks.map((t) => t.id)).toEqual(['t2'])
@@ -89,7 +89,7 @@ describe('migrateTaskRefs leaves the note itself alone', () => {
     const settings: PMSettings = structuredClone(DEFAULT_SETTINGS)
     const index = new VaultIndex(typed, () => settings)
     index.build()
-    const store = new ProjectStore(typed, () => settings, index)
+    const store = new ProjectStore(typed, index)
     const plugin = { app, index, store, settings, saveSettings: async () => {} } as unknown as PMPlugin
 
     await migrateTaskRefs(plugin)

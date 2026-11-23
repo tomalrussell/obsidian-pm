@@ -4,9 +4,7 @@ import {
   type SortKey,
   type SortRule,
   MAX_SORT_RULES,
-  type LineBorders,
   type PriorityConfig,
-  type PriorityIconSet,
   type StatusConfig,
   type FlatTask,
   SORT_KEYS,
@@ -57,9 +55,6 @@ export interface TableContext {
   /** Resolved once per render pass. */
   statuses: StatusConfig[]
   priorities: PriorityConfig[]
-  priorityIcons: PriorityIconSet
-  showSubtreeConnections: boolean
-  lineBorders: LineBorders
   collapsedIds: ReadonlySet<string>
   /** The visible field ids, in display order. */
   columns: string[]
@@ -184,10 +179,6 @@ export function refreshTableBody(ctx: TableContext): void {
 function fillTableBody(ctx: TableContext): void {
   const tbody = ctx.state.tableBody
   if (!tbody) return
-
-  // Set here rather than at build time: a settings change refills the body without
-  // rebuilding the table around it.
-  ctx.state.wrapper?.setAttr('data-borders', ctx.lineBorders)
 
   let flat = flattenTasks(ctx.scope.tasks(), ctx.collapsedIds)
   const hasActiveFilter = isQueryActive(ctx.state.query)

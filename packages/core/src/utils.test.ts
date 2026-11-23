@@ -40,14 +40,14 @@ describe('priorityIcon', () => {
   const scale = (labels: string[]): PriorityConfig[] =>
     labels.map((label) => ({ id: label, label, color: '', icon: '' }))
 
-  it('gives each of four priorities its own icon from the set', () => {
-    const icons = DEFAULT_PRIORITIES.map((p) => priorityIcon(DEFAULT_PRIORITIES, p.id, 'signal'))
-    expect(icons).toEqual(['signal', 'signal-high', 'signal-medium', 'signal-low'])
+  it('gives each of the four priorities its own icon', () => {
+    const icons = DEFAULT_PRIORITIES.map((p) => priorityIcon(DEFAULT_PRIORITIES, p.id))
+    expect(icons).toEqual(['chevrons-up', 'chevron-up', 'equal', 'chevron-down'])
   })
 
-  it('gives a fifth priority the last icon of the set', () => {
+  it('gives a fifth priority the last icon', () => {
     const five = scale(['p0', 'p1', 'p2', 'p3', 'p4'])
-    expect(five.map((p) => priorityIcon(five, p.id, 'chevrons'))).toEqual([
+    expect(five.map((p) => priorityIcon(five, p.id))).toEqual([
       'chevrons-up',
       'chevron-up',
       'equal',
@@ -56,24 +56,23 @@ describe('priorityIcon', () => {
     ])
   })
 
-  it('leaves ranks past the set without an icon', () => {
+  it('leaves ranks past the fifth without an icon', () => {
     const seven = scale(['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6'])
-    expect(seven.slice(5).map((p) => priorityIcon(seven, p.id, 'arrows'))).toEqual(['', ''])
+    expect(seven.slice(5).map((p) => priorityIcon(seven, p.id))).toEqual(['', ''])
   })
 
-  it('takes icons from the top of the set on a shorter scale', () => {
+  it('takes icons from the top on a shorter scale', () => {
     const two = scale(['urgent', 'whenever'])
-    expect(two.map((p) => priorityIcon(two, p.id, 'chevrons'))).toEqual(['chevrons-up', 'chevron-up'])
+    expect(two.map((p) => priorityIcon(two, p.id))).toEqual(['chevrons-up', 'chevron-up'])
   })
 
-  it("prefers the priority's own icon over the set", () => {
+  it("prefers the priority's own icon", () => {
     const custom: PriorityConfig[] = [{ id: 'high', label: 'High', color: '', icon: '🔥' }]
-    expect(priorityIcon(custom, 'high', 'signal')).toBe('🔥')
+    expect(priorityIcon(custom, 'high')).toBe('🔥')
   })
 
-  it('gives no icon for the none set or an unknown priority', () => {
-    expect(priorityIcon(DEFAULT_PRIORITIES, 'high', 'none')).toBe('')
-    expect(priorityIcon(DEFAULT_PRIORITIES, 'nope', 'chevrons')).toBe('')
+  it('gives no icon for an unknown priority', () => {
+    expect(priorityIcon(DEFAULT_PRIORITIES, 'nope')).toBe('')
   })
 })
 

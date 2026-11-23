@@ -19,7 +19,6 @@ export interface KanbanCardData {
   parentTitle?: string
   renderSource?: (parent: HTMLElement) => void
   overdue: boolean
-  showTagColors: boolean
 }
 
 export interface KanbanColumnProps {
@@ -78,7 +77,6 @@ export class KanbanColumn {
         parentTitle: card.parentTitle,
         renderSource: card.renderSource,
         overdue: card.overdue,
-        showTagColors: card.showTagColors,
         onClick: () => props.onCardClick(card.task),
         onContextMenu: (e) => props.onCardContextMenu(card.task, e),
         onDragStart: () => props.onCardDragStart(card.task),

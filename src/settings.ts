@@ -1,8 +1,7 @@
 import { App, PluginSettingTab, Setting, debounce } from 'obsidian'
 import type { SettingDefinitionItem, SettingDefinitionPage } from 'obsidian'
 import type PMPlugin from './main'
-import { type PMSettings, DEFAULT_SETTINGS, setDateFormat } from '@dotpm/core'
-import { saveShortcutLabel } from './utils'
+import { type PMSettings, DEFAULT_SETTINGS } from '@dotpm/core'
 
 export type { PMSettings }
 export { DEFAULT_SETTINGS }
@@ -25,17 +24,6 @@ export class PMSettingTab extends PluginSettingTab {
         type: 'group',
         heading: `General`,
         items: [
-          {
-            name: `New project folder`,
-            desc: `Create new projects in this folder. Leave it empty to use the vault root.`,
-            aliases: ['projects folder', 'location'],
-            control: {
-              type: 'folder',
-              key: 'projectsFolder',
-              defaultValue: 'Projects',
-              placeholder: `Vault root`
-            }
-          },
           this.excludedFoldersPage(),
           {
             name: `Open projects in`,
@@ -65,66 +53,6 @@ export class PMSettingTab extends PluginSettingTab {
               key: 'taskEditorSurface',
               options: { modal: `Modal`, tab: `Tab` }
             }
-          },
-          {
-            name: `Save tasks on close`,
-            desc: `Save changes when the task editor is closed.`,
-            control: { type: 'toggle', key: 'saveTaskOnClose' }
-          },
-          {
-            name: `Save shortcut`,
-            desc: `Choose the shortcut that creates or saves tasks and projects.`,
-            aliases: ['hotkey', 'keyboard'],
-            control: {
-              type: 'dropdown',
-              key: 'editorSaveModifier',
-              options: { Shift: saveShortcutLabel('Shift'), Mod: saveShortcutLabel('Mod') }
-            }
-          }
-        ]
-      },
-      {
-        type: 'group',
-        heading: `Style`,
-        items: [
-          {
-            name: `Show tag colors`,
-            desc: `Give each tag a colored dot derived from its name.`,
-            aliases: ['appearance'],
-            control: { type: 'toggle', key: 'showTagColors' }
-          },
-          {
-            name: `Date format`,
-            desc: `Set how dates are written, using tokens such as YYYY, MM, DD, MMM and ddd. Leave it empty for the default format.`,
-            aliases: ['appearance', 'date', 'moment'],
-            control: { type: 'text', key: 'dateFormat', placeholder: 'YYYY-MM-DD' }
-          }
-        ]
-      },
-      {
-        type: 'group',
-        heading: `Table`,
-        items: [
-          {
-            name: `Show subtree connections`,
-            desc: `Draw lines tying a subtask row back to its parent.`,
-            aliases: ['tree', 'indent', 'subtask'],
-            control: { type: 'toggle', key: 'showSubtreeConnections' }
-          },
-          {
-            name: `Line borders`,
-            desc: `Draw rules between rows, between columns, or both.`,
-            aliases: ['grid', 'lines'],
-            control: {
-              type: 'dropdown',
-              key: 'lineBorders',
-              options: {
-                none: `None`,
-                horizontal: `Horizontal`,
-                vertical: `Vertical`,
-                both: `Both`
-              }
-            }
           }
         ]
       },
@@ -147,20 +75,6 @@ export class PMSettingTab extends PluginSettingTab {
                 year: `Year`
               }
             }
-          },
-          {
-            name: `Week label`,
-            desc: `Choose the text shown in weekly header cells.`,
-            aliases: ['timeline'],
-            control: {
-              type: 'dropdown',
-              key: 'ganttWeekLabel',
-              options: {
-                weekNumber: `Week number (w15)`,
-                dateRange: `Date range (Apr 7 – 13)`,
-                both: `Both (w15: Apr 7 – 13)`
-              }
-            }
           }
         ]
       }
@@ -169,7 +83,6 @@ export class PMSettingTab extends PluginSettingTab {
 
   async setControlValue(key: string, value: unknown): Promise<void> {
     await super.setControlValue(key, value)
-    if (key === 'dateFormat') setDateFormat(this.plugin.settings.dateFormat)
     this.plugin.refreshViews()
     this.refreshDomState()
   }

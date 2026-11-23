@@ -24,7 +24,7 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
   // One row belongs to one project, so ownership is resolved here and used throughout.
   const project = ctx.scope.projectOf(task.id)
   if (!project) return
-  const isDone = isTerminalStatus(task.status, ctx.scope.configOf(task.id).statuses)
+  const isDone = isTerminalStatus(task.status, ctx.statuses)
   const statusConfig = getStatusConfig(ctx.statuses, task.status)
 
   const { el: row } = new TaskRow(tbody, {
@@ -102,7 +102,6 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
         new PriorityCell(row, {
           task,
           priorities: ctx.priorities,
-          priorityIcons: ctx.priorityIcons,
           onChange: safeAsync(async (priority) => {
             await ctx.plugin.store.updateTask(project, task.id, { priority })
             await ctx.onRefresh()
@@ -145,9 +144,8 @@ function renderTitleCell(row: HTMLElement, flat: TableTreeRow, project: Project,
   const { task } = flat
   new TitleCell(row, {
     task,
-    treeGuides: ctx.showSubtreeConnections ? flat.guides : null,
+    treeGuides: flat.guides,
     isLastChild: flat.isLastChild,
-    showTagColors: ctx.plugin.settings.showTagColors,
     onTitleClick: () => {
       openTaskModal(ctx.plugin, project, {
         task,

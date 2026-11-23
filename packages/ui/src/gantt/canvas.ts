@@ -1,4 +1,4 @@
-import { type GanttWeekLabel, today } from '@dotpm/core'
+import { today } from '@dotpm/core'
 import { svgEl } from '#dom'
 import type { TimelineCfg } from './TimelineConfig'
 import { ROW_HEIGHT, HEADER_HEIGHT, dateToX, dayX } from './TimelineConfig'
@@ -8,7 +8,6 @@ export interface GanttCanvas {
   svgEl: SVGSVGElement
   headerSvgEl: SVGSVGElement
   cfg: TimelineCfg
-  weekLabel: GanttWeekLabel
 }
 
 export function renderGridLines(ctx: GanttCanvas, totalRows: number): void {

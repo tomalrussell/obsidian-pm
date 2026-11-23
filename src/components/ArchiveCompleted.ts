@@ -1,5 +1,5 @@
 import type PMPlugin from '#main'
-import { type Project, today, isTerminalStatus } from '@dotpm/core'
+import { type Project, DEFAULT_STATUSES, today, isTerminalStatus } from '@dotpm/core'
 import { type ArchiveCandidate, collectArchivable, withoutBlockedDependents } from '#store'
 
 export interface ArchivePlan {
@@ -26,8 +26,11 @@ export async function planArchive(plugin: PMPlugin, projectPaths: string[]): Pro
 
     const project = await plugin.store.loadProjectByPath(path)
     if (!project) continue
-    const statuses = plugin.store.configFor(project).statuses
-    for (const candidate of collectArchivable(project, (status) => isTerminalStatus(status, statuses), cutoff)) {
+    for (const candidate of collectArchivable(
+      project,
+      (status) => isTerminalStatus(status, DEFAULT_STATUSES),
+      cutoff
+    )) {
       entries.push({ project, candidate })
     }
   }

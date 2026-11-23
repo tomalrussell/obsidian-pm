@@ -18,7 +18,7 @@ describe('planArchive', () => {
     app = makeFakeApp({ liveMetadataCache: true }).app as unknown as App
     const settings: PMSettings = structuredClone(DEFAULT_SETTINGS)
     index = new VaultIndex(app, () => settings)
-    store = new ProjectStore(app, () => settings, index)
+    store = new ProjectStore(app, index)
     plugin = { app, index, store, settings, saveSettings: () => Promise.resolve() } as unknown as PMPlugin
   })
 

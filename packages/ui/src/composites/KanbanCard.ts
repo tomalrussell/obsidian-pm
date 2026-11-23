@@ -1,4 +1,4 @@
-import { type Task, formatDateShort } from '@dotpm/core'
+import { type Task, formatDate } from '@dotpm/core'
 import { Chip } from '#primitives/Chip'
 import { ProgressBar } from '#primitives/ProgressBar'
 import { renderDueChip } from './dueChip'
@@ -14,7 +14,6 @@ export interface KanbanCardProps {
   /** Leading slot in the footer, filled when a card has to say where it is from. */
   renderSource?: (parent: HTMLElement) => void
   overdue: boolean
-  showTagColors: boolean
   onClick: () => void
   onContextMenu: (e: MouseEvent) => void
   onDragStart: () => void
@@ -69,14 +68,14 @@ export class KanbanCard {
       } else if (field === 'tags' && task.tags.length) {
         const tagsEl = body.createDiv('pm-kanban-card-tags')
         for (const tag of task.tags.slice(0, 3)) {
-          renderTagChip(tagsEl, tag, props.showTagColors)
+          renderTagChip(tagsEl, tag)
         }
       } else if (field === 'progress' && task.progress > 0) {
         new ProgressBar(body).setSize('sm').setValue(task.progress)
       } else if (field === 'project') {
         props.renderSource?.(footer)
       } else if (field === 'due' && task.due) {
-        renderDueChip(footer, formatDateShort(task.due), props.overdue ? 'overdue' : 'normal', 'sm')
+        renderDueChip(footer, formatDate(task.due), props.overdue ? 'overdue' : 'normal', 'sm')
       }
     }
     if (footer.childElementCount) body.appendChild(footer)

@@ -8,19 +8,19 @@ Removed metadata (recurrence, time tracking, custom fields, assignees and simila
 
 ## Current functionality
 
-| Area          | What it does                                                                                           | Where                                          |
-| ------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| Persistence   | Notes as tasks, YAML frontmatter, wikilinks, rename handling, vault index, queued writes               | `src/store/ProjectStore.ts`, `VaultIndex.ts`   |
-| Task model    | Fixed statuses and priorities (`yesterday`, `high`, `medium`, `low`), subtasks, dependencies, milestones, dates, progress, tags | `packages/core/src/types.ts`                   |
-| Table         | Sortable, filterable task table with bulk actions, row editing and subtask tree                         | `src/views/table`, `packages/ui`               |
-| Gantt         | Task bars, milestones, drag move/resize with undo, dependency linking, cycle checks. Weekends are always hidden. Dates are manual. | `src/views/gantt`, `packages/ui/src/gantt`     |
-| Kanban        | Fixed status columns, with column visibility, order and hide-empty controls                            | `src/views/KanbanView.ts`, `packages/ui/src/views` |
-| Projects      | Independent projects (no hierarchy), multi-project scopes, overview, dashboard, archive | `ProjectScope`, `ArchiveOps`, `ProjectOverviewView`, `DashboardView` |
-| View state    | Field visibility and order, last-used filters and sorting. No saved or named views.                    | `packages/core/src/store/View*.ts`             |
-| Editing       | Task modal and editor, subtasks panel, context menu, note-link suggest, create task from selection    | `src/modals`, `src/ui`                         |
-| Import        | Convert existing Markdown notes into tasks                                                             | `ImportModal`                                  |
-| Automation    | Manual "archive completed tasks" command, ID repair, undo/redo of the last action                      | `src/components`, `ProjectStore`               |
-| Support       | Settings, migrations                                                                                    | `src/settings.ts`, `src/migration.ts`          |
+| Area        | What it does                                                                                                                       | Where                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Persistence | Notes as tasks, YAML frontmatter, wikilinks, rename handling, vault index, queued writes                                           | `src/store/ProjectStore.ts`, `VaultIndex.ts`                         |
+| Task model  | Fixed statuses and priorities (`yesterday`, `high`, `medium`, `low`), subtasks, dependencies, milestones, dates, progress, tags    | `packages/core/src/types.ts`                                         |
+| Table       | Sortable, filterable task table with bulk actions, row editing and subtask tree                                                    | `src/views/table`, `packages/ui`                                     |
+| Gantt       | Task bars, milestones, drag move/resize with undo, dependency linking, cycle checks. Weekends are always hidden. Dates are manual. | `src/views/gantt`, `packages/ui/src/gantt`                           |
+| Kanban      | Fixed status columns, with column visibility, order and hide-empty controls                                                        | `src/views/KanbanView.ts`, `packages/ui/src/views`                   |
+| Projects    | Independent projects (no hierarchy), multi-project scopes, overview, dashboard, archive                                            | `ProjectScope`, `ArchiveOps`, `ProjectOverviewView`, `DashboardView` |
+| View state  | Field visibility and order, last-used filters and sorting                                                                          | `packages/core/src/store/View*.ts`                                   |
+| Editing     | Task modal and editor, subtasks panel, context menu, note-link suggest, create task from selection                                 | `src/modals`, `src/ui`                                               |
+| Import      | Convert existing Markdown notes into tasks                                                                                         | `ImportModal`                                                        |
+| Automation  | "Archive completed tasks" command, ID repair, undo/redo of the last action                                                         | `src/components`, `ProjectStore`                                     |
+| Support     | Settings, migrations                                                                                                               | `src/settings.ts`, `src/migration.ts`                                |
 
 Workspace packages: `@dotpm/core` (model, YAML, filtering, dependency graph, view state) and `@dotpm/ui` (DOM primitives, composites, Gantt rendering). The Obsidian plugin in `src` ties them together.
 
@@ -28,24 +28,24 @@ Workspace packages: `@dotpm/core` (model, YAML, filtering, dependency graph, vie
 
 Line counts are approximate.
 
-| Module                             | Lines | Concern                                                                                      |
-| ---------------------------------- | ----- | -------------------------------------------------------------------------------------------- |
-| `src/store/ProjectStore.ts`        | 1070  | Persistence mixed with import, archives and attachments                                      |
-| `src/views/ProjectView.ts`         | 1220  | Hosts all three views plus header, filters, scope handling and toolbars. Most likely to hold dead code after the removals |
-| `src/store/VaultIndex.ts`          | 500   | Needed. Review only for leftover code from removed features.                                 |
-| `src/views/DashboardView.ts`       | 490   | Separate surface from the three core views                                                   |
-| `src/views/ProjectOverviewView.ts` | 330   | Same                                                                                         |
-| `src/main.ts`                      | 650   | 14 commands, file-open interception and view registration                                    |
+| Module                             | Lines | Concern                                                                                                                |
+| ---------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------- |
+| `src/views/ProjectView.ts`         | 1170  | Hosts all three views plus header, filters, scope handling and toolbars. The most likely place for leftover dead code. |
+| `src/store/ProjectStore.ts`        | 1040  | Persistence, plus vault sync, import and archiving                                                                     |
+| `src/main.ts`                      | 550   | 12 commands, startup sweep, settings load and migration, view registration                                             |
+| `src/views/DashboardView.ts`       | 480   | Separate surface from the three core views                                                                             |
+| `src/store/VaultIndex.ts`          | 490   | Needed. Review only for leftover code from removed features.                                                           |
+| `src/views/ProjectOverviewView.ts` | 330   | Separate surface from the three core views                                                                             |
 
 ## Dependencies and tooling
 
-| Item                                                     | Role                                       | Suggestion                                                                          |
-| -------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------- |
-| `obsidian`                                               | Host API, production YAML codec            | Foundational                                                                        |
-| `temporal-polyfill`                                      | Date arithmetic                            | Keep                                                                                |
-| `yaml`                                                   | Test-only YAML codec                       | Keep while tests need it. Confirm it isn't bundled.                                 |
-| `publint`, `@arethetypeswrong/cli`, `build:packages` script | Checks for publishing npm packages      | Drop if the packages stay private to this repo                                      |
-| ESLint (`check:submission`) and oxlint                   | Overlapping lint                           | ESLint is likely needed for `eslint-plugin-obsidianmd` submission rules. Narrow it to those rules and leave the rest to oxlint. |
+| Item                                                        | Role                               | Suggestion                                                                                                                      |
+| ----------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `obsidian`                                                  | Host API, production YAML codec    | Foundational                                                                                                                    |
+| `temporal-polyfill`                                         | Date arithmetic                    | Keep                                                                                                                            |
+| `yaml`                                                      | Test-only YAML codec               | Keep while tests need it. Confirm it isn't bundled.                                                                             |
+| `publint`, `@arethetypeswrong/cli`, `build:packages` script | Checks for publishing npm packages | Drop if the packages stay private to this repo                                                                                  |
+| ESLint (`check:submission`) and oxlint                      | Overlapping lint                   | ESLint is likely needed for `eslint-plugin-obsidianmd` submission rules. Narrow it to those rules and leave the rest to oxlint. |
 
 Manifest declarations alone don't prove a dependency is unused. Grep imports before removing anything.
 
@@ -53,37 +53,37 @@ Manifest declarations alone don't prove a dependency is unused. Grep imports bef
 
 Ordered by payoff for the effort. Each step is independent, and each is a user decision.
 
-1. **Dead-code sweep. Done.** The type check, unused-locals check (`tsc --noUnusedLocals --noUnusedParameters`), oxlint, oxfmt and all 483 tests pass.
-   - Fixed the type errors that the saved-views removal left in `ProjectView.ts` and `DashboardView.ts`: dangling imports, `activeView()` calls and stray header code.
-   - Removed the auto-archiver: the hourly timer, the daily check, the `autoArchiveDays` setting and per-project override, and `lastAutoArchiveDate`. The "Archive completed tasks" command remains and archives every completed task. Old values are dropped from settings on load. A project note's `config.autoArchiveDays` is dropped the next time that project is saved.
-   - Removed the automatic Markdown editor replacement and `monkey-around`. Project and task notes now open in Obsidian's editor. "Open current file as project" and the overview's buttons open the plugin views.
-   - Removed the release notes view, its command, the "show release notes" setting, `lastSeenVersion`, the changelog parser and the `__CHANGELOG__` build define.
-   - Removed the dev-only styleguide gallery (about 1,030 lines, its build flag and its PR checklist item).
-   - Removed unused imports, locals and parameters, the dead `filterArchived` helper and its test, and about 90 lines of saved-view CSS.
-   - Removed non-working days: the `holidays` setting, per-project `nonWorkingDays`, the popover, the Gantt option and the weekend shading. The Gantt now always hides weekends.
-   - Restored the collapsed-task remap in `migration.ts`. The saved-views removal had deleted it, so moving a project dropped its collapsed state. The migration test caught this.
-   - **Left for a decision:**
-     - Some CSS classes have no reference in the TypeScript: `pm-gantt-body`, `pm-gantt-controls`, `pm-gantt-resize-handle`, `pm-invisible`, `pm-kanban-card-field*`, `pm-kanban-hidden-rail`, `pm-modal-footer`, `pm-modal-section-header`, `pm-overview-child*`, `pm-prop-date`, `pm-prop-label*`, `pm-prop-text`, `pm-resize-active`, `pm-section-sublabel`, `pm-subtask-dot`, `pm-switcher-gap`, `pm-table-resize`, `pm-table-th-resizable`, `pm-task-modal`, `pm-vis-detail-input`. Some may be added dynamically, so check each in the running plugin before deleting.
-     - Props interfaces and helpers exported only for use inside their own file. This is noise, not dead code.
+1. **Leftover dead code.** Check each of these in the running plugin before deleting, since some classes may be added dynamically.
+   - CSS classes with no reference in the TypeScript: `pm-gantt-body`, `pm-gantt-controls`, `pm-gantt-resize-handle`, `pm-invisible`, `pm-kanban-card-field*`, `pm-kanban-hidden-rail`, `pm-modal-footer`, `pm-modal-section-header`, `pm-overview-child*`, `pm-prop-date`, `pm-prop-label*`, `pm-prop-text`, `pm-resize-active`, `pm-section-sublabel`, `pm-subtask-dot`, `pm-switcher-gap`, `pm-table-resize`, `pm-table-th-resizable`, `pm-task-modal`, `pm-vis-detail-input`.
+   - Exports used only inside their own file, mostly props interfaces. This is noise, not dead code.
+   - Keep `tsc --noUnusedLocals --noUnusedParameters` in mind after each cut. The repo's own `check:types` doesn't enable it.
 
-2. **Split `ProjectStore`. Partly done.** Net −61 lines, all tests pass.
-   - Deleted the `TaskSource` interface (84 lines). It only mirrored `ProjectStore`'s public methods, and nothing else implements it. Callers now type against `ProjectStore`.
-   - Moved task file naming and the two error classes to `taskFiles.ts`, and the folder and note loading to `TaskLoader.ts`.
-   - `moveTask`, `archiveTask` and `deleteTask` now call their plural versions.
-   - Removed task and project duplication: the store methods, the command, the context-menu entries, the confirm modal, the clone helpers, the copy-naming helper and their tests. `updateTask` and `updateTasks` now share one `applyPatch` helper.
-   - Removed moving a task to another project (`moveTaskToProject` and the "Move to project" menu item) and the one-off layout migration that moved projects into their own folders (`moveProjectIntoOwnFolder`, `migrateProjectLayout` and their tests). A project that still sits beside a `<name>_tasks` folder keeps that layout and reads as before. Re-parenting a task within a project remains.
-   - `ProjectStore.ts` is 1,069 lines, down from 1,473. **Still to do:** `importNoteAsTask` and `reassignIds`, and the vault-sync code (rename following, reload, self-write tracking). The sync code needs the store's private dirty and hydration state, so splitting it means passing that state in explicitly. Cutting `importNoteAsTask` outright would shrink the store more than splitting it.
+2. **Finish slimming `ProjectStore`.**
+   - **Vault sync** (rename following, reload on outside edits, self-write tracking, change events; about 150 lines). It reads and writes six pieces of the store's private state: the project cache, the hydrated-bodies set, the dirty-task map, the save queues, the self-write map and the change handlers. Splitting it means moving that state into a small owner class that the store delegates to, which adds about 30 lines. Leave it unless another change needs it.
+   - **`importNoteAsTask`.** Cutting it removes more than splitting it. See step 4.
+   - **`reassignIds`.** Only ID repair calls it. See step 4.
 
 3. **Split `ProjectView`.** Pull the per-view toolbar and header logic into the Table, Gantt and Kanban views. The host should only route, scope and hold shared filter state.
 
 4. **Candidate feature cuts, largest first.** Pick any, in any order.
-   - Dashboard and project overview: fold what's useful into the project header, or drop them. This removes about 800 lines and one navigation level.
-   - Undo/redo outside Gantt: keep Gantt undo only if the command set can shrink.
-   - Import notes as tasks: drop it if tasks are created in the plugin from now on.
-   - Milestones, task dependencies or progress rollups: the model and Gantt both depend on these, so cut only after weighing Gantt's value.
-   - Attachments: check whether this is still used anywhere.
+   - **Dashboard and project overview.** Fold what's useful into the project header, or drop them. About 810 lines and one navigation level. The milestone redesign below adds a table to the overview, so decide this first.
+   - **Undo/redo outside Gantt.** Keep Gantt undo only if the command set can shrink.
+   - **Import notes as tasks.** Drop it if tasks are created in the plugin from now on. Removes `importNoteAsTask`, the import modal and the command.
+   - **ID repair.** It only guards against project folders copied outside the plugin, which duplicates every ID. Dropping it removes `IdRepair`, `reassignIds`, the index's collision lookups and their hooks, and the vault can then hold ambiguous IDs.
+   - **Task dependencies and progress rollups.** The model and Gantt both depend on dependencies, so cut only after weighing Gantt's value.
 
-5. **Settings and commands audit.** After the cuts, remove settings with only one sensible value, and commands that duplicate UI actions. Aim for fewer than 10 commands.
+5. **Settings and commands.** Five settings remain: excluded folders, default tasks view, default timeline granularity, "Open projects in" and "Open tasks in". Statuses, priorities and their icons are constants.
+   - **Settings that cut a surface.**
+     - `taskEditorSurface` (modal or tab) keeps two task editors alive. Picking one removes `TaskView.ts` (115 lines) or the modal path, plus the branch in `openTaskModal`.
+     - `projectSurface` only matters while the overview exists. It goes with the overview cut in step 4.
+   - **`defaultFields`** has no settings control. It only seeds new scopes and holds migrated board fields.
+   - **Commands (12).**
+     - Cut `undo-last-action` and `redo-last-action`: only Gantt drags push undo entries, and the Gantt already handles Ctrl+Z itself. The stack could move into the Gantt view.
+     - Cut `new-subtask`: the task editor already has the type and parent pickers.
+     - Candidates: `import-notes-as-tasks` (step 4) and `rebuild-project-index` (a recovery tool for a cache the vault events keep current).
+     - Keep: `open-projects`, `new-project`, `new-task`, `open-all-projects`, `archive-completed-tasks`, `create-task-from-selection` and `open-current-as-project`. The last one is the only way from a project note to its views.
+     - Cutting undo, redo and subtask gets to 9. Cutting the two candidates gets to 7.
+   - **Duplicates.** The ribbon icon and `open-projects` do the same thing, and "Create task from selection" is registered both as a command and as an editor menu item. Both are cheap.
 
 6. **Packaging and tooling.** Merge the two packages back into `src` if there are no plans to publish them. This removes the workspace, path aliases and build step. Do it last, because it touches every import.
 
@@ -104,17 +104,17 @@ A milestone is a dated gate that tasks block. It is not a task container.
 
 ### Current state
 
-| Concern            | Today                                                                                                                                    | Where                                                                                   |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Model              | `type: 'task' \| 'milestone' \| 'subtask'`. `subtasks: Task[]` exists on every task. `dependencies` holds a task's predecessor ids.      | `packages/core/src/types.ts`                                                            |
-| Hydration          | Reads `type` from frontmatter. Doesn't check milestone fields.                                                                           | `YamlHydrator.ts`                                                                       |
-| Editor             | Switching to milestone clears `start` and `progress`. It doesn't clear subtasks. The subtasks panel stays available.                    | `src/modals/TaskFormFields.ts`, `SubtasksPanel.ts`                                      |
-| Creation           | "Add milestone" menu items in the table and Gantt headers. The subtask command can target a milestone.                                   | `ProjectView.ts`, `main.ts`                                                             |
-| Kanban             | Milestones appear as cards, with a diamond icon.                                                                                         | `KanbanView.ts`, `boardColumns.ts`, `KanbanCard.ts`                                     |
-| Gantt              | Diamond bar, labels and dashed line per dated milestone.                                                                                 | `GanttTaskBarRenderer.ts`, `packages/ui/src/gantt/bars.ts`                              |
-| Overview           | Date-proportional dot timeline with a done count.                                                                                        | `ProjectOverviewView.ts`, `milestoneTimeline.ts`                                        |
-| Filtering          | `type` is an ordinary list field, so a milestone can be filtered in or out. No filter relates tasks to the milestones they block.        | `FilterFields.ts`, `TaskFilter.ts`, `filterPopover.ts`                                  |
-| Dependency graph   | `dependentsFromTasks` and `reaches` already compute who waits on whom, and cycle checks exist.                                           | `DependencyGraph.ts`                                                                    |
+| Concern          | Today                                                                                                                               | Where                                                      |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Model            | `type: 'task' \| 'milestone' \| 'subtask'`. `subtasks: Task[]` exists on every task. `dependencies` holds a task's predecessor ids. | `packages/core/src/types.ts`                               |
+| Hydration        | Reads `type` from frontmatter. Doesn't check milestone fields.                                                                      | `YamlHydrator.ts`                                          |
+| Editor           | Switching to milestone clears `start` and `progress`. It doesn't clear subtasks. The subtasks panel stays available.                | `src/modals/TaskFormFields.ts`, `SubtasksPanel.ts`         |
+| Creation         | "Add milestone" menu items in the table and Gantt headers. The subtask command can target a milestone.                              | `ProjectView.ts`, `main.ts`                                |
+| Kanban           | Milestones appear as cards, with a diamond icon.                                                                                    | `KanbanView.ts`, `boardColumns.ts`, `KanbanCard.ts`        |
+| Gantt            | Diamond bar, labels and dashed line per dated milestone.                                                                            | `GanttTaskBarRenderer.ts`, `packages/ui/src/gantt/bars.ts` |
+| Overview         | Date-proportional dot timeline with a done count.                                                                                   | `ProjectOverviewView.ts`, `milestoneTimeline.ts`           |
+| Filtering        | `type` is an ordinary list field, so a milestone can be filtered in or out. No filter relates tasks to the milestones they block.   | `FilterFields.ts`, `TaskFilter.ts`, `filterPopover.ts`     |
+| Dependency graph | `dependentsFromTasks` and `reaches` already compute who waits on whom, and cycle checks exist.                                      | `DependencyGraph.ts`                                       |
 
 ### Design decisions
 

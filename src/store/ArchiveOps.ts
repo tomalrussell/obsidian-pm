@@ -2,7 +2,7 @@ import type { App } from 'obsidian'
 import { TFile, normalizePath } from 'obsidian'
 import { type Project, type Task, findTaskById } from '@dotpm/core'
 import type { TaskRef } from './VaultIndex'
-import { ensureFolder, moveTaskAttachmentFolder, projectTaskFolder } from './vaultFs'
+import { ensureFolder, projectTaskFolder } from './vaultFs'
 
 function subtree(task: Task): Task[] {
   return [task, ...task.subtasks.flatMap(subtree)]
@@ -11,7 +11,7 @@ function subtree(task: Task): Task[] {
 /** Marks a path we're about to write, so the move doesn't read back as an external change. */
 type MarkSelfWrite = (path: string) => void
 
-/** Moves the file and its attachments, reporting whether they ended up there. */
+/** Moves the file, reporting whether it ended up there. */
 async function moveTaskFile(
   app: App,
   task: Task,
@@ -31,10 +31,7 @@ async function moveTaskFile(
   const oldPath = task.filePath
   markSelfWrite(oldPath)
   markSelfWrite(newPath)
-  markSelfWrite(oldPath.replace(/\.md$/, ''))
-  markSelfWrite(newPath.replace(/\.md$/, ''))
   await app.vault.rename(file, newPath)
-  await moveTaskAttachmentFolder(app, oldPath, newPath)
   task.filePath = newPath
   return true
 }

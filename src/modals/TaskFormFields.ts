@@ -3,6 +3,8 @@ import {
   type Project,
   type Task,
   type TaskType,
+  DEFAULT_PRIORITIES,
+  DEFAULT_STATUSES,
   collectAllTags,
   flattenTasks,
   reaches,
@@ -45,7 +47,8 @@ const typeOptions = (): SelectItem[] => [
  */
 export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFieldsContext): void {
   const { task, project, plugin, rerender } = ctx
-  const { statuses, priorities, priorityIcons } = plugin.store.configFor(project)
+  const statuses = DEFAULT_STATUSES
+  const priorities = DEFAULT_PRIORITIES
   const grid = container.createDiv('pm-prop-grid')
 
   renderPropRow(
@@ -135,7 +138,7 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
           id: p.id,
           label: p.label,
           color: p.color,
-          icon: priorityIcon(priorities, p.id, priorityIcons)
+          icon: priorityIcon(priorities, p.id)
         })),
         onChange: (id) => {
           task.priority = id
@@ -249,7 +252,7 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
         addLabel: `Add tags`,
         placeholder: `Find or create…`,
         tag: true,
-        colorFor: plugin.settings.showTagColors ? (tag) => stringToColor(tag) : undefined,
+        colorFor: (tag) => stringToColor(tag),
         selected: () => task.tags,
         options: () => projectTags.map((tag) => ({ id: tag, label: tag })),
         add: (id) => {

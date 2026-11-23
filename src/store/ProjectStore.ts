@@ -1,22 +1,18 @@
 import type { Plugin, TAbstractFile } from 'obsidian'
 import { App, TFile, TFolder, normalizePath } from 'obsidian'
 import {
-  type PMSettings,
   type Project,
   type ProjectPatch,
-  type ResolvedProjectConfig,
-  type StatusConfig,
   type Task,
   type TaskPriority,
   type TaskStatus,
-  DEFAULT_SETTINGS,
+  DEFAULT_STATUSES,
   makeId,
   makeProject,
   makeTask,
   today,
   isTerminalStatus,
   sanitizeFileName,
-  resolveProjectConfig,
   findParentId,
   findTaskById,
   indexAddSubtree,
@@ -42,7 +38,6 @@ import {
   serializeTask,
   TASK_FRONTMATTER_KEYS,
   taskFileName,
-  taskFilePath,
   type RefWriter
 } from '@dotpm/core'
 import { archiveTask as doArchiveTask, unarchiveTask as doUnarchiveTask } from './ArchiveOps'
@@ -53,7 +48,6 @@ import {
   findIgnoringCase,
   folderOf,
   keepProjectStorageWithNote,
-  moveTaskAttachmentFolder,
   projectFolderOf,
   projectTaskFolder,
   projectFilePath
@@ -113,18 +107,9 @@ export class ProjectStore {
 
   constructor(
     private app: App,
-    private getSettings: () => PMSettings = () => DEFAULT_SETTINGS,
     /** Absent in tests and before the layout is ready; only cross-project lookups need it. */
     private index?: VaultIndex
   ) {}
-
-  configFor(project: Project): ResolvedProjectConfig {
-    return resolveProjectConfig(project, this.getSettings())
-  }
-
-  private statusesFor(project: Project): StatusConfig[] {
-    return this.configFor(project).statuses
-  }
 
   /** Bound to the note being written: how far a link abbreviates depends on where it sits. */
   private refsFor(project: Project, sourcePath: string, planned?: Map<string, string>): RefWriter {
@@ -511,14 +496,14 @@ export class ProjectStore {
           }
           return serializeProject(
             project,
-            this.statusesFor(project),
+            DEFAULT_STATUSES,
             this.refsFor(project, project.filePath),
             foreignFrontmatter(frontmatter, PROJECT_FRONTMATTER_KEYS)
           )
         })
         this.hydratedBodies.add(project)
       } else {
-        const content = serializeProject(project, this.statusesFor(project), this.refsFor(project, project.filePath))
+        const content = serializeProject(project, DEFAULT_STATUSES, this.refsFor(project, project.filePath))
         this.markSelfWrite(project.filePath)
         await this.app.vault.create(project.filePath, content)
         this.hydratedBodies.add(project)
@@ -642,7 +627,7 @@ export class ProjectStore {
             task,
             project,
             parentTask,
-            this.statusesFor(project),
+            DEFAULT_STATUSES,
             this.refsFor(project, filePath, planned),
             foreignFrontmatter(frontmatter, TASK_FRONTMATTER_KEYS)
           )
@@ -660,7 +645,7 @@ export class ProjectStore {
           task,
           project,
           parentTask,
-          this.statusesFor(project),
+          DEFAULT_STATUSES,
           this.refsFor(project, filePath, planned),
           foreign
         )
@@ -676,10 +661,6 @@ export class ProjectStore {
           this.markSelfWrite(previousPath)
           await this.app.fileManager.trashFile(oldFile)
         }
-        // Keep the task's attachment folder with the renamed note.
-        this.markSelfWrite(this.taskFolder(previousPath))
-        this.markSelfWrite(this.taskFolder(filePath))
-        await moveTaskAttachmentFolder(this.app, previousPath, filePath)
       }
     } catch (e) {
       if (!(e instanceof TaskFileNameConflictError) && !(e instanceof UnreadableNoteError)) {
@@ -752,7 +733,7 @@ export class ProjectStore {
   }
 
   async insertTask(project: Project, task: Task, parentId: string | null = null): Promise<void> {
-    if (!task.completed && isTerminalStatus(task.status, this.statusesFor(project))) {
+    if (!task.completed && isTerminalStatus(task.status, DEFAULT_STATUSES)) {
       task.completed = today().toString()
     }
     this.hydratedBodies.add(task)
@@ -798,7 +779,7 @@ export class ProjectStore {
       task,
       project,
       null,
-      this.statusesFor(project),
+      DEFAULT_STATUSES,
       this.refsFor(project, newFilePath),
       foreignFrontmatter(frontmatter, TASK_FRONTMATTER_KEYS)
     )
@@ -859,10 +840,10 @@ export class ProjectStore {
    * Stamp or clear `completed` when a status crosses the complete boundary, mutating
    * `patch` so it lands in the same save. An explicit `completed` in the patch wins.
    */
-  private stampCompletion(project: Project, task: Task, patch: Partial<Task>): void {
+  private stampCompletion(task: Task, patch: Partial<Task>): void {
     if (patch.status === undefined) return
     if (patch.completed !== undefined && patch.completed !== task.completed) return
-    const statuses = this.statusesFor(project)
+    const statuses = DEFAULT_STATUSES
     const wasComplete = isTerminalStatus(task.status, statuses)
     const nowComplete = isTerminalStatus(patch.status, statuses)
     if (nowComplete && !wasComplete) patch.completed = today().toString()
@@ -871,7 +852,7 @@ export class ProjectStore {
 
   /** Applies a patch to a task and marks what it touches for the next save. */
   private applyPatch(project: Project, task: Task, patch: Partial<Task>): void {
-    this.stampCompletion(project, task, patch)
+    this.stampCompletion(task, patch)
     const oldTitle = task.title
     updateTaskInTree(project.tasks, task.id, patch)
     const titleChanged = patch.title !== undefined && patch.title !== oldTitle
@@ -1006,28 +987,7 @@ export class ProjectStore {
         this.markSelfWrite(task.filePath)
         await this.app.fileManager.trashFile(file)
       }
-      const taskDir = this.app.vault.getAbstractFileByPath(this.taskFolder(task.filePath))
-      if (taskDir instanceof TFolder) {
-        await this.deleteFolderRecursive(taskDir)
-      }
     }
-  }
-
-  /** A task's own folder, holding its attachments. */
-  private taskFolder(taskFilePath: string): string {
-    return taskFilePath.replace(/\.md$/, '')
-  }
-
-  /** Keeps a pasted or dropped file with the task, not in the vault-wide default folder. */
-  async saveTaskAttachment(project: Project, task: Task, fileName: string, data: ArrayBuffer): Promise<TFile> {
-    const taskPath = task.filePath ?? taskFilePath(task.title, projectTaskFolder(this.app, project.filePath))
-    const dir = normalizePath(`${this.taskFolder(taskPath)}/attachments`)
-    this.markSelfWrite(this.taskFolder(taskPath))
-    this.markSelfWrite(dir)
-    await this.ensureFolder(dir)
-    const path = uniqueChildPath(this.app, dir, fileName)
-    this.markSelfWrite(path)
-    return this.app.vault.createBinary(path, data)
   }
 
   async deleteProject(project: Project): Promise<void> {

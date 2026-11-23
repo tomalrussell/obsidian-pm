@@ -42,7 +42,6 @@ function setupFor(filter: FilterState): FilterSetup {
     tasks: TASKS,
     ctx: { statuses: DEFAULT_STATUSES },
     priorities: DEFAULT_PRIORITIES,
-    priorityIcons: 'chevrons',
     projects: []
   }
 }

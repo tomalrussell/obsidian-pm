@@ -1,14 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { Temporal } from 'temporal-polyfill'
-import {
-  completionOutcome,
-  formatDate,
-  formatDateLong,
-  formatDateRange,
-  formatDateShort,
-  relativeDue,
-  setDateFormat
-} from './dates'
+import { completionOutcome, formatDate, relativeDue } from './dates'
 
 const from = Temporal.PlainDate.from('2026-06-15')
 
@@ -57,80 +49,13 @@ describe('completionOutcome', () => {
   })
 })
 
-describe('date formatting', () => {
-  const ZONES = ['UTC', 'America/New_York', 'Pacific/Kiritimati']
-
-  afterEach(() => {
-    vi.unstubAllEnvs()
+describe('formatDate', () => {
+  it('writes the day as YYYY-MM-DD', () => {
+    expect(formatDate('2026-03-08')).toBe('2026-03-08')
   })
 
   it('returns an empty string for empty or invalid dates', () => {
     expect(formatDate('')).toBe('')
-    expect(formatDateShort('not-a-date')).toBe('')
-    expect(formatDateLong('')).toBe('')
-  })
-
-  // A YYYY-MM-DD field names a calendar day, not an instant: read as an instant it lands on
-  // the day before wherever the clock is behind UTC.
-  it.each(ZONES)('names the day the field says in %s', (zone) => {
-    vi.stubEnv('TZ', zone)
-    expect(formatDate('2026-03-28')).toContain('28')
-    expect(formatDateShort('2026-03-28')).toContain('28')
-    expect(formatDateLong('2026-03-28')).toContain('28')
-  })
-
-  it.each(ZONES)('keeps both ends of a range on their own day in %s', (zone) => {
-    vi.stubEnv('TZ', zone)
-    const range = formatDateRange(Temporal.PlainDate.from('2026-04-07'), Temporal.PlainDate.from('2026-04-13'))
-    expect(range).toContain('7')
-    expect(range).toContain('13')
-  })
-
-  it('formats ranges using English date conventions', () => {
-    expect(formatDateRange(Temporal.PlainDate.from('2026-04-07'), Temporal.PlainDate.from('2026-04-13'))).toContain(
-      'Apr'
-    )
-  })
-})
-
-describe('custom date format', () => {
-  afterEach(() => {
-    setDateFormat('')
-  })
-
-  it('writes numeric tokens with and without padding', () => {
-    setDateFormat('DD.MM.YYYY')
-    expect(formatDate('2026-03-08')).toBe('08.03.2026')
-    setDateFormat('D/M/YY')
-    expect(formatDate('2026-03-08')).toBe('8/3/26')
-  })
-
-  it('applies to the short and long formats too', () => {
-    setDateFormat('YYYY-MM-DD')
-    expect(formatDateShort('2026-03-08')).toBe('2026-03-08')
-    expect(formatDateLong('2026-03-08')).toBe('2026-03-08')
-  })
-
-  it('names months and weekdays in English', () => {
-    setDateFormat('ddd, D MMM')
-    expect(formatDate('2026-03-08')).toBe('Sun, 8 Mar')
-    setDateFormat('dddd D MMMM')
-    expect(formatDate('2026-03-08')).toBe('Sunday 8 March')
-  })
-
-  it('keeps bracketed text as written', () => {
-    setDateFormat('[Day] D [of] MMMM')
-    expect(formatDate('2026-03-08')).toBe('Day 8 of March')
-  })
-
-  it('returns an empty string for empty or invalid dates', () => {
-    setDateFormat('YYYY-MM-DD')
-    expect(formatDate('')).toBe('')
-    expect(formatDateShort('not-a-date')).toBe('')
-  })
-
-  it('falls back to the English format when blank', () => {
-    setDateFormat('   ')
-    expect(formatDate('2026-03-08')).toBe('Mar 8, 2026')
+    expect(formatDate('not-a-date')).toBe('')
   })
 })

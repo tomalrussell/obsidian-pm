@@ -1,5 +1,5 @@
-import type { DueUrgency, Task, StatusConfig, PriorityConfig, TaskPriority, PriorityIconSet } from './types'
-import { HEX_COLOR, PRIORITY_ICON_SETS } from './types'
+import type { DueUrgency, Task, StatusConfig, PriorityConfig, TaskPriority } from './types'
+import { HEX_COLOR, PRIORITY_ICONS } from './types'
 import { today, parsePlainDate } from './dates'
 
 /** A hand-edited color as `#rrggbb`, the only form a color input accepts; `#rgb` is expanded. */
@@ -73,13 +73,10 @@ export function getPriorityConfig(priorities: PriorityConfig[], id: TaskPriority
   return priorities.find((p) => p.id === id)
 }
 
-/**
- * A priority's own icon wins; otherwise the icon set supplies one for its rank in the
- * list. A scale longer than the set leaves its lowest ranks without an icon.
- */
-export function priorityIcon(priorities: PriorityConfig[], id: TaskPriority, iconSet: PriorityIconSet): string {
+/** A priority's own icon wins; otherwise the icon for its rank in the list. */
+export function priorityIcon(priorities: PriorityConfig[], id: TaskPriority): string {
   const own = getPriorityConfig(priorities, id)?.icon
   if (own) return own
   const rank = priorities.findIndex((p) => p.id === id)
-  return PRIORITY_ICON_SETS[iconSet][rank] ?? ''
+  return PRIORITY_ICONS[rank] ?? ''
 }

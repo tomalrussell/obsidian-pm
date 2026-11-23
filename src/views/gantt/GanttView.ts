@@ -10,7 +10,9 @@ import {
   flattenTasks,
   applyTaskFilterPromote,
   Temporal,
-  today
+  today,
+  DEFAULT_PRIORITIES,
+  DEFAULT_STATUSES
 } from '@dotpm/core'
 import type { ProjectScope } from '#store'
 import {
@@ -264,7 +266,7 @@ export class GanttView implements SubView {
     const labelCtx = {
       plugin: this.plugin,
       scope: this.scope,
-      statuses: this.scope.config.statuses,
+      statuses: DEFAULT_STATUSES,
       collapsedIds: this.collapsedIds,
       onRefresh: this.onRefresh
     }
@@ -287,14 +289,13 @@ export class GanttView implements SubView {
       svgEl: this.svgEl,
       headerSvgEl: this.headerSvgEl,
       cfg: this.cfg,
-      weekLabel: this.plugin.settings.ganttWeekLabel,
       plugin: this.plugin,
       scope: this.scope,
-      statuses: this.scope.config.statuses,
+      statuses: DEFAULT_STATUSES,
       labelFields: shownFields(this.fields, 'gantt', this.scope.fieldCatalog()).filter((id) => id !== 'title'),
       labelSource: {
-        statuses: this.scope.config.statuses,
-        priorities: this.scope.config.priorities
+        statuses: DEFAULT_STATUSES,
+        priorities: DEFAULT_PRIORITIES
       },
       flatTasks: this.flatTasks,
       drag: this.drag,

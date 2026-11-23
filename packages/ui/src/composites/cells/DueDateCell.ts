@@ -1,4 +1,4 @@
-import { type Task, formatDateLong } from '@dotpm/core'
+import { type Task, formatDate } from '@dotpm/core'
 import type { DueUrgency } from '../dueChip'
 import { renderDueChip } from '../dueChip'
 import { Chip } from '#primitives/Chip'
@@ -38,7 +38,7 @@ export class DueDateCell {
       return
     }
 
-    const chip = renderDueChip(this.el, formatDateLong(task.due), props.urgency)
+    const chip = renderDueChip(this.el, formatDate(task.due), props.urgency)
     chip.onClick((e) => {
       e.stopPropagation()
       startEdit(chip.el)

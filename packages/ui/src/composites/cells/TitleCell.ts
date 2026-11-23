@@ -10,7 +10,6 @@ export interface TitleCellProps {
   /** One entry per indent column: does an ancestor at that column still have rows below it. Null draws no connectors. */
   treeGuides: boolean[] | null
   isLastChild: boolean
-  showTagColors: boolean
   onTitleClick: () => void
   onTitleSave: (newTitle: string) => Promise<void>
   onAddSubtask: () => void
@@ -76,7 +75,7 @@ export class TitleCell {
     if (task.tags.length) {
       const tagRow = inner.createDiv('pm-table-tags')
       for (const tag of task.tags) {
-        renderTagChip(tagRow, tag, props.showTagColors)
+        renderTagChip(tagRow, tag)
       }
     }
   }

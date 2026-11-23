@@ -70,7 +70,7 @@ function updateBarContent(bar: HTMLElement, ctx: TableContext, onAction: (a: Bul
     for (const p of ctx.priorities) {
       addPaletteMenuItem(
         menu,
-        { ...p, namedIcon: priorityIcon(ctx.priorities, p.id, ctx.priorityIcons) },
+        { ...p, namedIcon: priorityIcon(ctx.priorities, p.id) },
         { onClick: () => onAction({ type: 'set-priority', priority: p.id }) }
       )
     }

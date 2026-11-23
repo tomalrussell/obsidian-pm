@@ -1,7 +1,7 @@
 import { ButtonComponent, Menu, ItemView, WorkspaceLeaf } from 'obsidian'
 import type PMPlugin from '#main'
 import { addTabPageItems, refreshTabTitle } from '#ui/tab'
-import { type Project, type ProjectConfig, type ProjectPatch } from '@dotpm/core'
+import { type Project, type ProjectPatch } from '@dotpm/core'
 import {
   safeAsync,
   renderPropRow,
@@ -93,12 +93,6 @@ export class ProjectEditView extends ItemView {
     if (this.project) await this.plugin.store.updateProject(this.project, patch)
   })
 
-  /** Sets or clears one override; the config goes away entirely when its last field clears. */
-  private patchConfig<K extends keyof ProjectConfig>(key: K, value: ProjectConfig[K] | undefined): void {
-    const entries = Object.entries({ ...this.project?.config, [key]: value }).filter(([, v]) => v !== undefined)
-    this.save({ config: entries.length ? Object.fromEntries(entries) : undefined })
-  }
-
   private section(title: string, hint = ''): HTMLElement {
     const section = this.container.createDiv('pm-edit-section')
     section.createDiv({ cls: 'pm-section-label', text: title })
@@ -113,7 +107,6 @@ export class ProjectEditView extends ItemView {
 
     this.renderHeader(project)
     this.renderGeneral(project)
-    this.renderBehavior(project)
     this.renderDangerZone(project)
   }
 
@@ -203,50 +196,6 @@ export class ProjectEditView extends ItemView {
     area.addEventListener('change', () => {
       this.save({ description: area.value })
     })
-  }
-
-  private renderBehavior(project: Project): void {
-    const section = this.section(`View and archiving`, `Overrides for this project`)
-    const props = section.createDiv('pm-edit-props')
-    const row = <K extends keyof ProjectConfig>(
-      label: string,
-      key: K,
-      options: { value: NonNullable<ProjectConfig[K]>; label: string }[]
-    ): void => {
-      renderPropRow(props, label, () => {
-        const cell = createDiv('pm-prop-value')
-        const current = project.config?.[key]
-        renderSelectControl({
-          container: cell,
-          value: current === undefined ? 'inherit' : String(options.findIndex((o) => o.value === current)),
-          options: [
-            { id: 'inherit', label: `Use global` },
-            ...options.map((option, i) => ({ id: String(i), label: option.label }))
-          ],
-          onChange: (id) => {
-            this.patchConfig(key, id === 'inherit' ? undefined : options[Number(id)].value)
-            this.render()
-          }
-        })
-        return cell
-      })
-    }
-
-    row(`Default tasks view`, 'defaultView', [
-      { value: 'table', label: `Table` },
-      { value: 'gantt', label: `Timeline` },
-      { value: 'kanban', label: `Board` }
-    ])
-    row(`Subtree connections in table`, 'showSubtreeConnections', [
-      { value: true, label: `Show` },
-      { value: false, label: `Hide` }
-    ])
-    row(`Line borders in table`, 'lineBorders', [
-      { value: 'none', label: `None` },
-      { value: 'horizontal', label: `Horizontal` },
-      { value: 'vertical', label: `Vertical` },
-      { value: 'both', label: `Both` }
-    ])
   }
 
   private renderDangerZone(project: Project): void {

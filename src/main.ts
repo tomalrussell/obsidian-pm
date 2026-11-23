@@ -1,8 +1,7 @@
 import { MarkdownView, Plugin, WorkspaceLeaf } from 'obsidian'
 import {
   DEFAULT_SETTINGS,
-  defaultPriorities,
-  defaultStatuses,
+  DEFAULT_STATUSES,
   hydrateFilter,
   hydrateFields,
   hydrateSort,
@@ -10,8 +9,7 @@ import {
   type PMSettings,
   type Project,
   type Task,
-  flattenTasks,
-  setDateFormat
+  flattenTasks
 } from '@dotpm/core'
 import { ProjectStore, VaultIndex, type ProjectRef } from './store'
 import { safeAsync } from '@dotpm/ui'
@@ -70,14 +68,13 @@ export default class PMPlugin extends Plugin {
   async onload(): Promise<void> {
     installObsidianPlatform()
     await this.loadSettings()
-    setDateFormat(this.settings.dateFormat)
     this.index = new VaultIndex(this.app, () => this.settings)
     // The first sweep can run against a half-filled metadata cache, so it runs again once
     // the index has caught up. Everything in it is safe to repeat.
     this.index.register(this, () => {
       void this.startupSweep()
     })
-    this.store = new ProjectStore(this.app, () => this.settings, this.index)
+    this.store = new ProjectStore(this.app, this.index)
     this.store.registerVaultSync(this)
     this.idRepair = new IdRepair(this)
     this.router = new PMViewRouter(this)
@@ -250,14 +247,22 @@ export default class PMPlugin extends Plugin {
       'scopeViews',
       'projectListViews',
       'autoArchiveDays',
-      'lastAutoArchiveDate'
+      'lastAutoArchiveDate',
+      'projectsFolder',
+      'statuses',
+      'priorities',
+      'priorityIcons',
+      'showSubtreeConnections',
+      'lineBorders',
+      'showTagColors',
+      'dateFormat',
+      'saveTaskOnClose',
+      'editorSaveModifier',
+      'ganttWeekLabel'
     ]) {
       Reflect.deleteProperty(this.settings, key)
     }
     Reflect.deleteProperty(this.settings.projectList, 'activeViewId')
-    this.settings.statuses = defaultStatuses()
-    this.settings.priorities = defaultPriorities()
-    this.settings.priorityIcons = 'chevrons'
     if (!this.settings.projectFilters) this.settings.projectFilters = {}
     if (!this.settings.collapsedTasks) this.settings.collapsedTasks = {}
     if (!this.settings.excludedFolders) this.settings.excludedFolders = []
@@ -331,7 +336,7 @@ export default class PMPlugin extends Plugin {
     // ganttHideDone was a global toggle, now expressed as a per-project status filter.
     const legacy = (saved ?? {}) as { ganttHideDone?: boolean }
     if (legacy.ganttHideDone === true) {
-      const nonTerminal = this.settings.statuses.filter((s) => !s.complete).map((s) => s.id)
+      const nonTerminal = DEFAULT_STATUSES.filter((s) => !s.complete).map((s) => s.id)
       for (const entry of Object.values(this.settings.projectFilters)) {
         if (!entry.filter.conditions.some((condition) => condition.field === 'status')) {
           entry.filter.conditions.push({ field: 'status', op: 'any', value: nonTerminal })

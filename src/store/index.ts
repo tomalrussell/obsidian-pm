@@ -10,7 +10,7 @@ export type { ProjectRef, TaskRef } from './VaultIndex'
 export {
   findIgnoringCase,
   folderOf,
-  newProjectFolder,
+  PROJECTS_FOLDER,
   projectFilePath,
   projectFolderOf,
   projectPathForTaskPath,

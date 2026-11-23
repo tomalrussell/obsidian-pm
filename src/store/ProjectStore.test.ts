@@ -8,7 +8,6 @@ import {
   makeTask,
   type PMSettings,
   type Project,
-  type StatusConfig,
   type Task,
   parseFrontmatter,
   buildTaskIndex,
@@ -26,25 +25,21 @@ const expectDefined = <T>(value: T | null | undefined, message = 'expected value
   return value
 }
 
-const STATUSES: StatusConfig[] = [
-  { id: 'todo', label: 'Todo', color: '#888', icon: 'circle', complete: false },
-  { id: 'in-progress', label: 'In progress', color: '#88f', icon: 'loader', complete: false },
-  { id: 'done', label: 'Done', color: '#0a0', icon: 'check', complete: true }
-]
-
-const SETTINGS: PMSettings = { ...DEFAULT_SETTINGS, statuses: STATUSES }
-
 function newStore(): { store: ProjectStore; vault: FakeVault; app: App } {
   const { app, vault } = makeFakeApp()
-  const store = new ProjectStore(app as unknown as App, () => SETTINGS)
+  const store = new ProjectStore(app as unknown as App)
   return { store, vault, app: app as unknown as App }
 }
 
-function newIndexedStore(settings: PMSettings = SETTINGS): { store: ProjectStore; index: VaultIndex; app: App } {
+function newIndexedStore(settings: PMSettings = DEFAULT_SETTINGS): {
+  store: ProjectStore
+  index: VaultIndex
+  app: App
+} {
   const { app } = makeFakeApp({ liveMetadataCache: true })
   const typed = app as unknown as App
   const index = new VaultIndex(typed, () => settings)
-  const store = new ProjectStore(typed, () => settings, index)
+  const store = new ProjectStore(typed, index)
   return { store, index, app: typed }
 }
 
@@ -90,7 +85,7 @@ describe('ProjectStore live project instance', () => {
     await addNamed(store, project, 'Card')
 
     // A second store stands in for a cold start, with several callers racing to load.
-    const cold = new ProjectStore(app, () => SETTINGS)
+    const cold = new ProjectStore(app)
     const file = fileAt(app, project.filePath)
     const [a, b] = await Promise.all([cold.loadProject(file), cold.loadProject(file)])
 
@@ -292,7 +287,7 @@ describe('ProjectStore round-trip', () => {
     await store.updateTask(project, b.id, { status: 'in-progress' })
     const childOfA = await addNamed(store, project, 'Sub of design', a.id)
 
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const file = vault.getAbstractFileByPath(project.filePath)
     if (!(file instanceof TFile)) throw new Error('project file missing')
     const reloaded = await store2.loadProject(file)
@@ -329,7 +324,7 @@ describe('ProjectStore round-trip', () => {
   it('lists a subtask once when its parent holds both a link to it and its id', async () => {
     const { app } = makeFakeApp({ liveMetadataCache: true })
     const typed = app as unknown as App
-    const store = new ProjectStore(typed, () => SETTINGS)
+    const store = new ProjectStore(typed)
     const project = await store.createProject('Dup', 'Projects')
     const parent = await addNamed(store, project, 'Parent')
     const child = await addNamed(store, project, 'Child', parent.id)
@@ -338,7 +333,7 @@ describe('ProjectStore round-trip', () => {
       content.replace(/^subtaskIds:.*$/m, `subtaskIds: ["[[child|Child]]", "${child.id}"]`)
     )
 
-    const store2 = new ProjectStore(typed, () => SETTINGS)
+    const store2 = new ProjectStore(typed)
     const reloaded = expectDefined(await store2.loadProject(fileAt(typed, project.filePath)))
     expect(expectDefined(findTask(reloaded.tasks, parent.id)).subtasks.map((s) => s.id)).toEqual([child.id])
   })
@@ -435,7 +430,7 @@ describe('ProjectStore completion date', () => {
     const task = await addNamed(store, project, 'Archive me')
     await store.updateTask(project, task.id, { status: 'done' })
 
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const file = vault.getAbstractFileByPath(project.filePath)
     if (!(file instanceof TFile)) throw new Error('project file missing')
     const reloaded = await store2.loadProject(file)
@@ -468,7 +463,7 @@ describe('ProjectStore completion date', () => {
 
 describe('ProjectStore manual dates', () => {
   it('keeps linked task dates unchanged when dependencies or predecessor dates and completion change', async () => {
-    const legacySettings = { ...SETTINGS, autoSchedule: true, pullForwardOnEarlyFinish: true } as PMSettings
+    const legacySettings = { ...DEFAULT_SETTINGS, autoSchedule: true, pullForwardOnEarlyFinish: true } as PMSettings
     const { store, index, app } = newIndexedStore(legacySettings)
     const source = await store.createProject('Source', 'Projects')
     const other = await store.createProject('Other', 'Projects')
@@ -508,70 +503,6 @@ describe('ProjectStore manual dates', () => {
     assertDependentDates()
     expect(await app.vault.read(localFile)).toBe(localContent)
     expect(await app.vault.read(remoteFile)).toBe(remoteContent)
-  })
-})
-
-describe('ProjectStore task attachments', () => {
-  it('saves an attachment under the task own attachments folder', async () => {
-    const { store, vault } = newStore()
-    const project = await store.createProject('Imgs', 'Projects')
-    const task = await addNamed(store, project, 'Shot')
-
-    const file = await store.saveTaskAttachment(project, task, 'pic.png', new ArrayBuffer(4))
-
-    expect(file.path).toBe('Projects/Imgs/_tasks/shot/attachments/pic.png')
-    expect(vault.getAbstractFileByPath('Projects/Imgs/_tasks/shot/attachments/pic.png')).not.toBeNull()
-  })
-
-  it('disambiguates a colliding attachment name', async () => {
-    const { store } = newStore()
-    const project = await store.createProject('Imgs', 'Projects')
-    const task = await addNamed(store, project, 'Shot')
-
-    const first = await store.saveTaskAttachment(project, task, 'pic.png', new ArrayBuffer(4))
-    const second = await store.saveTaskAttachment(project, task, 'pic.png', new ArrayBuffer(4))
-
-    expect(first.path).toBe('Projects/Imgs/_tasks/shot/attachments/pic.png')
-    expect(second.path).toBe('Projects/Imgs/_tasks/shot/attachments/pic 1.png')
-  })
-
-  it('trashes the attachments folder when the task is deleted', async () => {
-    const { store, vault } = newStore()
-    const project = await store.createProject('Imgs', 'Projects')
-    const task = await addNamed(store, project, 'Shot')
-    await store.saveTaskAttachment(project, task, 'pic.png', new ArrayBuffer(4))
-
-    await store.deleteTask(project, task.id)
-
-    expect(vault.getAbstractFileByPath('Projects/Imgs/_tasks/shot/attachments/pic.png')).toBeNull()
-    expect(vault.getAbstractFileByPath('Projects/Imgs/_tasks/shot')).toBeNull()
-  })
-
-  it('moves the attachments folder when the task is renamed', async () => {
-    const { store, vault } = newStore()
-    const project = await store.createProject('Imgs', 'Projects')
-    const task = await addNamed(store, project, 'Shot')
-    await store.saveTaskAttachment(project, task, 'pic.png', new ArrayBuffer(4))
-
-    await store.updateTask(project, task.id, { title: 'Photo' })
-
-    expect(vault.getAbstractFileByPath('Projects/Imgs/_tasks/shot/attachments/pic.png')).toBeNull()
-    expect(vault.getAbstractFileByPath('Projects/Imgs/_tasks/photo/attachments/pic.png')).not.toBeNull()
-  })
-
-  it('moves the attachments folder when the task is archived and back when unarchived', async () => {
-    const { store, vault } = newStore()
-    const project = await store.createProject('Imgs', 'Projects')
-    const task = await addNamed(store, project, 'Shot')
-    await store.saveTaskAttachment(project, task, 'pic.png', new ArrayBuffer(4))
-
-    await store.archiveTask(project, task.id)
-    expect(vault.getAbstractFileByPath('Projects/Imgs/_tasks/shot/attachments/pic.png')).toBeNull()
-    expect(vault.getAbstractFileByPath('Projects/Imgs/_tasks/Archive/shot/attachments/pic.png')).not.toBeNull()
-
-    await store.unarchiveTask(project, task.id)
-    expect(vault.getAbstractFileByPath('Projects/Imgs/_tasks/Archive/shot/attachments/pic.png')).toBeNull()
-    expect(vault.getAbstractFileByPath('Projects/Imgs/_tasks/shot/attachments/pic.png')).not.toBeNull()
   })
 })
 
@@ -681,7 +612,7 @@ describe('ProjectStore metadataCache fast path', () => {
       title: 'task',
       projectId: project.id
     })
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const projectFile = vault.getAbstractFileByPath(project.filePath)
     if (!(projectFile instanceof TFile)) throw new Error('project file missing')
     const reloaded = await store2.loadProject(projectFile)
@@ -702,7 +633,7 @@ describe('ProjectStore metadataCache fast path', () => {
     // A note an older version wrote, whose prose has since been edited elsewhere.
     await vault.modify(file, written.replace('---\n', '---\ndescription: "first"\n').replace('\nfirst\n', '\nsecond\n'))
 
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const reloaded = expectDefined(await store2.loadProject(file))
     await store2.loadProjectBody(reloaded)
     expect(reloaded.description).toBe('second')
@@ -727,7 +658,7 @@ describe('ProjectStore metadataCache fast path', () => {
       title: 'preserve me',
       projectId: project.id
     })
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const projectFile = vault.getAbstractFileByPath(project.filePath)
     if (!(projectFile instanceof TFile)) throw new Error('project file missing')
     const reloaded = await store2.loadProject(projectFile)
@@ -756,7 +687,7 @@ describe('ProjectStore metadataCache fast path', () => {
       title: 'editable',
       projectId: project.id
     })
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const projectFile = vault.getAbstractFileByPath(project.filePath)
     if (!(projectFile instanceof TFile)) throw new Error('project file missing')
     const reloaded = await store2.loadProject(projectFile)
@@ -800,7 +731,7 @@ describe('ProjectStore task index', () => {
     await addNamed(store, project, 'Child', a.id)
     await addNamed(store, project, 'Beta')
 
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const file = vault.getAbstractFileByPath(project.filePath)
     if (!(file instanceof TFile)) throw new Error('missing file')
     const reloaded = await store2.loadProject(file)
@@ -818,7 +749,7 @@ describe('ProjectStore editor subtask save', () => {
   const reload = async (app: App, vault: FakeVault, path: string): Promise<Project> => {
     const file = vault.getAbstractFileByPath(path)
     if (!(file instanceof TFile)) throw new Error('missing file')
-    return expectDefined(await new ProjectStore(app, () => SETTINGS).loadProject(file))
+    return expectDefined(await new ProjectStore(app).loadProject(file))
   }
 
   it('persists a subtask added through updateTask (the task editor save path)', async () => {
@@ -898,9 +829,7 @@ describe('ProjectStore duplicate task titles', () => {
     const first = await addNamed(store, project, 'Dependency Dashboard')
     const second = await addNamed(store, project, 'Dependency Dashboard')
 
-    const reloaded = expectDefined(
-      await new ProjectStore(app, () => SETTINGS).loadProject(fileAt(app, project.filePath))
-    )
+    const reloaded = expectDefined(await new ProjectStore(app).loadProject(fileAt(app, project.filePath)))
 
     expect(
       flattenTasks(reloaded.tasks)
@@ -970,7 +899,7 @@ describe('ProjectStore duplicate task titles', () => {
 describe('ProjectStore on a case-insensitive filesystem', () => {
   function newCaseInsensitiveStore(): { store: ProjectStore; vault: FakeVault; app: App } {
     const { app, vault } = makeFakeApp({ caseInsensitive: true })
-    const store = new ProjectStore(app as unknown as App, () => SETTINGS)
+    const store = new ProjectStore(app as unknown as App)
     return { store, vault, app: app as unknown as App }
   }
 
@@ -1167,7 +1096,7 @@ describe('ProjectStore.importNoteAsTask', () => {
 
   it('imported tasks appear as top-level tasks on the next project load', async () => {
     const { vault, app, project } = await importInto('move')
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const file = vault.getAbstractFileByPath(project.filePath)
     if (!(file instanceof TFile)) throw new Error('project file missing')
     const reloaded = expectDefined(await store2.loadProject(file))
@@ -1190,43 +1119,22 @@ describe('ProjectStore.importNoteAsTask', () => {
   })
 })
 
-describe('per-project config', () => {
-  it('round-trips the config overrides through the project file', async () => {
-    const { store, vault, app } = newStore()
-    const project = await store.createProject('Custom', 'Projects')
-    project.config = {
-      defaultView: 'kanban',
-      lineBorders: 'both'
-    }
-    await store.saveProject(project)
-
-    const store2 = new ProjectStore(app, () => SETTINGS)
+describe('project config left by older versions', () => {
+  it('keeps a project note config block across a save', async () => {
+    const { store, vault } = newStore()
+    const project = await store.createProject('Old', 'Projects')
     const file = vault.getAbstractFileByPath(project.filePath)
     if (!(file instanceof TFile)) throw new Error('project file missing')
-    const reloaded = expectDefined(await store2.loadProject(file))
-    expect(reloaded.config).toEqual({
-      defaultView: project.config?.defaultView,
-      lineBorders: project.config?.lineBorders
-    })
-  })
+    await vault.modify(file, (await vault.read(file)).replace('---\n', '---\nconfig:\n  lineBorders: both\n'))
 
-  it('omits the frontmatter key when the project overrides nothing', async () => {
-    const { store, vault, app } = newStore()
-    const project = await store.createProject('Inherit', 'Projects')
-    await store.saveProject(project)
+    await store.updateProject(project, { title: 'Old' })
 
-    const store2 = new ProjectStore(app, () => SETTINGS)
-    const file = vault.getAbstractFileByPath(project.filePath)
-    if (!(file instanceof TFile)) throw new Error('project file missing')
-    expect(await vault.read(file)).not.toContain('config:')
-    const reloaded = expectDefined(await store2.loadProject(file))
-    expect(reloaded.config).toBeUndefined()
+    expect(await vault.read(file)).toContain('lineBorders: both')
   })
 
   it('stamps completion for the fixed done status', async () => {
     const { store } = newStore()
     const project = await store.createProject('Flags', 'Projects')
-    project.config = {}
     const task = await addNamed(store, project, 'Ship it')
     await store.updateTask(project, task.id, { status: 'done' })
     expect(expectDefined(findTask(project.tasks, task.id)).completed).not.toBe('')
@@ -1315,7 +1223,7 @@ describe('ProjectStore project folders', () => {
       const card = await addNamed(seed, created, 'Card')
       await seed.updateTask(created, card.id, { description: 'card body' })
 
-      const store = new ProjectStore(app, () => SETTINGS)
+      const store = new ProjectStore(app)
       const project = expectDefined(await store.loadProjectByPath(created.filePath))
       await store.updateProject(project, { title: 'Beta' })
       return { store, app, project, task: project.tasks[0] }
@@ -1416,7 +1324,7 @@ describe('reference round-trip', () => {
     const other = await addNamed(store, project, 'Other')
     await store.updateTask(project, other.id, { dependencies: [child.id] })
 
-    const reloaded = expectDefined(await new ProjectStore(app, () => SETTINGS).loadProjectByPath(project.filePath))
+    const reloaded = expectDefined(await new ProjectStore(app).loadProjectByPath(project.filePath))
 
     expect(reloaded.tasks.map((t) => t.title)).toEqual(['Parent', 'Other'])
     const reloadedParent = expectDefined(reloaded.tasks.find((t) => t.title === 'Parent'))
@@ -1451,7 +1359,7 @@ describe('reference round-trip', () => {
       '---\npm-task: true\nprojectId: "p1"\nparentId: "t1"\nid: "t2"\ntitle: "Child"\ndependencies: ["t1"]\n---\n'
     )
 
-    const project = expectDefined(await new ProjectStore(typed, () => SETTINGS).loadProjectByPath('Projects/Legacy.md'))
+    const project = expectDefined(await new ProjectStore(typed).loadProjectByPath('Projects/Legacy.md'))
 
     expect(project.tasks.map((t) => t.id)).toEqual(['t1'])
     expect(project.tasks[0].subtasks.map((t) => t.id)).toEqual(['t2'])
@@ -1627,7 +1535,7 @@ describe('ProjectStore with a note whose properties will not parse', () => {
       description: 'real description',
       taskIds: []
     })
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const reloaded = expectDefined(await store2.loadProject(file))
     expect(reloaded.description).toBe('real description')
 
@@ -1652,7 +1560,7 @@ describe('ProjectStore with a note whose properties will not parse', () => {
     await vault.modify(file, MALFORMED)
 
     stubCache(app, taskPath, { 'pm-task': true, id: task.id, title: 'task', projectId: project.id })
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const projectFile = expectDefined(vault.getAbstractFileByPath(project.filePath))
     if (!(projectFile instanceof TFile)) throw new Error('project file missing')
     const reloaded = expectDefined(await store2.loadProject(projectFile))
@@ -1686,7 +1594,7 @@ describe('ProjectStore with a note whose properties will not parse', () => {
       { 'pm-task': true, id: task.id, title: 'task', projectId: project.id },
       onDisk.indexOf('\n---') + 4
     )
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const projectFile = expectDefined(vault.getAbstractFileByPath(project.filePath))
     if (!(projectFile instanceof TFile)) throw new Error('project file missing')
     const reloaded = expectDefined(await store2.loadProject(projectFile))
@@ -1706,7 +1614,7 @@ describe('ProjectStore with a note whose properties will not parse', () => {
     await vault.modify(file, MALFORMED)
     // An offset from an older, longer version of the note lands mid-content.
     stubCache(app, taskPath, { 'pm-task': true, id: task.id, title: 'task' }, MALFORMED.length - 4)
-    const store2 = new ProjectStore(app, () => SETTINGS)
+    const store2 = new ProjectStore(app)
     const projectFile = expectDefined(vault.getAbstractFileByPath(project.filePath))
     if (!(projectFile instanceof TFile)) throw new Error('project file missing')
     const reloaded = expectDefined(await store2.loadProject(projectFile))

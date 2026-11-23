@@ -3,12 +3,12 @@ import {
   type FilterContext,
   type FilterState,
   type Project,
-  type ResolvedProjectConfig,
   type Task,
+  DEFAULT_PRIORITIES,
+  DEFAULT_STATUSES,
   findTaskById,
   flattenTasks
 } from '@dotpm/core'
-import type { ProjectStore } from './ProjectStore'
 import type { VaultIndex } from './VaultIndex'
 
 /** What a project view renders. Carried in the view state, so a layout restores it. */
@@ -57,28 +57,10 @@ export function selectionSpec(paths: string[]): ScopeSpec {
  * nothing about scopes: every mutation it takes is against a single project.
  */
 export class ProjectScope {
-  /** Resolving a config walks the project's tasks, so a row-by-row render can't repeat it. */
-  private configs = new Map<string, ResolvedProjectConfig>()
-
   constructor(
     readonly spec: ScopeSpec,
-    readonly projects: Project[],
-    private store: ProjectStore
+    readonly projects: Project[]
   ) {}
-
-  /** Drops the resolved configs, for when a palette changed under a live view. */
-  invalidate(): void {
-    this.configs.clear()
-  }
-
-  private configOfProject(project: Project): ResolvedProjectConfig {
-    let config = this.configs.get(project.filePath)
-    if (!config) {
-      config = this.store.configFor(project)
-      this.configs.set(project.filePath, config)
-    }
-    return config
-  }
 
   get key(): string {
     return scopeKey(this.spec)
@@ -137,19 +119,6 @@ export class ProjectScope {
     return [...groups].map(([project, ids]) => ({ project, taskIds: ids }))
   }
 
-  /** Fixed palettes and behavior settings from the primary project. */
-  get config(): ResolvedProjectConfig {
-    const primary = this.primary
-    if (!primary) throw new Error('ProjectScope.config on an empty scope')
-    return this.configOfProject(primary)
-  }
-
-  /** The owning project's resolved config, for anything that decides a task's own state. */
-  configOf(taskId: string): ResolvedProjectConfig {
-    const owner = this.projectOf(taskId)
-    return owner ? this.configOfProject(owner) : this.config
-  }
-
   /** What decides which fields a table, board card or timeline label can show. */
   fieldCatalog(): FieldCatalog {
     return { multi: this.isMulti }
@@ -158,7 +127,7 @@ export class ProjectScope {
   /** What a filter condition needs to match the tasks in scope. */
   filterContext(): FilterContext {
     return {
-      statuses: this.config.statuses,
+      statuses: DEFAULT_STATUSES,
       projectOf: (task) => this.projectOf(task.id)?.id
     }
   }
@@ -169,8 +138,7 @@ export class ProjectScope {
       filter,
       tasks: flattenTasks(this.tasks()).map((flat) => flat.task),
       ctx: this.filterContext(),
-      priorities: this.config.priorities,
-      priorityIcons: this.config.priorityIcons,
+      priorities: DEFAULT_PRIORITIES,
       projects: this.isMulti
         ? this.projects.map((project) => ({ id: project.id, title: project.title, color: project.color }))
         : []

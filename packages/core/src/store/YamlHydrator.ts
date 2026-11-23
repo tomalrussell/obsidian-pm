@@ -5,7 +5,6 @@ import type {
   FilterState,
   FieldList,
   Project,
-  ProjectConfig,
   SortRule,
   Task,
   ViewFields,
@@ -196,28 +195,7 @@ export function hydrateProjectFromFrontmatter(
     createdAt: (frontmatter.createdAt as string) ?? new Date().toISOString(),
     updatedAt: (frontmatter.updatedAt as string) ?? new Date().toISOString(),
     filePath,
-    config: hydrateProjectConfig(frontmatter.config),
     ...(frontmatter.archived === true ? { archived: true } : {}),
     taskIndex: new Map()
   }
-}
-
-/** Drops malformed fields. Absent or empty means inherit everything. */
-function hydrateProjectConfig(raw: unknown): ProjectConfig | undefined {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
-  const r = raw as Record<string, unknown>
-  const config: ProjectConfig = {}
-  if (r.defaultView === 'table' || r.defaultView === 'gantt' || r.defaultView === 'kanban') {
-    config.defaultView = r.defaultView
-  }
-  if (typeof r.showSubtreeConnections === 'boolean') config.showSubtreeConnections = r.showSubtreeConnections
-  if (
-    r.lineBorders === 'none' ||
-    r.lineBorders === 'horizontal' ||
-    r.lineBorders === 'vertical' ||
-    r.lineBorders === 'both'
-  ) {
-    config.lineBorders = r.lineBorders
-  }
-  return Object.keys(config).length ? config : undefined
 }

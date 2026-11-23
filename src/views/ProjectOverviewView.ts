@@ -3,16 +3,16 @@ import type PMPlugin from '#main'
 import { addTabPageItems, refreshTabTitle } from '#ui/tab'
 import {
   type Project,
-  type ResolvedProjectConfig,
   type Task,
   collectAllTags,
   flattenTasks,
   Temporal,
-  formatDateLong,
+  formatDate,
   parsePlainDate,
   today,
   dateUrgency,
-  isTerminalStatus
+  isTerminalStatus,
+  DEFAULT_STATUSES
 } from '@dotpm/core'
 import {
   safeAsync,
@@ -130,11 +130,10 @@ export class ProjectOverviewView extends ItemView {
     if (!project) return
     this.container.empty()
 
-    const config = this.plugin.store.configFor(project)
     const tasks = flattenTasks(project.tasks)
       .map((entry) => entry.task)
       .filter((task) => !task.archived)
-    const rollup = summarize(tasks, config)
+    const rollup = summarize(tasks)
 
     this.renderArchivedBanner(project)
     this.renderHeader(project, rollup)
@@ -144,7 +143,7 @@ export class ProjectOverviewView extends ItemView {
 
     this.renderMetrics(main, project, rollup)
     this.renderDescription(main, project)
-    this.renderMilestones(main, tasks, config)
+    this.renderMilestones(main, tasks)
     this.renderProperties(side, project, rollup)
   }
 
@@ -246,7 +245,7 @@ export class ProjectOverviewView extends ItemView {
     await MarkdownRenderer.render(this.plugin.app, project.description, host, project.filePath, this.description)
   }
 
-  private renderMilestones(parent: HTMLElement, tasks: Task[], config: ResolvedProjectConfig): void {
+  private renderMilestones(parent: HTMLElement, tasks: Task[]): void {
     const dated: { task: Task; date: Temporal.PlainDate }[] = []
     for (const task of tasks) {
       if (task.type !== 'milestone') continue
@@ -255,7 +254,7 @@ export class ProjectOverviewView extends ItemView {
     }
     dated.sort((a, b) => Temporal.PlainDate.compare(a.date, b.date))
 
-    const done = dated.filter((entry) => isTerminalStatus(entry.task.status, config.statuses)).length
+    const done = dated.filter((entry) => isTerminalStatus(entry.task.status, DEFAULT_STATUSES)).length
     const note = dated.length ? `${done} of ${dated.length} done` : ''
     const section = this.section(parent, `Milestones`, note)
     if (dated.length === 0) {
@@ -278,13 +277,13 @@ export class ProjectOverviewView extends ItemView {
     let nextTaken = false
     const points: MilestonePoint[] = dated.map((entry) => {
       let state: MilestonePoint['state'] = 'plan'
-      if (isTerminalStatus(entry.task.status, config.statuses)) {
+      if (isTerminalStatus(entry.task.status, DEFAULT_STATUSES)) {
         state = 'done'
       } else if (!nextTaken) {
         state = 'next'
         nextTaken = true
       }
-      return { name: entry.task.title, dateLabel: formatDateLong(entry.task.due), pos: posOf(entry.date), state }
+      return { name: entry.task.title, dateLabel: formatDate(entry.task.due), pos: posOf(entry.date), state }
     })
     renderMilestoneTimeline(section, points, posOf(now))
   }
@@ -303,24 +302,24 @@ export class ProjectOverviewView extends ItemView {
 
     const tags = collectAllTags(project.tasks)
     prop(`Tags`, tags.length === 0, `No tags`, (value) => {
-      for (const tag of tags.slice(0, MAX_TAGS)) renderTagChip(value, tag, this.plugin.settings.showTagColors)
+      for (const tag of tags.slice(0, MAX_TAGS)) renderTagChip(value, tag)
       if (tags.length > MAX_TAGS) {
         value.createSpan({ cls: 'pm-overview-muted', text: `+${tags.length - MAX_TAGS}` })
       }
     })
 
     prop(`Latest due`, !rollup.latestDue, `No dates`, (value) => {
-      renderDueChip(value, formatDateLong(rollup.latestDue), dateUrgency(rollup.latestDue, rollup.overdue > 0))
+      renderDueChip(value, formatDate(rollup.latestDue), dateUrgency(rollup.latestDue, rollup.overdue > 0))
     })
   }
 }
 
-function summarize(tasks: Task[], config: ResolvedProjectConfig): Rollup {
+function summarize(tasks: Task[]): Rollup {
   const now = today()
   const rollup: Rollup = { total: 0, done: 0, overdue: 0, latestDue: '' }
   for (const task of tasks) {
     rollup.total++
-    const complete = isTerminalStatus(task.status, config.statuses)
+    const complete = isTerminalStatus(task.status, DEFAULT_STATUSES)
     if (complete) rollup.done++
     const due = parsePlainDate(task.due)
     if (!due) continue
