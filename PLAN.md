@@ -43,7 +43,6 @@ Line counts are approximate.
 | -------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------- |
 | `obsidian`                                               | Host API, production YAML codec            | Foundational                                                                        |
 | `temporal-polyfill`                                      | Date arithmetic                            | Keep                                                                                |
-| `monkey-around`                                          | Patches Markdown opening for custom editors | Remove together with automatic editor replacement (step 4)                          |
 | `yaml`                                                   | Test-only YAML codec                       | Keep while tests need it. Confirm it isn't bundled.                                 |
 | `publint`, `@arethetypeswrong/cli`, `build:packages` script | Checks for publishing npm packages      | Drop if the packages stay private to this repo                                      |
 | ESLint (`check:submission`) and oxlint                   | Overlapping lint                           | ESLint is likely needed for `eslint-plugin-obsidianmd` submission rules. Narrow it to those rules and leave the rest to oxlint. |
@@ -56,6 +55,7 @@ Ordered by payoff for the effort. Each step is independent, and each is a user d
 
 1. **Dead-code sweep. Done.** The type check, unused-locals check (`tsc --noUnusedLocals --noUnusedParameters`), oxlint, oxfmt and all 483 tests pass.
    - Fixed the type errors that the saved-views removal left in `ProjectView.ts` and `DashboardView.ts`: dangling imports, `activeView()` calls and stray header code.
+   - Removed the automatic Markdown editor replacement and `monkey-around`. Project and task notes now open in Obsidian's editor. "Open current file as project" and the overview's buttons open the plugin views.
    - Removed the release notes view, its command, the "show release notes" setting, `lastSeenVersion`, the changelog parser and the `__CHANGELOG__` build define.
    - Removed the dev-only styleguide gallery (about 1,030 lines, its build flag and its PR checklist item).
    - Removed unused imports, locals and parameters, the dead `filterArchived` helper and its test, and about 90 lines of saved-view CSS.
@@ -79,7 +79,6 @@ Ordered by payoff for the effort. Each step is independent, and each is a user d
    - Undo/redo outside Gantt: keep Gantt undo only if the command set can shrink.
    - Project moving and task moving between projects: keep archive only.
    - Import notes as tasks: drop it if tasks are created in the plugin from now on.
-   - Automatic Markdown editor replacement: opening a task via the plugin remains. This also removes `monkey-around`.
    - Auto-archiver: replace with the manual archive command.
    - Milestones, task dependencies or progress rollups: the model and Gantt both depend on these, so cut only after weighing Gantt's value.
    - Attachments: check whether this is still used anywhere.

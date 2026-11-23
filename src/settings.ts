@@ -59,7 +59,7 @@ export class PMSettingTab extends PluginSettingTab {
           },
           {
             name: `Open tasks in`,
-            desc: `Choose where tasks open. Select "Tab" to also open task notes in the task editor instead of Obsidian's editor.`,
+            desc: `Choose where the task editor opens: in a modal or in a tab.`,
             control: {
               type: 'dropdown',
               key: 'taskEditorSurface',

@@ -53,9 +53,6 @@ importers:
       lightningcss:
         specifier: 1.33.0
         version: 1.33.0
-      monkey-around:
-        specifier: 3.0.0
-        version: 3.0.0
       npm-run-all2:
         specifier: 9.0.3
         version: 9.0.3
@@ -2016,9 +2013,6 @@ packages:
 
   moment@2.31.0:
     resolution: {integrity: sha512-0acOTfMiWOheYS4eoWb80yYMb/JLvVv9SHbs2PehaDzfUG0Bw855SKyk0IKTnPGa5+U2bmi3W68l1+sGLX/pvw==}
-
-  monkey-around@3.0.0:
-    resolution: {integrity: sha512-jL6uY2lEAoaHxZep1cNRkCZjoIWY4g5VYCjriEWmcyHU7w8NU1+JH57xE251UVTohK0lCxMjv0ZV4ByDLIXEpw==}
 
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
@@ -4632,8 +4626,6 @@ snapshots:
   module-replacements@2.11.0: {}
 
   moment@2.31.0: {}
-
-  monkey-around@3.0.0: {}
 
   mri@1.2.0: {}
 
