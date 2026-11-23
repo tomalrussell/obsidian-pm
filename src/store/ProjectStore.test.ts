@@ -15,7 +15,9 @@ import {
   findTask,
   flattenTasks
 } from '@dotpm/core'
-import { ProjectStore, TaskFileNameConflictError, UnreadableNoteError } from './ProjectStore'
+import { ProjectStore } from './ProjectStore'
+import { TaskFileNameConflictError, UnreadableNoteError } from './taskFiles'
+import { loadTaskFile } from './TaskLoader'
 import { projectTaskFolder } from './vaultFs'
 import { VaultIndex } from './VaultIndex'
 
@@ -660,7 +662,7 @@ describe('ProjectStore metadataCache fast path', () => {
     const stub = new TFile()
     stub.path = taskPath
     stub.basename = 'cached task'
-    const result = await store.loadTaskFile(stub)
+    const result = await loadTaskFile(app, stub, new WeakSet())
     expect(result.task?.id).toBe(task.id)
     expect(result.task?.description).toBe('')
   })

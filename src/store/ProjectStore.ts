@@ -7,6 +7,8 @@ import {
   type ResolvedProjectConfig,
   type StatusConfig,
   type Task,
+  type TaskPriority,
+  type TaskStatus,
   DEFAULT_SETTINGS,
   makeId,
   makeProject,
@@ -29,7 +31,6 @@ import {
   moveTaskInTree,
   updateTaskInTree,
   hydrateProjectFromFrontmatter,
-  hydrateTaskFromFile,
   hydrateTasks,
   projectDescription,
   FRONTMATTER_KEY,
@@ -44,12 +45,11 @@ import {
   TASK_FRONTMATTER_KEYS,
   taskFileName,
   taskFilePath,
-  TASK_SLUG_MAX_LENGTH,
   type RefWriter
 } from '@dotpm/core'
 import { archiveTask as doArchiveTask, unarchiveTask as doUnarchiveTask } from './ArchiveOps'
 import type { VaultIndex } from './VaultIndex'
-import { refLink, refListToIds, refToId } from './refs'
+import { refLink } from './refs'
 import {
   ensureFolder,
   findIgnoringCase,
@@ -61,7 +61,20 @@ import {
   TASK_FOLDER_NAME,
   projectFilePath
 } from './vaultFs'
-import type { ImportNoteOptions, TaskSource } from './TaskSource'
+import { loadTasksFromFolder, readNote } from './TaskLoader'
+import {
+  TaskFileNameConflictError,
+  UnreadableNoteError,
+  assignCopyName,
+  resolveTaskPath,
+  uniqueChildPath
+} from './taskFiles'
+
+export interface ImportNoteOptions {
+  status: TaskStatus
+  priority: TaskPriority
+  handling: 'move' | 'copy'
+}
 
 /** 'fm' writes via processFrontMatter; 'full' rewrites the body too, via vault.process. */
 type DirtyKind = 'fm' | 'full'
@@ -71,57 +84,6 @@ function patchNeedsBodyRewrite(patch: Partial<Task>): boolean {
   return patch.description !== undefined || patch.archived !== undefined || patch.subtasks !== undefined
 }
 
-/** A basename of this exact length that prefixes the title's slug is kept as-is. */
-const LEGACY_SLUG_CAP = 40
-
-/** New tasks get the bare slug; an existing file stays put while its name still matches the title. */
-function resolveTaskPath(task: Task, folder: string, previousPath: string | undefined): string {
-  const desired = taskFilePath(task.title, folder)
-  if (!previousPath) return desired
-  const desiredBasename = desired.slice(desired.lastIndexOf('/') + 1).replace(/\.md$/, '')
-  const previousFolder = previousPath.slice(0, previousPath.lastIndexOf('/'))
-  const previousBasename = previousPath.slice(previousPath.lastIndexOf('/') + 1).replace(/\.md$/, '')
-  if (previousFolder !== folder) return desired
-  // A note named by hand keeps capitals the lowercase slug drops; on macOS and Windows
-  // it is already the file the slug names.
-  const previousLower = previousBasename.toLowerCase()
-  const desiredLower = desiredBasename.toLowerCase()
-  if (previousLower === desiredLower) return previousPath
-  // The slug turns spaces into dashes, so a number behind a space is the one given to a
-  // task whose title another task already holds.
-  if (previousLower.startsWith(`${desiredLower} `) && /^\d+$/.test(previousLower.slice(desiredLower.length + 1))) {
-    return previousPath
-  }
-  const legacyBasename = `${desiredBasename}-${task.id.slice(0, 8)}`
-  if (previousBasename === legacyBasename) return previousPath
-  if (previousBasename.length === LEGACY_SLUG_CAP && previousBasename === desiredBasename.slice(0, LEGACY_SLUG_CAP)) {
-    return previousPath
-  }
-  return desired
-}
-
-export class TaskFileNameConflictError extends Error {
-  constructor(public readonly path: string) {
-    super(`A note named "${fileNameFromPath(path)}" already exists.`)
-    this.name = 'TaskFileNameConflictError'
-  }
-
-  get fileName(): string {
-    return fileNameFromPath(this.path)
-  }
-}
-
-export class UnreadableNoteError extends Error {
-  constructor(public readonly path: string) {
-    super(`Could not read the properties of "${fileNameFromPath(path)}".`)
-    this.name = 'UnreadableNoteError'
-  }
-}
-
-function fileNameFromPath(path: string): string {
-  return path.slice(path.lastIndexOf('/') + 1).replace(/\.md$/, '')
-}
-
 /**
  * All read/write operations against the vault. A project owns a folder:
  * `Projects/<name>/<name>.md` holds its metadata and `Projects/<name>/_tasks/<slug>.md`
@@ -129,7 +91,7 @@ function fileNameFromPath(path: string): string {
  * `Projects/<name>_tasks/` folder and reads the same way. The in-memory `Project.tasks`
  * tree is assembled from those files on load.
  */
-export class ProjectStore implements TaskSource {
+export class ProjectStore {
   private saveQueues = new Map<string, Promise<void>>()
 
   /** Task IDs needing a write on the next save. Tasks with no filePath are always 'full'. */
@@ -455,7 +417,7 @@ export class ProjectStore implements TaskSource {
       } else {
         const taskFolder = projectTaskFolder(this.app, project.filePath)
         const taskIds = Array.isArray(frontmatter.taskIds) ? (frontmatter.taskIds as string[]) : []
-        project.tasks = await this.loadTasksFromFolder(taskFolder, taskIds, project.filePath)
+        project.tasks = await loadTasksFromFolder(this.app, this.hydratedBodies, taskFolder, taskIds, project.filePath)
         rebuildTaskIndex(project)
         this.clearDirty(project)
       }
@@ -465,132 +427,6 @@ export class ProjectStore implements TaskSource {
       console.error(`[PM] Failed to load project ${file.path}:`, e)
 
       return null
-    }
-  }
-
-  private async loadTasksFromFolder(folderPath: string, topLevelRefs: string[], projectPath: string): Promise<Task[]> {
-    const folder = this.app.vault.getAbstractFileByPath(folderPath)
-    if (!(folder instanceof TFolder)) return []
-
-    const taskMap = new Map<string, Task>()
-    const subtaskIdsMap = new Map<string, string[]>()
-    const parentIdMap = new Map<string, string>()
-    const archivePrefix = normalizePath(folderPath + '/Archive') + '/'
-
-    const files: TFile[] = []
-    const collect = (f: TFolder): void => {
-      for (const child of f.children) {
-        if (child instanceof TFile && child.extension === 'md') files.push(child)
-        else if (child instanceof TFolder) collect(child)
-      }
-    }
-    collect(folder)
-
-    const results = await Promise.all(files.map((file) => this.loadTaskFile(file)))
-
-    // References are wikilinks, so the notes have to be read before any of them can be
-    // followed. Anything that is not a link is an id from a vault written before that.
-    const idByPath = new Map<string, string>()
-    for (let i = 0; i < files.length; i++) {
-      const task = results[i].task
-      if (task) idByPath.set(files[i].path, task.id)
-    }
-
-    for (let i = 0; i < files.length; i++) {
-      const { task, subtaskIds, parentId } = results[i]
-      if (task) {
-        const source = files[i].path
-        if (source.startsWith(archivePrefix)) {
-          task.archived = true
-        }
-        task.dependencies = refListToIds(this.app, task.dependencies, source, idByPath)
-        const subIds = refListToIds(this.app, subtaskIds, source, idByPath)
-        const pid = parentId ? refToId(this.app, parentId, source, idByPath) : null
-        taskMap.set(task.id, task)
-        if (subIds.length) subtaskIdsMap.set(task.id, subIds)
-        if (pid) parentIdMap.set(task.id, pid)
-      }
-    }
-
-    for (const [taskId, sids] of subtaskIdsMap) {
-      const task = taskMap.get(taskId)
-      if (!task) continue
-      task.subtasks = []
-      // A list holding both a link to a task and its bare id resolves to one id twice.
-      const seen = new Set<string>()
-      for (const sid of sids) {
-        if (seen.has(sid)) continue
-        const sub = taskMap.get(sid)
-        if (!sub) continue
-        task.subtasks.push(sub)
-        seen.add(sid)
-      }
-    }
-
-    // Re-parent orphans from the parentId in their own file.
-    const childIds = new Set<string>()
-    for (const t of taskMap.values()) {
-      for (const s of t.subtasks) childIds.add(s.id)
-    }
-    for (const [taskId, pid] of parentIdMap) {
-      if (childIds.has(taskId)) continue
-      const parent = taskMap.get(pid)
-      if (!parent) continue
-      const task = taskMap.get(taskId)
-      if (!task) continue
-      parent.subtasks.push(task)
-      childIds.add(taskId)
-      if (!subtaskIdsMap.has(pid)) subtaskIdsMap.set(pid, [])
-      const sids = subtaskIdsMap.get(pid)
-      if (sids && !sids.includes(taskId)) sids.push(taskId)
-      console.warn(
-        `[PM] Self-healed orphan: re-parented task "${task.title}" (${taskId}) under "${parent.title}" (${pid})`
-      )
-    }
-
-    const result: Task[] = []
-    const pushed = new Set<string>()
-    for (const id of refListToIds(this.app, topLevelRefs, projectPath, idByPath)) {
-      if (pushed.has(id)) continue
-      const task = taskMap.get(id)
-      if (task) {
-        result.push(task)
-        pushed.add(id)
-      }
-    }
-    for (const task of taskMap.values()) {
-      if (pushed.has(task.id)) continue
-      if (!childIds.has(task.id)) result.push(task)
-    }
-
-    return result
-  }
-
-  async loadTaskFile(file: TFile): Promise<{ task: Task | null; subtaskIds: string[]; parentId: string | null }> {
-    try {
-      // metadataCache lets us skip the body read; description stays empty until
-      // loadTaskBody fills it.
-      const cached = this.app.metadataCache.getFileCache(file)?.frontmatter
-      if (cached && cached[TASK_FRONTMATTER_KEY] === true) {
-        return hydrateTaskFromFile(cached, '', file.path)
-      }
-
-      const content = await this.app.vault.cachedRead(file)
-      const parsed = parseFrontmatter(content)
-      if (parsed.kind !== 'frontmatter' || parsed.frontmatter[TASK_FRONTMATTER_KEY] !== true) {
-        return { task: null, subtaskIds: [], parentId: null }
-      }
-
-      const result = hydrateTaskFromFile(parsed.frontmatter, parsed.body, file.path)
-      this.hydratedBodies.add(result.task)
-      return result
-    } catch (e) {
-      if (e instanceof Error && e.message.includes('ENOENT')) {
-        console.warn(`[PM] Task file no longer exists, skipping: ${file.path}`)
-      } else {
-        console.error(`[PM] Failed to load task ${file.path}:`, e)
-      }
-      return { task: null, subtaskIds: [], parentId: null }
     }
   }
 
@@ -606,7 +442,7 @@ export class ProjectStore implements TaskSource {
       this.hydratedBodies.add(task)
       return
     }
-    const note = await this.readNote(file)
+    const note = await readNote(this.app, file)
     // Leave the description alone and stay unhydrated, so the next read can retry.
     if (!note) return
     task.description = stripAutoGeneratedContent(note.body)
@@ -620,30 +456,11 @@ export class ProjectStore implements TaskSource {
       this.hydratedBodies.add(project)
       return
     }
-    const note = await this.readNote(file)
+    const note = await readNote(this.app, file)
     // Leave the description alone and stay unhydrated, so the next read can retry.
     if (!note) return
     project.description = projectDescription(note.frontmatter, note.body)
     this.hydratedBodies.add(project)
-  }
-
-  /**
-   * A note's properties and body, taken from Obsidian's own parse where it has one,
-   * so a note Obsidian reads is never re-read by a second parser that might disagree.
-   * The cached offset is used only when it still lands on a closing fence in the bytes
-   * just read, since the cache can describe an older version of the file. Null means
-   * neither parse could read the note.
-   */
-  private async readNote(file: TFile): Promise<{ frontmatter: Record<string, unknown>; body: string } | null> {
-    const content = await this.app.vault.cachedRead(file)
-    const cached = this.app.metadataCache.getFileCache(file)
-    const end = cached?.frontmatterPosition?.end.offset
-    if (end !== undefined && content.startsWith('---') && content.slice(0, end).trimEnd().endsWith('---')) {
-      return { frontmatter: cached?.frontmatter ?? {}, body: content.slice(end).replace(/\r\n/g, '\n').trim() }
-    }
-    const parsed = parseFrontmatter(content)
-    if (parsed.kind === 'malformed') return null
-    return { frontmatter: parsed.kind === 'frontmatter' ? parsed.frontmatter : {}, body: parsed.body }
   }
 
   async saveProject(project: Project): Promise<void> {
@@ -768,7 +585,7 @@ export class ProjectStore implements TaskSource {
       // holds that name; a task that has one keeps it until its title says otherwise.
       const path = task.filePath
         ? normalizePath(resolveTaskPath(task, targetFolder, task.filePath))
-        : this.uniqueChildPath(targetFolder, taskFileName(task.title), targetPaths)
+        : uniqueChildPath(this.app, targetFolder, taskFileName(task.title), targetPaths)
       // Two files resolving to one name would race below into a generic create error;
       // catching it here keeps the typed one.
       if (targetPaths.has(path)) throw new TaskFileNameConflictError(path)
@@ -1029,7 +846,7 @@ export class ProjectStore implements TaskSource {
     })
     const folder = projectTaskFolder(this.app, project.filePath)
     await this.ensureFolder(folder)
-    const newFilePath = this.uniqueChildPath(folder, taskFileName(task.title))
+    const newFilePath = uniqueChildPath(this.app, folder, taskFileName(task.title))
     const newContent = serializeTask(
       task,
       project,
@@ -1063,7 +880,7 @@ export class ProjectStore implements TaskSource {
     const usedTitles = new Set(flattenTasks(project.tasks).map((f) => f.task.title))
     const claimName = (task: Task): void => {
       const folder = task.archived ? normalizePath(baseFolder + '/Archive') : baseFolder
-      this.assignCopyName(task, folder, usedTitles, claimed)
+      assignCopyName(this.app, task, folder, usedTitles, claimed)
     }
     // A clone has no file yet, and its in-memory description must be written verbatim.
     claimName(copy)
@@ -1132,26 +949,6 @@ export class ProjectStore implements TaskSource {
     await this.saveProject(project)
   }
 
-  private assignCopyName(task: Task, folder: string, usedTitles: Set<string>, claimed: Set<string>): void {
-    const base = task.title.replace(/(?: \(copy(?: \d+)?\))+$/, '')
-    for (let n = 1; ; n++) {
-      const suffix = n === 1 ? ' (copy)' : ` (copy ${n})`
-      const room = TASK_SLUG_MAX_LENGTH - suffix.length
-      const title = (base.length > room ? base.slice(0, room).trimEnd() : base) + suffix
-      const path = normalizePath(taskFilePath(title, folder))
-      if (
-        !usedTitles.has(title) &&
-        !claimed.has(path) &&
-        !(this.app.vault.getAbstractFileByPath(path) instanceof TFile)
-      ) {
-        usedTitles.add(title)
-        claimed.add(path)
-        task.title = title
-        return
-      }
-    }
-  }
-
   /**
    * Hand a task and its subtasks to another project: the files move into that project's
    * folder and the task ids stay put, so dependencies pointing at it keep resolving.
@@ -1178,7 +975,8 @@ export class ProjectStore implements TaskSource {
       // would lose the body of a task whose description was never read.
       if (moved.filePath) {
         const fileName = moved.filePath.slice(moved.filePath.lastIndexOf('/') + 1)
-        const dest = this.uniqueChildPath(
+        const dest = uniqueChildPath(
+          this.app,
           moved.archived ? normalizePath(targetFolder + '/Archive') : targetFolder,
           fileName
         )
@@ -1204,17 +1002,7 @@ export class ProjectStore implements TaskSource {
   }
 
   async moveTask(project: Project, taskId: string, newParentId: string | null): Promise<void> {
-    const task = findTaskById(project, taskId)
-    if (!task) return
-    const oldParentId = findParentId(project, taskId)
-    deleteTaskFromTree(project.tasks, taskId)
-    addTaskToTree(project.tasks, task, newParentId)
-    indexSetParent(project, taskId, newParentId)
-    // The moved task's Parent link and both parents' Subtasks lists live in the body.
-    this.markDirty(project, [taskId], 'full')
-    if (oldParentId) this.markDirty(project, [oldParentId], 'full')
-    if (newParentId) this.markDirty(project, [newParentId], 'full')
-    await this.saveProject(project)
+    await this.moveTasks(project, [taskId], newParentId)
   }
 
   async moveTasks(project: Project, taskIds: string[], newParentId: string | null): Promise<void> {
@@ -1359,8 +1147,7 @@ export class ProjectStore implements TaskSource {
   }
 
   async archiveTask(project: Project, taskId: string): Promise<void> {
-    await doArchiveTask(this.app, project, taskId, (path) => this.markSelfWrite(path))
-    await this.saveProject(project)
+    await this.archiveTasks(project, [taskId])
   }
 
   /** Archives several tasks, and their subtrees, in one save. */
@@ -1377,16 +1164,7 @@ export class ProjectStore implements TaskSource {
   }
 
   async deleteTask(project: Project, taskId: string): Promise<void> {
-    const parentId = findParentId(project, taskId)
-    const task = findTaskById(project, taskId)
-    if (task) {
-      await this.deleteTaskFiles(task, projectTaskFolder(this.app, project.filePath))
-      indexRemoveSubtree(project, task)
-    }
-    deleteTaskFromTree(project.tasks, taskId)
-    // The parent's Subtasks list shrinks.
-    if (parentId) this.markDirty(project, [parentId], 'full')
-    await this.saveProject(project)
+    await this.deleteTasks(project, [taskId])
   }
 
   private async deleteTaskFiles(task: Task, folder: string): Promise<void> {
@@ -1418,20 +1196,9 @@ export class ProjectStore implements TaskSource {
     this.markSelfWrite(this.taskFolder(taskPath))
     this.markSelfWrite(dir)
     await this.ensureFolder(dir)
-    const path = this.uniqueChildPath(dir, fileName)
+    const path = uniqueChildPath(this.app, dir, fileName)
     this.markSelfWrite(path)
     return this.app.vault.createBinary(path, data)
-  }
-
-  private uniqueChildPath(folder: string, fileName: string, claimed?: ReadonlySet<string>): string {
-    const dot = fileName.lastIndexOf('.')
-    const base = dot > 0 ? fileName.slice(0, dot) : fileName
-    const ext = dot > 0 ? fileName.slice(dot) : ''
-    let candidate = normalizePath(`${folder}/${base}${ext}`)
-    for (let n = 1; claimed?.has(candidate) || findIgnoringCase(this.app, candidate); n++) {
-      candidate = normalizePath(`${folder}/${base} ${n}${ext}`)
-    }
-    return candidate
   }
 
   async deleteProject(project: Project): Promise<void> {

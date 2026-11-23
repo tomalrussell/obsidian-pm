@@ -8,7 +8,7 @@ import {
   findTaskById,
   flattenTasks
 } from '@dotpm/core'
-import type { TaskSource } from './TaskSource'
+import type { ProjectStore } from './ProjectStore'
 import type { VaultIndex } from './VaultIndex'
 
 /** What a project view renders. Carried in the view state, so a layout restores it. */
@@ -63,7 +63,7 @@ export class ProjectScope {
   constructor(
     readonly spec: ScopeSpec,
     readonly projects: Project[],
-    private store: TaskSource
+    private store: ProjectStore
   ) {}
 
   /** Drops the resolved configs, for when a palette changed under a live view. */

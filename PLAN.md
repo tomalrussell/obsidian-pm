@@ -64,7 +64,11 @@ Ordered by payoff for the effort. Each step is independent, and each is a user d
      - Some CSS classes have no reference in the TypeScript: `pm-gantt-body`, `pm-gantt-controls`, `pm-gantt-resize-handle`, `pm-invisible`, `pm-kanban-card-field*`, `pm-kanban-hidden-rail`, `pm-modal-footer`, `pm-modal-section-header`, `pm-overview-child*`, `pm-prop-date`, `pm-prop-label*`, `pm-prop-text`, `pm-resize-active`, `pm-section-sublabel`, `pm-subtask-dot`, `pm-switcher-gap`, `pm-table-resize`, `pm-table-th-resizable`, `pm-task-modal`, `pm-vis-detail-input`. Some may be added dynamically, so check each in the running plugin before deleting.
      - Props interfaces and helpers exported only for use inside their own file. This is noise, not dead code.
 
-2. **Split `ProjectStore`.** This is refactoring, not a feature cut. Move import, duplication, moves, archives and attachments out into modules like `ArchiveOps`. Leave persistence, queued writes and rename handling in the store. The remaining store should be about 600 lines, which makes later cuts cheaper.
+2. **Split `ProjectStore`. Partly done.** Net −61 lines, all tests pass.
+   - Deleted the `TaskSource` interface (84 lines). It only mirrored `ProjectStore`'s public methods, and nothing else implements it. Callers now type against `ProjectStore`.
+   - Moved task file naming and the two error classes to `taskFiles.ts`, and the folder and note loading to `TaskLoader.ts`.
+   - `moveTask`, `archiveTask` and `deleteTask` now call their plural versions.
+   - `ProjectStore.ts` is 1,240 lines, down from 1,473. **Still to do:** copy and import (`duplicateTask`, `duplicateProject`, `reassignIds`, `importNoteAsTask`, `moveTaskToProject`) and the vault-sync code (rename following, reload, self-write tracking). Both need access to the store's private dirty and hydration state, so splitting them means passing that state in explicitly. `updateTask` and `updateTasks` also duplicate the patch logic and could share a helper.
 
 3. **Split `ProjectView`.** Pull the per-view toolbar and header logic into the Table, Gantt and Kanban views. The host should only route, scope and hold shared filter state.
 

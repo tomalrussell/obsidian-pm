@@ -15,7 +15,7 @@ import {
   releaseNotesSince,
   setDateFormat
 } from '@dotpm/core'
-import { ProjectStore, VaultIndex, type ProjectRef, type TaskSource } from './store'
+import { ProjectStore, VaultIndex, type ProjectRef } from './store'
 import { safeAsync } from '@dotpm/ui'
 import { around } from 'monkey-around'
 import { installObsidianPlatform } from './platform'
@@ -43,7 +43,7 @@ import { migrateBoardCardConfig, migrateProjects, migrateProjectLayout, migrateT
 
 export default class PMPlugin extends Plugin {
   settings: PMSettings = { ...DEFAULT_SETTINGS }
-  store!: TaskSource
+  store!: ProjectStore
   index!: VaultIndex
   autoArchiver!: AutoArchiver
   idRepair!: IdRepair
