@@ -9,7 +9,7 @@ import { openTuneSheet, type TuneSheetProps } from './tuneSheet'
  * Classes the header adds one at a time while its row overflows: the query and option
  * labels and the count drop first, then the query and options fold into the Tune button,
  * then the breadcrumb folds its ancestors, then the primary action loses its label, then
- * the mode, saved view and scope labels, then the mode crumb itself. The title truncates
+ * the mode and scope labels, then the mode crumb itself. The title truncates
  * only after the last one. The Tune levels are skipped when the view gives Tune nothing to
  * list, since it is where the folded controls, the mode included, are reached.
  */
@@ -21,7 +21,7 @@ const PHONE_LEVELS = ['pm-vh--phone', 'pm-vh--folded', 'pm-vh--bare']
 
 /**
  * The one row every task view shows, as fixed slots the orchestrator fills: context
- * (breadcrumb and scope), view (saved view and count), query, view options and actions.
+ * (breadcrumb and scope), view (task count), query, view options and actions.
  * An empty slot takes no space. `bar` holds the optional second row for applied filters.
  *
  * When the row is too narrow, the query and options slots give way to `tune`, one button
@@ -29,7 +29,7 @@ const PHONE_LEVELS = ['pm-vh--phone', 'pm-vh--folded', 'pm-vh--bare']
  * through `setTuneItems` and keeps the button's badge current.
  *
  * On a phone the header is two rows: the title, search and a "More" menu (`setMoreMenu`),
- * then the saved view and Tune, which opens the sheet `setTuneSheet` describes. The
+ * then the task count and Tune, which opens the sheet `setTuneSheet` describes. The
  * actions slot becomes a floating button over the view.
  */
 export class ViewHeader {

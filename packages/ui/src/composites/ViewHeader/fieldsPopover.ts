@@ -7,7 +7,6 @@ import {
   type ViewFields,
   type ViewMode,
   availableFields,
-  columnWidth,
   hiddenFields,
   isLockedField,
   shownFields,
@@ -35,7 +34,7 @@ const tabs = (): { id: ViewMode; label: string }[] => [
 
 /**
  * Which fields each presentation shows and in what order, one tab per presentation: the
- * table's columns (with their widths), what a board card carries, and the text beside a
+ * table's fields, what a board card carries, and the text beside a
  * timeline bar.
  */
 export function renderFieldsPanel(parent: HTMLElement, props: FieldsPopoverProps): void {
@@ -75,14 +74,12 @@ export function renderFieldsPanel(parent: HTMLElement, props: FieldsPopoverProps
     body.empty()
     const shown = shownFields(fields, mode, catalog)
     const hidden = hiddenFields(fields, mode, catalog)
-    const isTable = mode === 'table'
     renderVisibilityList(body, {
       rows: shown.map((id) => ({
         id,
         label: label(id),
         hidden: false,
-        locked: isLockedField(mode, id),
-        detail: isTable ? String(columnWidth(fields, id) ?? 'fill') : undefined
+        locked: isLockedField(mode, id)
       })),
       showLabel: 'Show field',
       hideLabel: 'Hide field',
@@ -91,14 +88,7 @@ export function renderFieldsPanel(parent: HTMLElement, props: FieldsPopoverProps
       onReorder: (ids) => {
         list().visible = ids
         changed()
-      },
-      onDetailEdit: isTable
-        ? (id, width) => {
-            const own = list()
-            own.widths = { ...own.widths, [id]: width }
-            changed()
-          }
-        : undefined
+      }
     })
 
     if (hidden.length) {
@@ -112,16 +102,6 @@ export function renderFieldsPanel(parent: HTMLElement, props: FieldsPopoverProps
     }
 
     const foot = body.createDiv('pm-fields-foot pm-pop-section')
-    if (isTable) {
-      new ChipButton(foot)
-        .setVariant('flat')
-        .setLabel('Reset widths')
-        .setDisabled(!fields.table?.widths)
-        .onClick(() => {
-          delete list().widths
-          changed()
-        })
-    }
     new ChipButton(foot)
       .setVariant('flat')
       .setLabel('Hide all')

@@ -55,14 +55,6 @@ export class GanttView implements SubView {
   private cfg!: TimelineCfg
   private drag: DragState = makeDragState()
   private link: LinkState = makeLinkState()
-  private labelWidth: number = LABEL_WIDTH
-
-  getLabelWidth(): number {
-    return this.labelWidth
-  }
-  setLabelWidth(w: number): void {
-    this.labelWidth = w
-  }
   private cleanupFns: (() => void)[] = []
   /** `anchorDate` lands `offset` px from the left edge; without one, at the edge. */
   private pendingScroll: { top: number; anchorDate: Temporal.PlainDate; offset?: number } | null = null
@@ -147,7 +139,7 @@ export class GanttView implements SubView {
     this.cfg = buildTimelineConfig(activeTasks, this.granularity, {
       zoom: this.zoom,
       isHidden: nonWorkingDay(this.nonWorkingDays, this.plugin.settings.holidays),
-      minWidth: this.container.clientWidth - this.labelWidth
+      minWidth: this.container.clientWidth - LABEL_WIDTH
     })
 
     this.renderGantt()
@@ -157,42 +149,12 @@ export class GanttView implements SubView {
     const wrapper = this.container.createDiv('pm-gantt-wrapper')
 
     const leftPanel = wrapper.createDiv('pm-gantt-left')
-    leftPanel.style.width = `${this.labelWidth}px`
-    leftPanel.style.minWidth = `${this.labelWidth}px`
+    leftPanel.style.width = `${LABEL_WIDTH}px`
+    leftPanel.style.minWidth = `${LABEL_WIDTH}px`
     const leftHeader = leftPanel.createDiv('pm-gantt-left-header')
     leftHeader.style.height = `${HEADER_HEIGHT}px`
     leftHeader.createSpan({ text: `Task`, cls: 'pm-gantt-left-header-label' })
     const leftBody = leftPanel.createDiv('pm-gantt-left-body')
-
-    const resizeHandle = wrapper.createDiv('pm-gantt-resize-handle')
-    let resizing = false
-    let startX = 0
-    let startWidth = 0
-    resizeHandle.addEventListener('mousedown', (e: MouseEvent) => {
-      e.preventDefault()
-      resizing = true
-      startX = e.clientX
-      startWidth = this.labelWidth
-      activeDocument.body.addClass('pm-resize-active')
-    })
-    const onMouseMove = (e: MouseEvent) => {
-      if (!resizing) return
-      const newWidth = Math.max(150, Math.min(600, startWidth + (e.clientX - startX)))
-      this.labelWidth = newWidth
-      leftPanel.style.width = `${newWidth}px`
-      leftPanel.style.minWidth = `${newWidth}px`
-    }
-    const onMouseUp = () => {
-      if (!resizing) return
-      resizing = false
-      activeDocument.body.removeClass('pm-resize-active')
-    }
-    activeDocument.addEventListener('mousemove', onMouseMove)
-    activeDocument.addEventListener('mouseup', onMouseUp)
-    this.cleanupFns.push(() => {
-      activeDocument.removeEventListener('mousemove', onMouseMove)
-      activeDocument.removeEventListener('mouseup', onMouseUp)
-    })
 
     const rightPanel = wrapper.createDiv('pm-gantt-right')
     this.scrollEl = rightPanel

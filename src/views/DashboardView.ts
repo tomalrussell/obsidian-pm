@@ -72,7 +72,7 @@ export class DashboardView extends ItemView {
   /** Search text lives as long as this view and is never saved. */
   private text = ''
   private collapsedGroups = new Set<string>()
-  private viewSlot: SavedViewSlot | null = null
+  private countEl: HTMLElement | null = null
   private filterButton: ChipButton | null = null
   private archivedButton: ChipButton | null = null
   private sortButton: ChipButton | null = null
@@ -86,11 +86,6 @@ export class DashboardView extends ItemView {
     this.plugin = plugin
     this.navigation = false
     this.scope = new Scope(this.app.scope)
-    this.scope.register(['Mod'], 's', () => {
-      if (!this.viewChanges().length) return true
-      safeAsync(() => this.updateActiveView())()
-      return false
-    })
   }
 
   getViewType(): string {
@@ -114,12 +109,6 @@ export class DashboardView extends ItemView {
     root.addClass('pm-root')
     this.headerEl = root.createDiv('pm-vh-mount')
     this.bodyEl = root.createDiv('pm-content pm-project-list-container')
-    // An untouched list opens with the starred view.
-    const starred = this.plugin.settings.projectListViews.find((view) => view.isDefault)
-    if (starred && !this.state.activeViewId && sameValue(this.state, makeDefaultProjectList())) {
-      this.applyView(starred)
-      void this.plugin.saveSettings()
-    }
     this.render()
     this.register(this.plugin.index.onChange(() => this.scheduleRender()))
     return Promise.resolve()
@@ -172,10 +161,7 @@ export class DashboardView extends ItemView {
   }
 
   private renderViewSlot(parent: HTMLElement): void {
-    this.viewSlot = new SavedViewSlot(parent, {
-      onOpen: (anchor) => this.openSavedViews(anchor),
-      onSave: safeAsync(() => this.updateActiveView())
-    })
+    this.countEl = parent.createSpan('pm-vh-count')
   }
 
   private renderQuerySlot(parent: HTMLElement): void {
@@ -368,6 +354,9 @@ export class DashboardView extends ItemView {
   /** The query controls as the Tune button lists them in a narrow header. */
   private tuneItems(): TuneItem[][] {
     const { settings, index } = this.plugin
+    this.countEl?.setText(isProjectQueryActive(this.state.filter, this.text)
+      ? `${shown} of ${total}`
+      : total === 1 ? `${total} project` : `${total} projects`)
     const filters = countProjectFilters(this.state.filter)
     const sort = summarizeSort(sortFields(), this.state.sort)
     const items: TuneItem[] = [
@@ -474,17 +463,9 @@ export class DashboardView extends ItemView {
 
   private syncHeader(shown: number, total: number): void {
     const { settings, index } = this.plugin
-    const active = this.activeView()
-    this.viewSlot?.sync({
-      name: active?.name ?? `All projects`,
-      saved: !!active,
-      dirty: this.viewChanges().length > 0,
-      count: isProjectQueryActive(this.state.filter, this.text)
-        ? `${shown} of ${total}`
-        : total === 1
-          ? `${total} project`
-          : `${total} projects`
-    })
+    this.countEl?.setText(isProjectQueryActive(this.state.filter, this.text)
+      ? `${shown} of ${total}`
+      : total === 1 ? `${total} project` : `${total} projects`)
     const filters = countProjectFilters(this.state.filter)
     this.filterButton?.setBadge(filters).setActive(filters > 0)
     this.searchBox?.setValue(this.text)
@@ -503,100 +484,5 @@ export class DashboardView extends ItemView {
   private hiddenFieldsLabel(): string {
     const hidden = PROJECT_LIST_FIELDS.length - this.shownFields().length
     return hidden ? (hidden === 1 ? `${hidden} hidden` : `${hidden} hidden`) : ''
-  }
-
-  private activeView(): ProjectListView | undefined {
-    return this.plugin.settings.projectListViews.find((view) => view.id === this.state.activeViewId)
-  }
-
-  /** What differs from the active saved view, as the reader would name it. */
-  private viewChanges(): string[] {
-    const active = this.activeView()
-    if (!active) return []
-    const changes: string[] = []
-    if (!sameValue(active.filter, this.state.filter)) changes.push(`Filter`)
-    if (!sameValue(active.sort, this.state.sort)) changes.push(`Sort`)
-    if (active.group !== this.state.group) changes.push(`Grouping`)
-    if (active.fields && !sameValue(active.fields, this.shownFields())) changes.push(`Fields`)
-    if (active.showArchived !== this.plugin.settings.showArchivedProjects) changes.push(`Archived`)
-    return changes
-  }
-
-  private applyView(view: ProjectListView): void {
-    this.state.filter = structuredClone(view.filter)
-    this.state.sort = structuredClone(view.sort)
-    this.state.group = view.group
-    if (view.fields) this.setFields(view.fields)
-    this.state.activeViewId = view.id
-    this.plugin.settings.showArchivedProjects = view.showArchived
-  }
-
-  private snapshot(id: string, name: string): ProjectListView {
-    return {
-      id,
-      name,
-      filter: structuredClone(this.state.filter),
-      sort: structuredClone(this.state.sort),
-      group: this.state.group,
-      fields: this.shownFields(),
-      showArchived: this.plugin.settings.showArchivedProjects
-    }
-  }
-
-  private async persistViews(views: ProjectListView[]): Promise<void> {
-    this.plugin.settings.projectListViews = views
-    await this.plugin.saveSettings()
-    this.renderList()
-  }
-
-  private async updateActiveView(): Promise<void> {
-    const active = this.activeView()
-    if (!active) return
-    const views = this.plugin.settings.projectListViews.map((view) =>
-      view.id === active.id ? { ...this.snapshot(active.id, active.name), isDefault: active.isDefault } : view
-    )
-    await this.persistViews(views)
-  }
-
-  private openSavedViews(anchor: HTMLElement): void {
-    const views = this.plugin.settings.projectListViews
-    openSavedViewsPopover(anchor, {
-      views: views.map((view) => ({ id: view.id, name: view.name, isDefault: view.isDefault })),
-      activeId: this.state.activeViewId,
-      changes: this.viewChanges(),
-      canSave: !sameValue({ ...this.state, activeViewId: null }, makeDefaultProjectList()),
-      storageNote: `Kept in plugin settings on this vault.`,
-      builtInName: `All projects`,
-      onSelect: (id) => {
-        const view = views.find((v) => v.id === id)
-        if (view) this.applyView(view)
-        else {
-          this.plugin.settings.projectList = makeDefaultProjectList()
-          this.plugin.settings.showArchivedProjects = false
-        }
-        this.text = ''
-        this.renderHeader()
-        this.changed()
-      },
-      onSave: async (name, isDefault) => {
-        const view = { ...this.snapshot(makeId(), name), ...(isDefault ? { isDefault: true } : {}) }
-        const rest = isDefault ? withDefault(views, null) : views
-        this.state.activeViewId = view.id
-        await this.persistViews([...rest, view])
-      },
-      onUpdate: () => this.updateActiveView(),
-      onRevert: () => {
-        const active = this.activeView()
-        if (active) this.applyView(active)
-        this.changed()
-      },
-      onRename: (id, name) => this.persistViews(views.map((v) => (v.id === id ? { ...v, name } : v))),
-      onDelete: async (id) => {
-        if (this.state.activeViewId === id) this.state.activeViewId = null
-        await this.persistViews(views.filter((v) => v.id !== id))
-      },
-      onReorder: (ids) => this.persistViews(ids.flatMap((id) => views.find((v) => v.id === id) ?? [])),
-      onSetDefault: (id) => this.persistViews(withDefault(views, id))
-    })
   }
 }

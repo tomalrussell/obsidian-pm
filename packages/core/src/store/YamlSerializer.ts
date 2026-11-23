@@ -22,7 +22,6 @@ export const PROJECT_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
   'icon',
   'taskIds',
   'archived',
-  'savedViews',
   'createdAt',
   'updatedAt',
   'config',
@@ -102,7 +101,6 @@ export function serializeProject(
     icon: project.icon,
     taskIds,
     ...(project.archived ? { archived: true } : {}),
-    savedViews: project.savedViews.length ? project.savedViews : [],
     createdAt: project.createdAt,
     updatedAt: project.updatedAt
   }

@@ -3,7 +3,8 @@ import { DEFAULT_PROJECT_COLOR, makeProject, makeTask, type Project, type Task }
 import {
   hydrateFields,
   hydrateFilter,
-  hydrateGroup,
+  hydrateSort,
+  hydrateNonWorkingDays,
   hydrateProjectFromFrontmatter,
   hydrateTaskFromFile
 } from './YamlHydrator'
@@ -179,61 +180,30 @@ describe('project round-trip', () => {
     expect(project.description).toBe('From the note')
   })
 
-  it('falls back to the default sort when a saved view holds an unknown one', () => {
-    const fm = { savedViews: [{ id: 'v1', name: 'Odd', sortKey: 'estimate', sortDir: 'sideways' }] }
-    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-    expect(project.savedViews[0].sort).toEqual([{ key: 'status', dir: 'asc' }])
-  })
-
-  it('reads a single sort key from before sorts had several', () => {
-    const fm = { savedViews: [{ id: 'v1', name: 'Old', sortKey: 'due', sortDir: 'desc' }] }
-    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-    expect(project.savedViews[0].sort).toEqual([{ key: 'due', dir: 'desc' }])
-  })
-
-  it('keeps up to three distinct known sort keys, and an empty sort as empty', () => {
-    const sort = [
-      { key: 'due', dir: 'desc' },
-      { key: 'due', dir: 'asc' },
-      { key: 'estimate', dir: 'asc' },
-      { key: 'title', dir: 'sideways' },
-      { key: 'status' },
-      { key: 'progress', dir: 'desc' }
-    ]
-    const fm = {
-      savedViews: [
-        { id: 'v1', name: 'Many', sort },
-        { id: 'v2', name: 'None', sort: [] }
-      ]
-    }
-    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-    expect(project.savedViews[0].sort).toEqual([
+  it('keeps supported sort rules and reads older single-sort settings', () => {
+    expect(hydrateSort({ sortKey: 'estimate', sortDir: 'sideways' })).toEqual([{ key: 'status', dir: 'asc' }])
+    expect(hydrateSort({ sortKey: 'due', sortDir: 'desc' })).toEqual([{ key: 'due', dir: 'desc' }])
+    expect(
+      hydrateSort({
+        sort: [
+          { key: 'due', dir: 'desc' },
+          { key: 'due', dir: 'asc' },
+          { key: 'removed', dir: 'asc' },
+          { key: 'title', dir: 'sideways' },
+          { key: 'status' },
+          { key: 'progress', dir: 'desc' }
+        ]
+      })
+    ).toEqual([
       { key: 'due', dir: 'desc' },
       { key: 'title', dir: 'asc' },
       { key: 'status', dir: 'asc' }
     ])
-    expect(project.savedViews[1].sort).toEqual([])
+    expect(hydrateSort({ sort: [] })).toEqual([])
   })
 
-  it('reads a saved view from before conditions as the conditions it meant', () => {
-    const fm = {
-      savedViews: [
-        {
-          id: 'v1',
-          name: 'Old',
-          filter: {
-            text: ' api ',
-            statuses: ['todo'],
-            priorities: [],
-            tags: [],
-            dueDateFilter: 'no-date',
-            showArchived: true
-          }
-        }
-      ]
-    }
-    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-    expect(project.savedViews[0].filter).toEqual({
+  it('reads legacy filters and drops malformed conditions', () => {
+    expect(hydrateFilter({ text: ' api ', statuses: ['todo'], dueDateFilter: 'no-date', showArchived: true })).toEqual({
       conditions: [
         { field: 'status', op: 'any', value: ['todo'] },
         { field: 'due', op: 'empty' },
@@ -241,78 +211,38 @@ describe('project round-trip', () => {
       ],
       showArchived: true
     })
+    expect(
+      hydrateFilter({
+        conditions: [{ field: 'status', op: 'sometimes' }, { op: 'any' }, 'x', { field: 'tag', op: 'empty' }]
+      }).conditions
+    ).toEqual([{ field: 'tag', op: 'empty' }])
   })
 
-  it('drops conditions it cannot read', () => {
+  it('keeps field visibility and order while ignoring old column widths', () => {
+    expect(
+      hydrateFields({ table: { visible: ['due', 3, 'title'], widths: { due: 88 } }, kanban: { visible: 'tags' } })
+    ).toEqual({ table: { visible: ['due', 'title'] } })
+    expect(hydrateNonWorkingDays({ weekends: true, holidays: 'yes', fridays: true })).toEqual({ weekends: true })
+  })
+
+  it('preserves old named views without exposing them to the project model', () => {
     const fm = {
+      id: 'p1',
       savedViews: [
         {
-          id: 'v1',
-          name: 'Odd',
-          filter: {
-            conditions: [{ field: 'status', op: 'sometimes' }, { op: 'any' }, 'x', { field: 'tag', op: 'empty' }]
-          }
+          id: 'old',
+          name: 'Old',
+          group: { field: 'priority' },
+          fields: { table: { visible: ['title'], widths: { due: 88 } } }
         }
       ]
     }
     const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-    expect(project.savedViews[0].filter.conditions).toEqual([{ field: 'tag', op: 'empty' }])
-  })
-
-  it('reads a saved grouping and drops what it cannot use', () => {
-    const group = {
-      field: 'priority',
-      hideEmpty: true,
-      columns: {
-        priority: { order: ['low'], hidden: ['low'] },
-        status: { order: ['done', 7, 'obsolete', 'capture'], hidden: ['someday', 'obsolete'] },
-        tag: {}
-      }
-    }
-    const fm = {
-      savedViews: [
-        { id: 'v1', name: 'G', group },
-        { id: 'v2', name: 'None' }
-      ]
-    }
-    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-    expect(project.savedViews[0].group).toEqual({
-      hideEmpty: true,
-      columns: { order: ['done', 'capture'], hidden: ['someday'] }
-    })
-    expect(project.savedViews[1].group).toBeUndefined()
-    expect(hydrateGroup(project.savedViews[0].group)).toEqual(project.savedViews[0].group)
-  })
-
-  it('reads saved fields and drops what it cannot use', () => {
-    const fields = {
-      table: { visible: ['title', 3, 'due'], widths: { due: 88.4, status: -5, time: 'wide' } },
-      kanban: { visible: 'tags' },
-      calendar: { visible: ['due'] }
-    }
-    const fm = {
-      savedViews: [
-        { id: 'v1', name: 'F', fields },
-        { id: 'v2', name: 'None' }
-      ]
-    }
-    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-    expect(project.savedViews[0].fields).toEqual({ table: { visible: ['title', 'due'], widths: { due: 88 } } })
-    expect(project.savedViews[1].fields).toBeUndefined()
-  })
-
-  it('reads saved non-working days and drops anything but true', () => {
-    const fm = {
-      savedViews: [{ id: 'v1', name: 'D', nonWorkingDays: { weekends: true, holidays: 'yes', fridays: true } }]
-    }
-    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-    expect(project.savedViews[0].nonWorkingDays).toEqual({ weekends: true })
-  })
-
-  it('drops a timeline scale it does not know', () => {
-    const fm = { savedViews: [{ id: 'v1', name: 'Odd', ganttGranularity: 'decade' }] }
-    const project = hydrateProjectFromFrontmatter(fm, '', 'Projects/P.md', 'P')
-    expect(project.savedViews[0].ganttGranularity).toBeUndefined()
+    expect(project).not.toHaveProperty('savedViews')
+    const foreign = foreignFrontmatter(fm, PROJECT_FRONTMATTER_KEYS)
+    const parsed = parseFrontmatter(serializeProject(project, [], refs, foreign))
+    if (parsed.kind !== 'frontmatter') throw new Error('frontmatter missing')
+    expect(parsed.frontmatter.savedViews).toEqual(fm.savedViews)
   })
 
   it('records taskIds in the frontmatter', () => {
@@ -449,10 +379,9 @@ describe('legacy custom field view settings', () => {
         ]
       }).conditions
     ).toEqual([{ field: 'status', op: 'any', value: ['next'] }])
-    expect(hydrateGroup({ field: 'cf:client', columns: { 'cf:client': { hidden: ['Acme'] } } })).toEqual({})
     expect(
       hydrateFields({ table: { visible: ['title', 'cf:client', 'due'], widths: { 'cf:client': 180, due: 90 } } })
-    ).toEqual({ table: { visible: ['title', 'due'], widths: { due: 90 } } })
+    ).toEqual({ table: { visible: ['title', 'due'] } })
   })
 })
 
@@ -479,15 +408,12 @@ describe('fixed priority compatibility', () => {
     ).toBe('yesterday')
   })
 
-  it('keeps priority filters attached to the renamed value and drops obsolete board grouping', () => {
+  it('keeps priority filters attached to the renamed value', () => {
     expect(
       hydrateFilter({ conditions: [{ field: 'priority', op: 'any', value: ['critical', 'high'] }] }).conditions
     ).toEqual([{ field: 'priority', op: 'any', value: ['yesterday', 'high'] }])
     expect(hydrateFilter({ priorities: ['critical'] }).conditions).toEqual([
       { field: 'priority', op: 'any', value: ['yesterday'] }
     ])
-    expect(
-      hydrateGroup({ field: 'priority', columns: { priority: { order: ['critical', 'high'], hidden: ['critical'] } } })
-    ).toEqual({})
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { makeDefaultFilter, makeProject, makeTask, type Project, type Task } from '../types'
+import { makeProject, makeTask, type Project, type Task } from '../types'
 import { hydrateProjectFromFrontmatter, hydrateTaskFromFile } from './YamlHydrator'
 import { parseFrontmatter } from './YamlParser'
 import { serializeProject, serializeTask, type RefWriter } from './YamlSerializer'
@@ -36,14 +36,6 @@ function fixtureProject(): Project {
   const project = makeProject('Test', 'Projects/Test/Test.md')
   project.id = 'project-1'
   project.description = 'A project.'
-  project.savedViews = [
-    {
-      id: 'view-1',
-      name: 'Open',
-      filter: { ...makeDefaultFilter(), conditions: [{ field: 'status', op: 'any', value: ['todo'] }] },
-      sort: [{ key: 'due', dir: 'asc' }]
-    }
-  ]
   project.createdAt = '2026-03-01T10:00:00.000Z'
   project.updatedAt = '2026-03-02T10:00:00.000Z'
   return project

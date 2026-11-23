@@ -1,6 +1,5 @@
 import {
   type FilterCondition,
-  type GroupState,
   type NonWorkingDays,
   type ProjectListFilter,
   type SortRule,
@@ -14,15 +13,12 @@ import {
   type SwitcherProject,
   type TuneItem,
   Stepper,
-  boardColumns,
   renderFieldsPanel,
   renderFilterPanel,
-  renderGroupPanel,
   renderNonWorkingDaysPanel,
   renderProjectFieldsPanel,
   renderProjectFilterPanel,
   renderProjectSwitcherPanel,
-  renderSavedViewsPanel,
   renderSortPanel,
   renderTunePanel,
   renderTuneSheetPanel
@@ -107,47 +103,14 @@ export function renderPanelSections({ section, row }: GalleryLayout): void {
   renderSortPanel(frame(sortRow, 340), { fields: sortFields, sort: twoKeys, onChange: noop, onReset: noop })
   renderSortPanel(frame(sortRow, 340), { fields: sortFields, sort: [], onChange: noop, onReset: noop })
 
-  const group = section('Columns panel', 'panel-group')
-  const groupRow = row(group, 'columns by status, one hidden')
-  const groupState: GroupState = { columns: { hidden: ['done'] } }
-  renderGroupPanel(frame(groupRow, 300), {
-    group: groupState,
-    columns: () => boardColumns(groupState, TASKS),
-    onChange: noop
-  })
-
   const fields = section('Fields panel', 'panel-fields')
-  const fieldsRow = row(fields, 'table columns with widths / board card')
+  const fieldsRow = row(fields, 'table fields / board card')
   const catalog = { multi: false }
   const tableFields: ViewFields = {
-    table: { visible: ['title', 'status', 'due'], widths: { due: 120 } }
+    table: { visible: ['title', 'status', 'due'] }
   }
   renderFieldsPanel(frame(fieldsRow, 320), { mode: 'table', fields: tableFields, catalog, onChange: noop })
   renderFieldsPanel(frame(fieldsRow, 320), { mode: 'kanban', fields: {}, catalog, onChange: noop })
-
-  const saved = section('Saved views panel', 'panel-saved-views')
-  const savedRow = row(saved, 'the active view with unsaved changes / the list at rest')
-  const views = [
-    { id: 'v1', name: 'Sprint 14', modeIcon: 'kanban', isDefault: true },
-    { id: 'v2', name: 'Overdue', modeIcon: 'table' },
-    { id: 'v3', name: 'Launch plan', modeIcon: 'chart-gantt' }
-  ]
-  const savedProps = {
-    views,
-    canSave: true,
-    storageNote: 'Saved in the project note, so it syncs with the vault.',
-    builtInName: 'All tasks',
-    onSelect: noop,
-    onSave: noopAsync,
-    onUpdate: noopAsync,
-    onRevert: noop,
-    onRename: noopAsync,
-    onDelete: noopAsync,
-    onReorder: noopAsync,
-    onSetDefault: noopAsync
-  }
-  renderSavedViewsPanel(frame(savedRow, 300), { ...savedProps, activeId: 'v1', changes: ['filter', 'sort'] }, noop)
-  renderSavedViewsPanel(frame(savedRow, 300), { ...savedProps, activeId: 'v2', changes: [] }, noop)
 
   const switcher = section('Project switcher panel', 'panel-switcher')
   const switcherProjects: SwitcherProject[] = [

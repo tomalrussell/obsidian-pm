@@ -38,26 +38,19 @@ describe('view fields', () => {
     expect(shownFields({ kanban: { visible: [] } }, 'kanban', one)).toEqual([])
   })
 
-  it('reads a dragged width over the default and lets the title fill', () => {
-    const fields: ViewFields = { table: { visible: ['title', 'due'], widths: { due: 80 } } }
-    expect(columnWidth(fields, 'due')).toBe(80)
-    expect(columnWidth(fields, 'status')).toBe(130)
-    expect(columnWidth(fields, 'title')).toBeUndefined()
+  it('uses fixed column widths and lets the title fill', () => {
+    expect(columnWidth('due')).toBe(110)
+    expect(columnWidth('status')).toBe(130)
+    expect(columnWidth('title')).toBeUndefined()
   })
 
   it('forgets a mode put back to its defaults', () => {
     const fields: ViewFields = {
-      table: { visible: defaultFields('table', one), widths: {} },
+      table: { visible: defaultFields('table', one) },
       kanban: { visible: ['due'] }
     }
     tidyFields(fields, one)
     expect(fields).toEqual({ kanban: { visible: ['due'] } })
-  })
-
-  it('keeps a mode that only changed widths', () => {
-    const fields: ViewFields = { table: { visible: defaultFields('table', one), widths: { due: 90 } } }
-    tidyFields(fields, one)
-    expect(fields.table?.widths).toEqual({ due: 90 })
   })
 
   it('turns the old board settings into card fields', () => {

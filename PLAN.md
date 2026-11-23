@@ -12,7 +12,7 @@ Aim for Markdown tasks with fixed statuses and priorities, a table, a Gantt time
 | Tasks                     | Subtasks, dependencies, milestones, dates and progress                       | packages/core/src/types.ts                |
 | Views                     | Table, Gantt, Kanban, dashboard, overview and editors                        | src/views, packages/ui                    |
 | Organization              | Independent projects, multi-project scopes, archives, moving and duplication | ProjectScope, ProjectStore, ArchiveOps    |
-| Configuration             | Fixed priorities, filtering, grouping, saved views, layouts                  | Core configuration and view-state modules |
+| Configuration             | Fixed priorities, filtering, sorting and configurable fields                  | Core configuration and view-state modules |
 | Automation                | Auto-archiving                                                               | AutoArchiver                              |
 | External access (removed) | Local HTTP API, MCP and client library removed                               | src/api, packages/api                     |
 | Sharing (removed)         | HTML export and browser snapshot viewer removed                              | Completed                                 |
@@ -41,7 +41,7 @@ Audit package-publication and configuration dependencies if publishing reusable 
 
 ## Removal options
 
-14 options completed; Gantt retained; 1 option still open: saved views/layout customization.
+15 options completed; Gantt retained. All selected removal options are complete. Field visibility and ordering remain configurable.
 
 | Option                                   | Status    | Complexity reduction | Scope                                                                                                                                            |
 | ---------------------------------------- | --------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -59,7 +59,7 @@ Audit package-publication and configuration dependencies if publishing reusable 
 | Status-only Kanban                       | Completed | Medium to high       | Removed non-status grouping and generic drag updates; retained status column order and visibility                                                |
 | Remove custom fields                     | Completed | Very high            | Definitions, global defaults, editors, filters, grouping and rendering                                                                           |
 | Flatten projects                         | Completed | High                 | Parent links, ancestor inheritance, project trees, collapse state, subtree scopes and inherited archive behavior removed; task subtasks retained |
-| Remove saved views/layout customization  | Open      | Medium to high       | Named/starred views, change tracking, scope persistence and configurable columns                                                                 |
+| Remove saved views/layout customization  | Completed      | Medium to high       | Named/starred views, change tracking, scope persistence and configurable columns                                                                 |
 | Remove API/MCP                           | Completed | High                 | Server, MCP tools, contracts, client, authentication, settings, dependencies, tests and docs removed                                             |
 
 Smaller options: auto-archiving, release-note UI, automatic Markdown editor replacement. Styleguide removal primarily reduces maintenance because production builds already exclude it.
@@ -70,7 +70,7 @@ Smaller options: auto-archiving, release-note UI, automatic Markdown editor repl
 2. Export and browser viewer removal: **Completed.** Removed HTML export commands, snapshots and snapshot-only renderers, viewer package, viewer assets and build steps. TaskNotes removal: **Completed.** Removed detection, settings, priority syncing, special import conversion, conversion-only store methods, tests and documentation. Ordinary Markdown note import remains.
 3. Fixed priorities: **Completed.** Priorities are `yesterday`, `high`, `medium`, `low`, with matching lowercase IDs and labels. Removed global/project palette and icon settings. Old `critical` tasks and saved selections resolve to `yesterday`. Status-only Kanban: **Completed.** Fixed status columns; removed grouping by priority, tag, type and project and generic drag-to-change behavior. Column visibility, order and hide-empty controls remain.
 4. **Keep Gantt.** Automatic date propagation removal: **Completed.** Removed dependency scheduling, early-finish adjustments, propagation across projects, and scheduling settings. Manual date editing, Gantt move/resize/undo, milestones, dependency links and cycle checks remain.
-5. Project flattening: **Completed.** Projects are independent: removed parent links, ancestor inheritance, project trees, project collapse state and subtree scopes. Task subtasks remain. Custom-field removal: **Completed.** Removed definitions, global defaults, editors, columns, filters and board grouping. Existing custom-field note properties remain inert frontmatter. Saved views remain an option for later simplification.
+5. Project flattening: **Completed.** Projects are independent: removed parent links, ancestor inheritance, project trees, project collapse state and subtree scopes. Task subtasks remain. Custom-field removal: **Completed.** Removed definitions, global defaults, editors, columns, filters and board grouping. Existing custom-field note properties remain inert frontmatter. Named views and configurable column layouts: **Completed.** Removed named task/project-list views, board column ordering/hiding, table width customization and their persistence. Configurable field visibility and order remain, along with last-used filters and sorting.
 6. API/MCP removal: **Completed.** Removed server, routes, MCP tools, contracts, client, authentication and port settings, API tests and documentation, package publishing trigger and dependencies. Any future agent interface or CLI is deferred.
 
 For each removal, cover controls, types, serialization, API fields, styles, tests and docs. Preserve removed metadata as inert frontmatter where practical. Future steps require a user decision.

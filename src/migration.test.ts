@@ -5,7 +5,7 @@ import { makeFakeApp } from '#test/fakeVault'
 import { migrateBoardCardConfig, migrateProjectLayout, migrateTaskRefs } from './migration'
 import type PMPlugin from './main'
 import { ProjectStore, VaultIndex } from './store'
-import { DEFAULT_SETTINGS, makeDefaultFilter, makeDefaultGroup, makeDefaultSort, type PMSettings } from '@dotpm/core'
+import { DEFAULT_SETTINGS, makeDefaultFilter, makeDefaultSort, type PMSettings } from '@dotpm/core'
 
 const expectDefined = <T>(value: T | null | undefined): T => {
   if (value == null) throw new Error('expected value to be defined')
@@ -79,25 +79,21 @@ describe('migrateProjectLayout', () => {
     expect(app.vault.getAbstractFileByPath('Projects/Roadmap_tasks')).toBeNull()
   })
 
-  it('carries the filters, saved views and collapsed state over to the new path', async () => {
+  it('carries the filters, field selections and collapsed state over to the new path', async () => {
     const { plugin, settings } = await legacyVault([])
     settings.projectFilters['project:Projects/Roadmap.md'] = {
       filter: makeDefaultFilter(),
-      activeSavedViewId: null,
       sort: makeDefaultSort(),
-      group: makeDefaultGroup(),
       fields: {},
       ganttGranularity: 'week',
       nonWorkingDays: {}
     }
-    settings.scopeViews['project:Projects/Roadmap.md'] = []
     settings.collapsedTasks['Projects/Roadmap.md'] = ['t1']
 
     await migrateProjectLayout(plugin)
 
     expect(settings.projectFilters['project:Projects/Roadmap/Roadmap.md']).toBeDefined()
     expect(settings.projectFilters['project:Projects/Roadmap.md']).toBeUndefined()
-    expect(settings.scopeViews['project:Projects/Roadmap/Roadmap.md']).toBeDefined()
     expect(settings.collapsedTasks['Projects/Roadmap/Roadmap.md']).toEqual(['t1'])
   })
 
@@ -255,9 +251,7 @@ describe('migrateBoardCardConfig', () => {
     const { plugin, app, settings } = await vaultWith(['  kanbanShowSubtasks: false'])
     settings.projectFilters['project:Projects/Roadmap/Roadmap.md'] = {
       filter: makeDefaultFilter(),
-      activeSavedViewId: null,
       sort: makeDefaultSort(),
-      group: makeDefaultGroup(),
       fields: { kanban: { visible: ['priority', 'description', 'subtasks'] } },
       ganttGranularity: 'week',
       nonWorkingDays: {}

@@ -4,7 +4,6 @@ import {
   defaultPriorities,
   defaultStatuses,
   hydrateFilter,
-  hydrateGroup,
   hydrateFields,
   hydrateSort,
   legacyBoardFields,
@@ -322,15 +321,17 @@ export default class PMPlugin extends Plugin {
       'notificationsEnabled',
       'notificationLeadDays',
       'autoSchedule',
-      'pullForwardOnEarlyFinish'
+      'pullForwardOnEarlyFinish',
+      'scopeViews',
+      'projectListViews'
     ]) {
       Reflect.deleteProperty(this.settings, key)
     }
+    Reflect.deleteProperty(this.settings.projectList, 'activeViewId')
     this.settings.statuses = defaultStatuses()
     this.settings.priorities = defaultPriorities()
     this.settings.priorityIcons = 'chevrons'
     if (!this.settings.projectFilters) this.settings.projectFilters = {}
-    if (!this.settings.scopeViews) this.settings.scopeViews = {}
     if (!this.settings.collapsedTasks) this.settings.collapsedTasks = {}
     if (!this.settings.excludedFolders) this.settings.excludedFolders = []
 
@@ -343,7 +344,9 @@ export default class PMPlugin extends Plugin {
       'notificationsEnabled',
       'notificationLeadDays',
       'autoSchedule',
-      'pullForwardOnEarlyFinish'
+      'pullForwardOnEarlyFinish',
+      'scopeViews',
+      'projectListViews'
     ].some((key) => saved && key in saved)
     // Filters were keyed by project path before a view could cover several projects.
     for (const key of Object.keys(this.settings.projectFilters)) {
@@ -372,14 +375,19 @@ export default class PMPlugin extends Plugin {
       migrated = true
     }
     for (const entry of Object.values(this.settings.projectFilters)) {
+      for (const key of ['activeSavedViewId', 'group']) {
+        if (key in entry) {
+          Reflect.deleteProperty(entry, key)
+          migrated = true
+        }
+      }
       const normalized = {
         filter: hydrateFilter(entry.filter),
-        group: hydrateGroup(entry.group),
         fields: hydrateFields(entry.fields ?? this.settings.defaultFields)
       }
       if (
         JSON.stringify(normalized) !==
-        JSON.stringify({ filter: entry.filter, group: entry.group, fields: entry.fields })
+        JSON.stringify({ filter: entry.filter, fields: entry.fields })
       ) {
         Object.assign(entry, normalized)
         migrated = true
@@ -396,31 +404,6 @@ export default class PMPlugin extends Plugin {
       }
       if (!entry.nonWorkingDays) {
         entry.nonWorkingDays = {}
-        migrated = true
-      }
-    }
-
-    for (const view of Object.values(this.settings.scopeViews).flat()) {
-      const normalized = {
-        filter: hydrateFilter(view.filter),
-        ...(view.group ? { group: hydrateGroup(view.group) } : {}),
-        ...(view.fields ? { fields: hydrateFields(view.fields) } : {})
-      }
-      if (
-        JSON.stringify(normalized) !==
-        JSON.stringify({
-          filter: view.filter,
-          ...(view.group ? { group: view.group } : {}),
-          ...(view.fields ? { fields: view.fields } : {})
-        })
-      ) {
-        Object.assign(view, normalized)
-        migrated = true
-      }
-      if (!Array.isArray(view.sort)) {
-        view.sort = hydrateSort(view as unknown as Record<string, unknown>)
-        Reflect.deleteProperty(view, 'sortKey')
-        Reflect.deleteProperty(view, 'sortDir')
         migrated = true
       }
     }
@@ -522,14 +505,6 @@ export default class PMPlugin extends Plugin {
         dirty = true
       }
     }
-    const cleanedScopeViews: typeof this.settings.scopeViews = {}
-    for (const [key, views] of Object.entries(this.settings.scopeViews)) {
-      if (this.scopeKeyResolves(key)) {
-        cleanedScopeViews[key] = views
-      } else {
-        dirty = true
-      }
-    }
     const cleanedCollapsed: typeof this.settings.collapsedTasks = {}
     for (const [path, ids] of Object.entries(this.settings.collapsedTasks)) {
       if (!this.app.vault.getAbstractFileByPath(path)) {
@@ -549,7 +524,6 @@ export default class PMPlugin extends Plugin {
     }
     if (dirty) {
       this.settings.projectFilters = cleaned
-      this.settings.scopeViews = cleanedScopeViews
       this.settings.collapsedTasks = cleanedCollapsed
       await this.saveSettings()
     }

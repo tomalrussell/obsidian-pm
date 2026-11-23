@@ -6,7 +6,7 @@ export interface VisibilityRow {
   id: string
   label: string
   hidden: boolean
-  /** Faint text after the label: a task count, a width. */
+  /** Faint text after the label: a task count. */
   detail?: string
   /** Draws the row's leading glyph, when it has one. */
   glyph?: (el: HTMLElement) => void
@@ -24,11 +24,9 @@ export interface VisibilityListProps {
   onToggle: (id: string) => void
   /** The ids of the unlocked rows in their new order. Rows can't be dragged without it. */
   onReorder?: (ids: string[]) => void
-  /** Double-clicking a detail edits it as a number; the handler gets what was typed. */
-  onDetailEdit?: (id: string, value: number) => void
 }
 
-/** Rows of grip, glyph, label, detail and eye: the list the Group and Fields popovers share. */
+/** Rows of grip, glyph, label, detail and eye: the list used by field selectors. */
 export function renderVisibilityList(parent: HTMLElement, props: VisibilityListProps): HTMLElement {
   const list = parent.createDiv('pm-vis-list')
   const movable: { el: HTMLElement; id: string }[] = []
@@ -43,7 +41,7 @@ export function renderVisibilityList(parent: HTMLElement, props: VisibilityListP
     if (draggable) setIcon(grip, 'grip-vertical')
     if (item.glyph) item.glyph(row.createSpan('pm-vis-glyph'))
     row.createSpan({ cls: 'pm-vis-label', text: item.label })
-    if (item.detail !== undefined) renderDetail(row, item, props)
+    if (item.detail !== undefined) row.createSpan({ cls: 'pm-vis-detail', text: item.detail })
 
     if (item.locked) {
       const lock = row.createSpan('pm-vis-lock')
@@ -62,33 +60,4 @@ export function renderVisibilityList(parent: HTMLElement, props: VisibilityListP
   const { onReorder } = props
   if (onReorder) makeReorderable(movable, onReorder)
   return list
-}
-
-function renderDetail(row: HTMLElement, item: VisibilityRow, props: VisibilityListProps): void {
-  const detail = row.createSpan({ cls: 'pm-vis-detail', text: item.detail })
-  const onEdit = props.onDetailEdit
-  if (!onEdit || item.hidden) return
-  detail.addClass('is-editable')
-  detail.addEventListener('dblclick', () => {
-    const input = row.createEl('input', { cls: 'pm-vis-detail-input', type: 'number', value: item.detail ?? '' })
-    detail.replaceWith(input)
-    input.focus()
-    input.select()
-    let done = false
-    const commit = (save: boolean): void => {
-      if (done) return
-      done = true
-      const value = Number(input.value)
-      if (save && Number.isFinite(value) && value > 0) onEdit(item.id, Math.round(value))
-      else input.replaceWith(detail)
-    }
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') commit(true)
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        commit(false)
-      }
-    })
-    input.addEventListener('blur', () => commit(true))
-  })
 }

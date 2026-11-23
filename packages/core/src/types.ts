@@ -54,7 +54,6 @@ export interface Project {
   createdAt: string
   updatedAt: string
   filePath: string // resolved vault path
-  savedViews: SavedView[]
   /** Kept out of lists, pickers and sweeps. */
   archived?: boolean
   /** Per-project overrides for the global settings. Absent fields inherit. */
@@ -64,9 +63,7 @@ export interface Project {
 }
 
 /** Tasks are excluded: they change through the task mutators, never a whole-project write. */
-export type ProjectPatch = Partial<
-  Pick<Project, 'title' | 'description' | 'color' | 'icon' | 'savedViews' | 'config' | 'archived'>
->
+export type ProjectPatch = Partial<Pick<Project, 'title' | 'description' | 'color' | 'icon' | 'config' | 'archived'>>
 
 export const FILTER_OPS = [
   'any',
@@ -100,22 +97,9 @@ export interface TaskQuery {
   text: string
 }
 
-/** How one board column choice is arranged: the column ids in their order, and the ones hidden. */
-export interface GroupColumns {
-  order?: string[]
-  hidden?: string[]
-}
-
-/** Status-column visibility and ordering for a Kanban board. */
-export interface GroupState {
-  hideEmpty?: boolean
-  columns?: GroupColumns
-}
-
-/** Which fields one presentation shows, in order, and the widths in px the table's columns were dragged to. */
+/** Which fields one presentation shows, in order. */
 export interface FieldList {
   visible: string[]
-  widths?: Record<string, number>
 }
 
 /** Per view mode. A mode left out shows its default fields. */
@@ -152,19 +136,6 @@ export interface ProjectListState {
   group: ProjectGroupBy
   /** The columns shown after the title, in order. Left out while every column shows in the default order. */
   fields?: ProjectListField[]
-  activeViewId: string | null
-}
-
-export interface ProjectListView {
-  id: string
-  name: string
-  filter: ProjectListFilter
-  sort: ProjectSortRule[]
-  group: ProjectGroupBy
-  /** Left out by a view saved before columns could be chosen, which then keeps whatever shows. */
-  fields?: ProjectListField[]
-  showArchived: boolean
-  isDefault?: boolean
 }
 
 /** Days a timeline leaves out of its axis. Holidays are the dates in `PMSettings.holidays`. */
@@ -173,30 +144,9 @@ export interface NonWorkingDays {
   holidays?: boolean
 }
 
-export interface SavedView {
-  id: string
-  name: string
-  filter: FilterState
-  /** Empty keeps the order the tasks are stored in. */
-  sort: SortRule[]
-  group?: GroupState
-  fields?: ViewFields
-  viewMode?: ViewMode
-  ganttGranularity?: GanttGranularity
-  nonWorkingDays?: NonWorkingDays
-  /** The view a scope opens with. At most one per scope. */
-  isDefault?: boolean
-}
-
-/**
- * What a scope was last showing. While `activeSavedViewId` is set and these differ from
- * that view, the view has unsaved changes.
- */
 export interface PerProjectFilter {
   filter: FilterState
-  activeSavedViewId: string | null
   sort: SortRule[]
-  group: GroupState
   fields: ViewFields
   ganttGranularity: GanttGranularity
   nonWorkingDays: NonWorkingDays
@@ -283,14 +233,11 @@ export interface PMSettings {
   projectFilters: Record<string, PerProjectFilter>
   /** The fields a scope shows before it has an entry in `projectFilters`. */
   defaultFields: ViewFields
-  /** Saved views for a scope covering several projects, which has no file to keep them in. */
-  scopeViews: Record<string, SavedView[]>
   /** Collapsed task ids per project path. Lives here so a toggle doesn't rewrite task files. */
   collapsedTasks: Record<string, string[]>
   /** Whether the project list shows archived projects. */
   showArchivedProjects: boolean
   projectList: ProjectListState
-  projectListViews: ProjectListView[]
   /** Open the release notes in a tab after the plugin updates. */
   showReleaseNotes: boolean
   /** The plugin version that last ran, so an update can be told apart from a restart. */
@@ -343,11 +290,9 @@ export const DEFAULT_SETTINGS: PMSettings = {
   projectSurface: 'overview',
   projectFilters: {},
   defaultFields: {},
-  scopeViews: {},
   collapsedTasks: {},
   showArchivedProjects: false,
   projectList: makeDefaultProjectList(),
-  projectListViews: [],
   showReleaseNotes: true,
   lastSeenVersion: ''
 }
@@ -395,17 +340,12 @@ export function makeProject(title: string, filePath: string): Project {
     createdAt: now,
     updatedAt: now,
     filePath,
-    savedViews: [],
     taskIndex: new Map()
   }
 }
 
 export function makeDefaultProjectList(): ProjectListState {
-  return { filter: {}, sort: [], group: 'none', activeViewId: null }
-}
-
-export function makeDefaultGroup(): GroupState {
-  return {}
+  return { filter: {}, sort: [], group: 'none' }
 }
 
 export function makeDefaultSort(): SortRule[] {

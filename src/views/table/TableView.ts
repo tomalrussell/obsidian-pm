@@ -28,8 +28,7 @@ export class TableView implements SubView {
     sort: SortRule[],
     private onSortChange: () => void,
     private keyScope: Scope,
-    private fields: ViewFields,
-    private onFieldsChange: () => void
+    private fields: ViewFields
   ) {
     this.state = {
       sort,
@@ -201,7 +200,6 @@ export class TableView implements SubView {
       lineBorders: config.lineBorders,
       collapsedIds: collapsedTaskIds(this.plugin.settings, this.scope.projects),
       columns: shownFields(this.fields, 'table', this.scope.fieldCatalog()),
-      fields: this.fields,
       state: this.state,
       onRefresh: this.onRefresh,
       onSelectionChange: () => {
@@ -209,8 +207,7 @@ export class TableView implements SubView {
         this.updateBulkBar()
       },
       onBulkDelete: safeAsync(() => this.handleBulkAction({ type: 'delete' })),
-      onSortChange: this.onSortChange,
-      onFieldsChange: this.onFieldsChange
+      onSortChange: this.onSortChange
     }
   }
 }

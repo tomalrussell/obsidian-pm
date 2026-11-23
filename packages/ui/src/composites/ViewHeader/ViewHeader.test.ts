@@ -5,7 +5,6 @@ import {
   DEFAULT_STATUSES,
   makeDefaultFilter,
   makeTask,
-  type GroupState,
   type SortRule,
   type FilterState,
   type NonWorkingDays,
@@ -21,13 +20,10 @@ import { renderBreadcrumb } from './Breadcrumb'
 import { FilterBar } from './FilterBar'
 import { openFieldsPopover } from './fieldsPopover'
 import { openFilterPopover, renderFilterPanel, type FilterSetup } from './filterPopover'
-import { openGroupPopover } from './groupPopover'
 import { openNonWorkingDaysPopover } from './nonWorkingDaysPopover'
 import { openProjectFieldsPopover } from './projectFieldsPopover'
 import { openProjectFilterPopover, renderProjectFilterPanel } from './projectFilterPopover'
 import { openProjectSwitcher, type ProjectSwitcherProps, type SwitcherProject } from './projectSwitcher'
-import { openSavedViewsPopover, type SavedViewsProps } from './savedViewsPopover'
-import type { BoardColumn } from '../../views/boardColumns'
 import { openSearchPopover, SearchBox } from './SearchBox'
 import { openSortPopover, type SortField } from './sortPopover'
 import type { TuneItem } from './tunePopover'
@@ -273,126 +269,6 @@ describe('FilterBar', () => {
   })
 })
 
-describe('saved views popover', () => {
-  const views = [
-    { id: 'v1', name: 'Mine', modeIcon: 'table' },
-    { id: 'v2', name: 'Roadmap', isDefault: true }
-  ]
-  const props = (overrides: Partial<SavedViewsProps> = {}): SavedViewsProps => ({
-    views,
-    activeId: 'v2',
-    changes: [],
-    canSave: true,
-    storageNote: 'Kept in the note of Alpha.',
-    builtInName: 'All projects',
-    onSelect: vi.fn<(id: string | null) => void>(),
-    onSave: vi.fn<(name: string, isDefault: boolean) => Promise<void>>(async () => {}),
-    onUpdate: vi.fn<(id: string) => Promise<void>>(async () => {}),
-    onRevert: vi.fn<() => void>(),
-    onRename: vi.fn<(id: string, name: string) => Promise<void>>(async () => {}),
-    onDelete: vi.fn<(id: string) => Promise<void>>(async () => {}),
-    onReorder: vi.fn<(ids: string[]) => Promise<void>>(async () => {}),
-    onSetDefault: vi.fn<(id: string | null) => Promise<void>>(async () => {}),
-    ...overrides
-  })
-  const rows = (): HTMLElement[] => document.body.findAll('.pm-saved-view-row')
-  const action = (row: HTMLElement, label: string): HTMLButtonElement | null =>
-    row.querySelector<HTMLButtonElement>(`.pm-saved-view-action[aria-label="${label}"]`)
-
-  it('lists the built-in view first, marks the active one and stars the default', () => {
-    openSavedViewsPopover(document.body.createEl('button'), props())
-    const mains = document.body.findAll('.pm-saved-view-main')
-    expect(mains.map((row) => row.find('.pm-pop-item-label')?.textContent)).toEqual(['All projects', 'Mine', 'Roadmap'])
-    expect(mains.map((row) => !row.find('.pm-pop-check')?.hasClass('pm-pop-check--hidden'))).toEqual([
-      false,
-      false,
-      true
-    ])
-    expect(action(rows()[2], 'Opens with this view')?.hasClass('is-default')).toBe(true)
-    expect(document.body.find('.pm-saved-views-dirty')).toBeNull()
-  })
-
-  it('offers update, save as new and revert while the active view has unsaved changes', async () => {
-    const p = props({ changes: ['Filter', 'Sort'] })
-    openSavedViewsPopover(document.body.createEl('button'), p)
-    expect(document.body.find('.pm-saved-views-dirty-note')?.textContent).toBe('Unsaved changes: Filter, Sort')
-    document.body.find('.pm-saved-views-dirty-actions .mod-cta')?.click()
-    await vi.waitFor(() => expect(p.onUpdate).toHaveBeenCalledWith('v2'))
-
-    openSavedViewsPopover(document.body.createEl('button'), p)
-    document.body
-      .querySelector<HTMLButtonElement>('.pm-saved-views-dirty-actions [aria-label="Revert changes"]')
-      ?.click()
-    expect(p.onRevert).toHaveBeenCalled()
-  })
-
-  it('selects, stars and deletes through its callbacks', async () => {
-    const p = props()
-    openSavedViewsPopover(document.body.createEl('button'), p)
-    action(rows()[1], 'Delete view')?.click()
-    await vi.waitFor(() => expect(p.onDelete).toHaveBeenCalledWith('v1'))
-
-    openSavedViewsPopover(document.body.createEl('button'), p)
-    action(rows()[1], 'Open with this view')?.click()
-    await vi.waitFor(() => expect(p.onSetDefault).toHaveBeenCalledWith('v1'))
-
-    openSavedViewsPopover(document.body.createEl('button'), p)
-    action(rows()[2], 'Opens with this view')?.click()
-    await vi.waitFor(() => expect(p.onSetDefault).toHaveBeenCalledWith(null))
-
-    openSavedViewsPopover(document.body.createEl('button'), p)
-    document.body.findAll('.pm-saved-view-main')[0].click()
-    expect(p.onSelect).toHaveBeenCalledWith(null)
-  })
-
-  it('renames a view in place', async () => {
-    const p = props()
-    openSavedViewsPopover(document.body.createEl('button'), p)
-    action(rows()[1], 'Rename view')?.click()
-    const input = document.body.querySelector<HTMLInputElement>('.pm-saved-view-rename')
-    if (!input) throw new Error('no rename field')
-    expect(input.value).toBe('Mine')
-    input.value = 'Only mine'
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-    await vi.waitFor(() => expect(p.onRename).toHaveBeenCalledWith('v1', 'Only mine'))
-  })
-
-  it('reorders by dragging one view onto another', async () => {
-    const p = props()
-    openSavedViewsPopover(document.body.createEl('button'), p)
-    rows()[2].dispatchEvent(new Event('dragstart'))
-    rows()[1].dispatchEvent(new Event('drop'))
-    await vi.waitFor(() => expect(p.onReorder).toHaveBeenCalledWith(['v2', 'v1']))
-  })
-
-  it('moves a view down onto the one below it', async () => {
-    const p = props()
-    openSavedViewsPopover(document.body.createEl('button'), p)
-    rows()[1].dispatchEvent(new Event('dragstart'))
-    rows()[2].dispatchEvent(new Event('drop'))
-    await vi.waitFor(() => expect(p.onReorder).toHaveBeenCalledWith(['v2', 'v1']))
-  })
-
-  it('saves the current state under the typed name, as the default when asked', async () => {
-    const p = props()
-    openSavedViewsPopover(document.body.createEl('button'), p)
-    document.body.querySelector<HTMLButtonElement>('.pm-saved-views-foot button')?.click()
-    expect(document.body.find('.pm-saved-views-storage')?.textContent).toBe('Kept in the note of Alpha.')
-    const input = document.body.querySelector<HTMLInputElement>('.pm-saved-views-foot input.pm-pop-field')
-    const star = document.body.querySelector<HTMLInputElement>('.pm-saved-views-check input')
-    if (!input || !star) throw new Error('no save form')
-    input.value = 'Urgent only'
-    star.checked = true
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-    await vi.waitFor(() => expect(p.onSave).toHaveBeenCalledWith('Urgent only', true))
-  })
-
-  it('refuses to save while nothing differs from the defaults', () => {
-    openSavedViewsPopover(document.body.createEl('button'), props({ canSave: false }))
-    expect(document.body.querySelector<HTMLButtonElement>('.pm-saved-views-foot button')?.disabled).toBe(true)
-  })
-})
-
 describe('sort popover', () => {
   const fields: SortField[] = [
     { id: 'title', label: 'Task' },
@@ -476,49 +352,6 @@ describe('sort popover', () => {
   })
 })
 
-describe('status columns popover', () => {
-  const columns = (group: GroupState): BoardColumn[] =>
-    ['capture', 'in-progress', 'done'].map((id, index) => ({
-      id,
-      label: id,
-      tasks: index === 2 ? [] : [makeTask({ id })],
-      hidden: group.columns?.hidden?.includes(id) ?? false
-    }))
-  const open = (group: GroupState) => {
-    const onChange = vi.fn<() => void>()
-    openGroupPopover(document.body.createEl('button'), {
-      group,
-      columns: () => columns(group),
-      onChange
-    })
-    return onChange
-  }
-
-  it('hides empty columns and toggles column visibility without offering a grouping field', () => {
-    const group: GroupState = {}
-    const onChange = open(group)
-    const row = document.body.findAll('.pm-vis-row')
-    expect(row.map((r) => r.find('.pm-vis-detail')?.textContent)).toEqual(['1', '1', 'empty'])
-    row[1].querySelector<HTMLButtonElement>('.pm-vis-eye')?.click()
-    expect(group.columns?.hidden).toEqual(['in-progress'])
-    document.body.querySelector<HTMLInputElement>('.pm-group-pop input[type=checkbox]')?.click()
-    expect(group.hideEmpty).toBe(true)
-    expect(document.body.querySelector('select.pm-group-field')).toBeNull()
-    expect(onChange).toHaveBeenCalledTimes(2)
-  })
-
-  it('shows every hidden column again and reorders by dragging', () => {
-    const group: GroupState = { columns: { hidden: ['capture'] } }
-    open(group)
-    document.body.querySelector<HTMLButtonElement>('.pm-group-pop .pm-pop-head-action')?.click()
-    expect(group.columns?.hidden).toBeUndefined()
-    const rows = document.body.findAll('.pm-vis-row')
-    rows[2].dispatchEvent(new Event('dragstart'))
-    rows[0].dispatchEvent(new Event('drop'))
-    expect(group.columns?.order).toEqual(['done', 'capture', 'in-progress'])
-  })
-})
-
 describe('fields popover', () => {
   const catalog = { multi: false }
   const open = (fields: ViewFields, mode: 'table' | 'kanban' = 'table') => {
@@ -529,13 +362,12 @@ describe('fields popover', () => {
   const labels = (): (string | undefined)[] =>
     document.body.findAll('.pm-fields-body > .pm-vis-list:first-child .pm-vis-label').map((el) => el.textContent ?? '')
 
-  it('lists the table columns with their widths, the title locked', () => {
+  it('lists configurable table fields with the title locked', () => {
     open({})
     expect(labels()).toEqual(['Task', 'Status', 'Priority', 'Due', 'Progress'])
     const first = document.body.find('.pm-vis-row')
     expect(first?.find('.pm-vis-lock')).not.toBeNull()
-    expect(first?.find('.pm-vis-detail')?.textContent).toBe('fill')
-    expect(document.body.findAll('.pm-vis-detail')[1].textContent).toBe('130')
+    expect(document.body.find('.pm-vis-detail')).toBeNull()
   })
 
   it('hides a field by its eye and shows it again in its place', () => {
@@ -558,17 +390,15 @@ describe('fields popover', () => {
     expect(fields.kanban).toBeUndefined()
   })
 
-  it('reorders by dragging, hides all and resets widths', () => {
-    const fields: ViewFields = { table: { visible: ['title', 'status', 'due'], widths: { due: 70 } } }
+  it('reorders fields by dragging and hides all', () => {
+    const fields: ViewFields = { table: { visible: ['title', 'status', 'due'] } }
     open(fields)
     const rows = document.body.findAll('.pm-vis-row')
     rows[2].dispatchEvent(new Event('dragstart'))
     rows[1].dispatchEvent(new Event('drop'))
     expect(fields.table?.visible).toEqual(['due', 'status'])
-    const [reset, hideAll] = document.body.findAll('.pm-fields-foot button') as HTMLButtonElement[]
-    reset.click()
-    expect(fields.table?.widths).toBeUndefined()
-    hideAll.click()
+    const hideAll = document.body.querySelector<HTMLButtonElement>('.pm-fields-foot button')
+    hideAll?.click()
     expect(fields.table?.visible).toEqual([])
     expect(labels()).toEqual(['Task'])
   })

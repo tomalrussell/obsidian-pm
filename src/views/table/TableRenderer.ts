@@ -9,10 +9,8 @@ import {
   type PriorityIconSet,
   type StatusConfig,
   type FlatTask,
-  type ViewFields,
   SORT_KEYS,
   columnWidth,
-  tidyFields,
   viewFieldLabel,
   flattenTasks,
   findTaskById,
@@ -63,22 +61,14 @@ export interface TableContext {
   showSubtreeConnections: boolean
   lineBorders: LineBorders
   collapsedIds: ReadonlySet<string>
-  /** The field ids the table shows, in order, and the view's fields their widths come from. */
+  /** The visible field ids, in display order. */
   columns: string[]
-  fields: ViewFields
   state: TableState
   onRefresh: () => Promise<void>
   onSelectionChange: () => void
   onBulkDelete: () => void
   onSortChange: () => void
-  /** A column was resized, or dragged narrow enough to hide. */
-  onFieldsChange: () => void
 }
-
-/** A column dragged narrower than this hides instead. */
-const HIDE_BELOW = 24
-/** Matches the title cell's `min-width` in table.css. */
-const TITLE_MIN_WIDTH = 180
 
 export function renderTable(ctx: TableContext): void {
   const wrapper = ctx.container.createDiv('pm-table-wrapper')
@@ -133,10 +123,9 @@ export function renderTable(ctx: TableContext): void {
   for (const id of ctx.columns) {
     const label = viewFieldLabel(id)
     const th = hrow.createEl('th')
-    const width = columnWidth(ctx.fields, id)
-    const titleMin = id === 'title' ? ctx.fields.table?.widths?.title : undefined
+    const width = columnWidth(id)
     if (width !== undefined) th.setCssStyles({ width: `${width}px`, minWidth: `${width}px` })
-    else th.setCssStyles({ width: 'auto', minWidth: titleMin === undefined ? '' : `${titleMin}px` })
+    else th.setCssStyles({ width: 'auto' })
     const key = SORT_KEYS.find((k) => k === id)
     if (key) {
       th.addClass('pm-table-th-sortable')
@@ -162,7 +151,6 @@ export function renderTable(ctx: TableContext): void {
     } else {
       th.setText(label)
     }
-    attachColumnResize(th, id, ctx)
   }
   paintSortIndicators()
 
@@ -185,60 +173,6 @@ export function renderTable(ctx: TableContext): void {
     ctx.state.renderWindow?.()
   })
   ctx.state.resizeObserver.observe(wrapper)
-}
-
-/**
- * Dragging a header's right edge sets that column's width in the view; letting go below
- * `HIDE_BELOW` hides the column instead. The title's width is only a minimum, since it
- * fills whatever the other columns leave, and it never hides.
- */
-function attachColumnResize(th: HTMLElement, id: string, ctx: TableContext): void {
-  th.addClass('pm-table-th-resizable')
-  const handle = th.createDiv({ cls: 'pm-table-resize', attr: { 'aria-label': `Resize column` } })
-  handle.addEventListener('click', (e) => e.stopPropagation())
-  handle.addEventListener('pointerdown', (down: PointerEvent) => {
-    down.preventDefault()
-    down.stopPropagation()
-    handle.setPointerCapture(down.pointerId)
-    const table = th.closest('table')
-    const headers = Array.from(th.parentElement?.children ?? []).filter((cell) => cell.instanceOf(HTMLElement))
-    const startStyles = headers.map((cell) => ({ width: cell.style.width, minWidth: cell.style.minWidth }))
-    const startTableWidth = table?.offsetWidth ?? 0
-    for (const cell of headers) cell.setCssStyles({ width: `${cell.offsetWidth}px`, minWidth: `${cell.offsetWidth}px` })
-    const startWidth = th.offsetWidth
-    const isTitle = id === 'title'
-    let width = startWidth
-    th.addClass('is-resizing')
-    const move = (e: PointerEvent): void => {
-      width = Math.max(isTitle ? TITLE_MIN_WIDTH : 0, Math.round(startWidth + e.clientX - down.clientX))
-      th.setCssStyles({ width: `${width}px`, minWidth: `${width}px` })
-      table?.setCssStyles({ width: `${startTableWidth + width - startWidth}px` })
-      th.toggleClass('is-hiding', width < HIDE_BELOW)
-    }
-    const up = (): void => {
-      handle.removeEventListener('pointermove', move)
-      handle.removeEventListener('pointerup', up)
-      handle.removeEventListener('pointercancel', up)
-      th.removeClass('is-resizing', 'is-hiding')
-      headers.forEach((cell, i) => cell.setCssStyles(startStyles[i]))
-      table?.setCssStyles({ width: '' })
-      if (width === startWidth) return
-      const list = (ctx.fields.table ??= { visible: [...ctx.columns] })
-      if (!isTitle && width < HIDE_BELOW) {
-        list.visible = ctx.columns.filter((column) => column !== id)
-        if (list.widths) Reflect.deleteProperty(list.widths, id)
-      } else if (isTitle && width === TITLE_MIN_WIDTH) {
-        if (list.widths) Reflect.deleteProperty(list.widths, id)
-      } else {
-        list.widths = { ...list.widths, [id]: width }
-      }
-      tidyFields(ctx.fields, ctx.scope.fieldCatalog())
-      ctx.onFieldsChange()
-    }
-    handle.addEventListener('pointermove', move)
-    handle.addEventListener('pointerup', up)
-    handle.addEventListener('pointercancel', up)
-  })
 }
 
 export function refreshTableBody(ctx: TableContext): void {

@@ -4,7 +4,7 @@ import { formatBadgeText, isIconName } from '#icons'
 import { safeAsync } from '#dom'
 import { KanbanCard } from './KanbanCard'
 
-/** What a column stands for: a status, a priority, a tag... */
+/** The fixed status a column represents. */
 export interface KanbanColumnHead {
   id: string
   label: string

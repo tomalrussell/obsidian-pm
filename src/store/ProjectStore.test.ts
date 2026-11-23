@@ -187,17 +187,17 @@ describe('ProjectStore project metadata patch', () => {
     const { store, app } = newStore()
     const project = await store.createProject('Patch', 'Projects')
     await addNamed(store, project, 'Card')
-    project.savedViews = [{ id: 'v1', name: 'Mine', filter: makeDefaultFilter(), sort: makeDefaultSort() }]
+    project.description = 'Project notes'
     await store.saveProject(project)
 
     await store.updateProject(project, { title: 'Renamed', color: '#123456' })
 
     expect(project.title).toBe('Renamed')
-    expect(project.savedViews).toHaveLength(1)
+    expect(project.description).toBe('Project notes')
     const content = await app.vault.cachedRead(fileAt(app, project.filePath))
     expect(content).toContain('title: "Renamed"')
     expect(content).toContain('color: "#123456"')
-    expect(content).toContain('Mine')
+    expect(content).toContain('Project notes')
   })
 })
 

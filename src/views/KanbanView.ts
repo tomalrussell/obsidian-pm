@@ -3,7 +3,6 @@ import type PMPlugin from '#main'
 import {
   type Task,
   type FilterContext,
-  type GroupState,
   type SortRule,
   type TaskQuery,
   type ResolvedProjectConfig,
@@ -19,7 +18,6 @@ import {
   safeAsync,
   boardCandidates,
   boardColumns,
-  ChipButton,
   descriptionPreview,
   compareTasks,
   KanbanColumn,
@@ -45,10 +43,7 @@ export class KanbanView implements SubView {
     private onRefresh: () => Promise<void>,
     private query: TaskQuery,
     private sort: SortRule[],
-    private group: GroupState,
-    private fields: ViewFields,
-    /** Opens the Columns popover from the strip that stands in for hidden columns. */
-    private onShowHidden: (anchor: HTMLElement) => void
+    private fields: ViewFields
   ) {}
 
   render(): void {
@@ -66,8 +61,8 @@ export class KanbanView implements SubView {
     this.container.addClass('pm-kanban-view')
 
     const board = this.container.createDiv('pm-kanban-board')
-    const columns = boardColumns(this.group, this.visibleTasks())
-    for (const column of columns.filter((c) => !c.hidden)) {
+    const columns = boardColumns(this.visibleTasks())
+    for (const column of columns) {
       new KanbanColumn(board, {
         column,
         fields: this.cardFields,
@@ -84,16 +79,6 @@ export class KanbanView implements SubView {
       })
     }
 
-    const hidden = columns.filter((c) => c.hidden).length
-    if (hidden) {
-      const rail = new ChipButton(board)
-        .setVariant('flat')
-        .setIcon('eye-off')
-        .setLabel(hidden === 1 ? `${hidden} hidden` : `${hidden} hidden`)
-        .setAriaLabel(`Show hidden columns`)
-        .onClick(() => this.onShowHidden(rail.el))
-      rail.el.addClass('pm-kanban-hidden-rail')
-    }
   }
 
   /** Descriptions load lazily from the note body, so previews fill in on a second render. */

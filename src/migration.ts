@@ -5,7 +5,6 @@ import { isRefLink } from './store/refs'
 import {
   legacyBoardFields,
   makeDefaultFilter,
-  makeDefaultGroup,
   makeDefaultSort,
   parseFrontmatter,
   isOldFormat
@@ -49,9 +48,7 @@ export async function migrateBoardCardConfig(plugin: PMPlugin): Promise<void> {
     const key = `project:${path}`
     const entry = (plugin.settings.projectFilters[key] ??= {
       filter: makeDefaultFilter(),
-      activeSavedViewId: null,
       sort: makeDefaultSort(),
-      group: makeDefaultGroup(),
       fields: structuredClone(plugin.settings.defaultFields),
       ganttGranularity: plugin.settings.ganttGranularity,
       nonWorkingDays: {}
@@ -169,9 +166,9 @@ function movedPath(path: string, moves: ProjectMove[]): string | null {
   return null
 }
 
-/** Per-project filters, saved views and collapsed state are keyed by the project's path. */
+/** Per-project filters, field selections and collapsed state are keyed by the project's path. */
 function remapProjectSettings(plugin: PMPlugin, moves: ProjectMove[]): void {
-  const { projectFilters, scopeViews, collapsedTasks } = plugin.settings
+  const { projectFilters, collapsedTasks } = plugin.settings
 
   for (const { from, to } of moves) {
     const oldKey = `project:${from}`
@@ -181,17 +178,7 @@ function remapProjectSettings(plugin: PMPlugin, moves: ProjectMove[]): void {
       projectFilters[newKey] = filter
       Reflect.deleteProperty(projectFilters, oldKey)
     }
-    const views = scopeViews[oldKey]
-    if (views) {
-      scopeViews[newKey] = views
-      Reflect.deleteProperty(scopeViews, oldKey)
-    }
 
-    const collapsed = collapsedTasks[from]
-    if (collapsed) {
-      collapsedTasks[to] = collapsed
-      Reflect.deleteProperty(collapsedTasks, from)
-    }
   }
 }
 

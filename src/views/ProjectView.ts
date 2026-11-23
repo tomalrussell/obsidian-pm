@@ -149,9 +149,7 @@ export class ProjectView extends ItemView {
   currentView: ViewMode
   /** The saved filter plus the search text, which lives only as long as this view. */
   query: TaskQuery = { filter: makeDefaultFilter(), text: '' }
-  activeSavedViewId: string | null = null
   sort: SortRule[] = makeDefaultSort()
-  group: GroupState = makeDefaultGroup()
   fields: ViewFields = {}
   nonWorkingDays: NonWorkingDays = {}
   /** Percent of the scale's day width. Kept per device, not in the view. */
@@ -165,10 +163,9 @@ export class ProjectView extends ItemView {
   private filterBar: FilterBar | null = null
   private searchBox: SearchBox | null = null
   private queryBarOpen = false
-  private viewSlot: SavedViewSlot | null = null
+  private countEl: HTMLElement | null = null
   private filterButton: ChipButton | null = null
   private sortButton: ChipButton | null = null
-  private groupButton: ChipButton | null = null
   private fieldsButton: ChipButton | null = null
   private zoomStepper: Stepper | null = null
   private daysButton: ChipButton | null = null
@@ -192,11 +189,6 @@ export class ProjectView extends ItemView {
     this.navigation = false
     this.keyScope = new Scope(this.app.scope)
     this.scope = this.keyScope
-    this.keyScope.register(['Mod'], 's', () => {
-      if (!this.viewChanges().length) return true
-      safeAsync(() => this.updateActiveView())()
-      return false
-    })
   }
 
   getViewType(): string {
@@ -359,99 +351,28 @@ export class ProjectView extends ItemView {
     const saved = this.projectScope ? this.plugin.settings.projectFilters[this.projectScope.key] : undefined
     if (saved) {
       this.query.filter = saved.filter
-      this.activeSavedViewId = saved.activeSavedViewId
       this.sort = saved.sort
-      this.group = saved.group
       this.fields = saved.fields
       this.granularity = saved.ganttGranularity
       this.nonWorkingDays = saved.nonWorkingDays
       return
     }
     this.query.filter = makeDefaultFilter()
-    this.activeSavedViewId = null
     this.sort = makeDefaultSort()
-    this.group = makeDefaultGroup()
     this.fields = structuredClone(this.plugin.settings.defaultFields)
     this.nonWorkingDays = {}
     this.granularity = this.plugin.settings.ganttGranularity
-    // A scope seen for the first time opens with its starred view, and keeps it from then on.
-    const starred = this.savedViews().find((view) => view.isDefault)
-    if (starred) {
-      this.applySavedView(starred)
-      void this.persistFilter()
-    }
-  }
-
-  private applySavedView(view: SavedView): void {
-    this.query.filter = structuredClone(view.filter)
-    this.activeSavedViewId = view.id
-    this.sort = structuredClone(view.sort)
-    if (view.group) this.group = structuredClone(view.group)
-    if (view.fields) this.fields = structuredClone(view.fields)
-    if (view.ganttGranularity) this.granularity = view.ganttGranularity
-    if (view.nonWorkingDays) this.nonWorkingDays = structuredClone(view.nonWorkingDays)
-    if (view.viewMode) this.currentView = view.viewMode
-  }
-
-  private activeView(): SavedView | undefined {
-    return this.savedViews().find((view) => view.id === this.activeSavedViewId)
-  }
-
-  /** What differs from the active saved view, as the reader would name it. */
-  private viewChanges(): string[] {
-    const active = this.activeView()
-    if (!active) return []
-    const labels = {
-      filter: `Filter`,
-      sort: `Sort`,
-      group: `Columns`,
-      fields: `Fields`,
-      mode: `View mode`,
-      scale: `Timeline scale`,
-      days: `Non-working days`
-    }
-    const state = {
-      filter: this.query.filter,
-      sort: this.sort,
-      group: this.group,
-      fields: this.fields,
-      mode: this.currentView,
-      granularity: this.granularity,
-      nonWorkingDays: this.nonWorkingDays
-    }
-    return viewDifferences(active, state).map((part) => labels[part])
   }
 
   private async persistFilter(): Promise<void> {
     if (!this.projectScope) return
     this.plugin.settings.projectFilters[this.projectScope.key] = {
       filter: this.query.filter,
-      activeSavedViewId: this.activeSavedViewId,
       sort: this.sort,
-      group: this.group,
       fields: this.fields,
       ganttGranularity: this.granularity,
       nonWorkingDays: this.nonWorkingDays
     }
-    await this.plugin.saveSettings()
-  }
-
-  /** One project owns its saved views; a group of them has no file to keep them in. */
-  private savedViews(): SavedView[] {
-    if (!this.projectScope) return []
-    if (this.projectScope.spec.kind === 'project') return this.projectScope.primary?.savedViews ?? []
-    return this.plugin.settings.scopeViews[this.projectScope.key] ?? []
-  }
-
-  private async persistSavedViews(views: SavedView[]): Promise<void> {
-    if (!this.projectScope) return
-    const primary = this.projectScope.primary
-    if (this.projectScope.spec.kind === 'project' && primary) {
-      primary.savedViews = views
-      await this.plugin.store.saveProject(primary)
-      return
-    }
-    this.plugin.settings.scopeViews[this.projectScope.key] = views
     await this.plugin.saveSettings()
   }
 
@@ -495,28 +416,14 @@ export class ProjectView extends ItemView {
 
   /** Brings the parts that follow the filter, sort and task counts up to date without rebuilding them. */
   private syncHeader(): void {
-    const active = this.activeView()
     const counts = this.taskCounts()
-    this.viewSlot?.sync({
-      name: active?.name ?? `All tasks`,
-      saved: !!active,
-      dirty: this.viewChanges().length > 0,
-      count: this.countLabel(counts)
-    })
+    this.countEl?.setText(this.countLabel(counts))
     this.filterBar?.setSummary(`${counts.shown} of ${counts.total} shown`)
     this.syncFilterEmpty(counts)
     const filters = countActiveFilters(this.query.filter)
     this.filterButton?.setBadge(filters).setActive(filters > 0)
     this.searchBox?.setValue(this.query.text)
     this.header?.tune.setBadge(filters).setActive(isQueryActive(this.query))
-    if (this.groupButton) {
-      const label = this.groupSummary()
-      const hidden = this.boardColumnsNow().filter((column) => column.hidden).length
-      this.groupButton
-        .setLabel(`Columns`)
-        .setDetail(hidden ? (hidden === 1 ? `${hidden} hidden` : `${hidden} hidden`) : '')
-        .setActive(!!label)
-    }
     if (this.fieldsButton) {
       const hidden = this.hiddenFieldCount()
       this.fieldsButton
@@ -712,46 +619,7 @@ export class ProjectView extends ItemView {
   }
 
   private renderViewSlot(parent: HTMLElement): void {
-    this.viewSlot = new SavedViewSlot(parent, {
-      onOpen: (anchor) => this.openSavedViews(anchor),
-      onSave: safeAsync(() => this.updateActiveView())
-    })
-  }
-
-  private openSavedViews(anchor: HTMLElement): void {
-    const primary = this.projectScope?.primary
-    openSavedViewsPopover(anchor, {
-      views: this.savedViews().map((view) => ({
-        id: view.id,
-        name: view.name,
-        modeIcon: view.viewMode ? MODE_ICONS[view.viewMode] : undefined,
-        isDefault: view.isDefault
-      })),
-      activeId: this.activeSavedViewId,
-      changes: this.viewChanges(),
-      canSave:
-        countActiveFilters(this.query.filter) > 0 ||
-        !sameValue(this.sort, makeDefaultSort()) ||
-        Object.keys(this.fields).length > 0 ||
-        this.currentView !== this.projectScope?.config.defaultView,
-      builtInName: `All tasks`,
-      storageNote:
-        this.projectScope?.spec.kind === 'project' && primary
-          ? `Kept in the note of ${primary.title}.`
-          : `Kept in plugin settings on this vault.`,
-      onSelect: (id) => this.handleSavedViewSelect(id),
-      onSave: (name, isDefault) => this.handleSavedViewSave(name, isDefault),
-      onUpdate: (id) => this.handleSavedViewUpdate(id),
-      onRevert: () => this.handleSavedViewSelect(this.activeSavedViewId),
-      onRename: (id, name) => this.handleSavedViewRename(id, name),
-      onDelete: (id) => this.handleSavedViewDelete(id),
-      onReorder: (ids) => this.handleSavedViewReorder(ids),
-      onSetDefault: (id) => this.handleSavedViewDefault(id)
-    })
-  }
-
-  private async updateActiveView(): Promise<void> {
-    if (this.activeSavedViewId && this.viewChanges().length) await this.handleSavedViewUpdate(this.activeSavedViewId)
+    this.countEl = parent.createSpan('pm-vh-count')
   }
 
   private renderQuerySlot(parent: HTMLElement): void {
@@ -762,17 +630,11 @@ export class ProjectView extends ItemView {
       .setAriaLabel(`Filter`)
       .onClick(() => this.openFilter())
     this.sortButton = null
-    this.groupButton = null
     this.fieldsButton = null
     if (this.currentView !== 'gantt') {
       const sortButton = new ChipButton(parent).setAriaLabel(`Sort`)
       sortButton.onClick(() => this.openSort(sortButton.el))
       this.sortButton = sortButton
-    }
-    if (this.currentView === 'kanban') {
-      const groupButton = new ChipButton(parent).setIcon('columns-3').setAriaLabel(`Columns`)
-      groupButton.onClick(() => this.openGroup(groupButton.el))
-      this.groupButton = groupButton
     }
     const fieldsButton = new ChipButton(parent).setIcon('columns-3').setLabel(`Fields`).setAriaLabel(`Fields`)
     fieldsButton.onClick(() => this.openFields(fieldsButton.el))
@@ -892,14 +754,6 @@ export class ProjectView extends ItemView {
         onOpen: (anchor) => this.openSort(anchor)
       })
     }
-    if (this.currentView === 'kanban') {
-      query.push({
-        icon: 'columns-3',
-        label: `Columns`,
-        state: this.groupSummary(),
-        onOpen: (anchor) => this.openGroup(anchor)
-      })
-    }
     query.push({
       icon: 'columns-3',
       label: `Fields`,
@@ -930,48 +784,6 @@ export class ProjectView extends ItemView {
     void this.persistFilter()
   }
 
-  /** The board's column customizations, as the Columns control summarizes them. */
-  private groupSummary(): string {
-    const hidden = this.group.columns?.hidden?.length ?? 0
-    if (hidden) return `${hidden} hidden`
-    if (this.group.hideEmpty) return `Hide empty`
-    return this.group.columns?.order?.length ? `Reordered` : ''
-  }
-
-  private groupSetup() {
-    const scope = this.projectScope
-    return scope ? scope.filterSetup(this.query.filter) : null
-  }
-
-  /** The board's status columns as the Columns popover lists them: every task the filter lets through. */
-  private boardColumnsNow(): BoardColumn[] {
-    const setup = this.groupSetup()
-    const scope = this.projectScope
-    if (!setup || !scope) return []
-    const candidates = boardCandidates(scope.tasks(), shownFields(this.fields, 'kanban', scope.fieldCatalog()))
-    const shown = candidates.filter((task) => matchesQuery(task, this.query, setup.ctx))
-    return boardColumns(this.group, shown)
-  }
-
-  private openGroup(anchor: HTMLElement): void {
-    const props = this.groupProps()
-    if (props) openGroupPopover(anchor, props)
-  }
-
-  private groupProps(after?: () => void): GroupPopoverProps | null {
-    if (!this.projectScope) return null
-    return {
-      group: this.group,
-      columns: () => this.boardColumnsNow(),
-      onChange: () => {
-        this.syncHeader()
-        this.refreshSubview()
-        void this.persistFilter()
-        after?.()
-      }
-    }
-  }
-
   /** The phone's sheet: a tab for each query control this mode has, and how many tasks it leaves. */
   private tuneSheet(): TuneSheetProps {
     const tabs: SheetTab[] = []
@@ -999,16 +811,6 @@ export class ProjectView extends ItemView {
         id: 'sort',
         label: `Sort`,
         render: (parent, changed) => renderSortPanel(parent, this.sortProps(changed))
-      })
-    }
-    if (this.currentView === 'kanban') {
-      tabs.push({
-        id: 'group',
-        label: `Columns`,
-        render: (parent, changed) => {
-          const props = this.groupProps(changed)
-          if (props) renderGroupPanel(parent, props)
-        }
       })
     }
     tabs.push({
@@ -1197,38 +999,6 @@ export class ProjectView extends ItemView {
     this.refreshSubview()
   }
 
-  /** Column widths a phone keeps for itself, since widths set on a wider screen rarely suit it. */
-  private phoneWidthsKey(): string {
-    return `dotpm-table-widths:${this.projectScope?.key ?? ''}`
-  }
-
-  /** The view's fields with this phone's own column widths in place of the view's, for the table to edit. */
-  private phoneTableFields(): ViewFields {
-    const fields = structuredClone(this.fields)
-    const widths = this.app.loadLocalStorage(this.phoneWidthsKey()) as Record<string, number> | null
-    if (fields.table) delete fields.table.widths
-    if (widths && this.projectScope) {
-      const visible = shownFields(this.fields, 'table', this.projectScope.fieldCatalog())
-      fields.table = { visible: fields.table?.visible ?? visible, widths }
-    }
-    return fields
-  }
-
-  /** Keeps widths on the device and takes only which columns show back into the view. */
-  private handlePhoneTableFields(edited: ViewFields): void {
-    const scope = this.projectScope
-    if (!scope) return
-    const widths = edited.table?.widths
-    this.app.saveLocalStorage(this.phoneWidthsKey(), widths && Object.keys(widths).length ? widths : null)
-    const catalog = scope.fieldCatalog()
-    const visible = shownFields(edited, 'table', catalog)
-    if (!sameValue(visible, shownFields(this.fields, 'table', catalog))) {
-      this.fields.table = { ...this.fields.table, visible }
-      tidyFields(this.fields, catalog)
-    }
-    this.handleFieldsChange()
-  }
-
   /** Zoom is per device, so it is kept in this vault's local storage rather than in the view. */
   private zoomKey(): string {
     return `dotpm-timeline-zoom:${this.projectScope?.key ?? ''}`
@@ -1319,86 +1089,6 @@ export class ProjectView extends ItemView {
     this.refreshSubview()
   }
 
-  private handleSavedViewSelect(id: string | null): void {
-    if (!this.projectScope) return
-    if (id === null) {
-      this.query.filter = makeDefaultFilter()
-      this.activeSavedViewId = null
-    } else {
-      const sv = this.savedViews().find((v) => v.id === id)
-      if (!sv) return
-      this.applySavedView(sv)
-    }
-    this.queryBarOpen = countActiveFilters(this.query.filter) > 0
-    void this.persistFilter()
-    this.renderHeader()
-    this.renderCurrentView()
-  }
-
-  private async handleSavedViewSave(name: string, isDefault: boolean): Promise<void> {
-    if (!this.projectScope) return
-    const sv: SavedView = {
-      id: makeId(),
-      name,
-      filter: structuredClone(this.query.filter),
-      sort: structuredClone(this.sort),
-      group: structuredClone(this.group),
-      fields: structuredClone(this.fields),
-      viewMode: this.currentView,
-      ganttGranularity: this.granularity,
-      nonWorkingDays: structuredClone(this.nonWorkingDays),
-      ...(isDefault ? { isDefault: true } : {})
-    }
-    this.activeSavedViewId = sv.id
-    const views = isDefault ? withDefault(this.savedViews(), null) : this.savedViews()
-    await this.persistSavedViews([...views, sv])
-    void this.persistFilter()
-    this.syncHeader()
-  }
-
-  private async handleSavedViewUpdate(id: string): Promise<void> {
-    const views = this.savedViews()
-    const sv = views.find((v) => v.id === id)
-    if (!sv) return
-    sv.filter = structuredClone(this.query.filter)
-    sv.viewMode = this.currentView
-    sv.sort = structuredClone(this.sort)
-    sv.group = structuredClone(this.group)
-    sv.fields = structuredClone(this.fields)
-    sv.ganttGranularity = this.granularity
-    sv.nonWorkingDays = structuredClone(this.nonWorkingDays)
-    this.activeSavedViewId = sv.id
-    await this.persistSavedViews(views)
-    void this.persistFilter()
-    this.syncHeader()
-  }
-
-  private async handleSavedViewDelete(id: string): Promise<void> {
-    if (this.activeSavedViewId === id) this.activeSavedViewId = null
-    await this.persistSavedViews(this.savedViews().filter((v) => v.id !== id))
-    void this.persistFilter()
-    this.syncHeader()
-  }
-
-  private async handleSavedViewRename(id: string, name: string): Promise<void> {
-    const views = this.savedViews()
-    const sv = views.find((v) => v.id === id)
-    if (!sv) return
-    sv.name = name
-    await this.persistSavedViews(views)
-    this.syncHeader()
-  }
-
-  private async handleSavedViewReorder(ids: string[]): Promise<void> {
-    const byId = new Map(this.savedViews().map((view) => [view.id, view]))
-    await this.persistSavedViews(ids.flatMap((id) => byId.get(id) ?? []))
-  }
-
-  /** One view per scope carries the star; starring another moves it. */
-  private async handleSavedViewDefault(id: string | null): Promise<void> {
-    await this.persistSavedViews(withDefault(this.savedViews(), id))
-  }
-
   private refreshSubview(): void {
     this.subview?.render()
   }
@@ -1436,10 +1126,8 @@ export class ProjectView extends ItemView {
     if (!scope?.primary) return
 
     let savedGanttScroll: ReturnType<GanttView['getScrollPosition']> | null = null
-    let savedGanttLabelWidth: number | null = null
     if (this.currentView === 'gantt' && this.subview instanceof GanttView) {
       savedGanttScroll = this.subview.getScrollPosition()
-      savedGanttLabelWidth = this.subview.getLabelWidth()
     }
 
     let savedTableScrollTop: number | null = null
@@ -1453,8 +1141,6 @@ export class ProjectView extends ItemView {
 
     switch (this.currentView) {
       case 'table': {
-        const phone = Platform.isPhone
-        const fields = phone ? this.phoneTableFields() : this.fields
         const table = new TableView(
           this.bodyEl,
           scope,
@@ -1467,8 +1153,7 @@ export class ProjectView extends ItemView {
             await this.persistFilter()
           }),
           this.keyScope,
-          fields,
-          () => (phone ? this.handlePhoneTableFields(fields) : this.handleFieldsChange())
+          this.fields
         )
         if (savedTableScrollTop !== null) table.setPendingScrollTop(savedTableScrollTop)
         this.subview = table
@@ -1492,7 +1177,6 @@ export class ProjectView extends ItemView {
           }
         )
         if (savedGanttScroll) gantt.setPendingScroll(savedGanttScroll)
-        if (savedGanttLabelWidth !== null) gantt.setLabelWidth(savedGanttLabelWidth)
         this.subview = gantt
         break
       }
@@ -1504,9 +1188,7 @@ export class ProjectView extends ItemView {
           () => this.refreshProject(),
           this.query,
           this.sort,
-          this.group,
-          this.fields,
-          (anchor) => this.openGroup(anchor)
+          this.fields
         )
         break
     }

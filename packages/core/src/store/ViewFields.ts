@@ -71,23 +71,22 @@ export function hiddenFields(fields: ViewFields, mode: ViewMode, catalog: FieldC
 }
 
 /** A table column's width in px; the title takes what is left. */
-export function columnWidth(fields: ViewFields, id: string): number | undefined {
+export function columnWidth(id: string): number | undefined {
   if (id === 'title') return undefined
-  return fields.table?.widths?.[id] ?? DEFAULT_COLUMN_WIDTHS[id] ?? FALLBACK_COLUMN_WIDTH
+  return DEFAULT_COLUMN_WIDTHS[id] ?? FALLBACK_COLUMN_WIDTH
 }
 
 /**
- * Drops a mode that shows its defaults at default widths, so a view whose fields were
+ * Drops a mode that shows its defaults, so a view whose fields were
  * changed and changed back compares equal to one never touched.
  */
 export function tidyFields(fields: ViewFields, catalog: FieldCatalog): void {
   for (const mode of Object.keys(fields) as ViewMode[]) {
     const list = fields[mode] as FieldList
-    if (list.widths && !Object.keys(list.widths).length) delete list.widths
     const shown = shownFields(fields, mode, catalog)
     const defaults = shownFields({}, mode, catalog)
     const isDefault = shown.length === defaults.length && shown.every((id, i) => id === defaults[i])
-    if (isDefault && !list.widths) Reflect.deleteProperty(fields, mode)
+    if (isDefault) Reflect.deleteProperty(fields, mode)
   }
 }
 

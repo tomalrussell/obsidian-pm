@@ -1102,7 +1102,6 @@ export class ProjectStore implements TaskSource {
     project.description = source.description
     project.color = source.color
     project.icon = source.icon
-    project.savedViews = structuredClone(source.savedViews)
     if (source.config) project.config = structuredClone(source.config)
     project.tasks = cloneTaskForest(source.tasks)
     rebuildTaskIndex(project)
