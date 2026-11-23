@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs'
 import { builtinModules } from 'node:module'
 import { defineConfig } from 'tsdown'
 
@@ -18,10 +17,6 @@ export default defineConfig({
   clean: false,
   hash: false,
   outExtensions: () => ({ js: '.js' }),
-  define: {
-    __STYLEGUIDE__: JSON.stringify(!prod || Boolean(process.env['STYLEGUIDE'])),
-    __CHANGELOG__: JSON.stringify(readFileSync('CHANGELOG.md', 'utf8'))
-  },
   deps: {
     neverBundle: [
       'obsidian',

@@ -2,10 +2,6 @@ import { fileURLToPath } from 'node:url'
 import { coverageConfigDefaults, defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  define: {
-    __STYLEGUIDE__: 'false',
-    __CHANGELOG__: JSON.stringify('')
-  },
   resolve: {
     alias: {
       obsidian: fileURLToPath(new URL('./test/obsidian-stub.ts', import.meta.url))

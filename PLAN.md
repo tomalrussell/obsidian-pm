@@ -20,7 +20,7 @@ Removed metadata (recurrence, time tracking, custom fields, assignees and simila
 | Editing       | Task modal and editor, subtasks panel, context menu, note-link suggest, create task from selection    | `src/modals`, `src/ui`                         |
 | Import        | Convert existing Markdown notes into tasks                                                             | `ImportModal`                                  |
 | Automation    | Auto-archive completed tasks, ID repair, undo/redo of the last action                                  | `src/components`, `ProjectStore`               |
-| Support       | Settings, migrations, release notes view, styleguide (dev only)                                        | `src/settings.ts`, `src/migration.ts`          |
+| Support       | Settings, migrations                                                                                    | `src/settings.ts`, `src/migration.ts`          |
 
 Workspace packages: `@dotpm/core` (model, YAML, filtering, dependency graph, view state) and `@dotpm/ui` (DOM primitives, composites, Gantt rendering). The Obsidian plugin in `src` ties them together.
 
@@ -35,7 +35,6 @@ Line counts are approximate.
 | `src/store/VaultIndex.ts`          | 500   | Needed. Review only for leftover code from removed features.                                 |
 | `src/views/DashboardView.ts`       | 490   | Separate surface from the three core views                                                   |
 | `src/views/ProjectOverviewView.ts` | 330   | Same                                                                                         |
-| `src/views/styleguide`             | 980   | Dev-only. Production builds already exclude it. Cost is maintenance.                         |
 | `src/main.ts`                      | 650   | 14 commands, file-open interception and view registration                                    |
 
 ## Dependencies and tooling
@@ -57,6 +56,8 @@ Ordered by payoff for the effort. Each step is independent, and each is a user d
 
 1. **Dead-code sweep. Done.** The type check, unused-locals check (`tsc --noUnusedLocals --noUnusedParameters`), oxlint, oxfmt and all 483 tests pass.
    - Fixed the type errors that the saved-views removal left in `ProjectView.ts` and `DashboardView.ts`: dangling imports, `activeView()` calls and stray header code.
+   - Removed the release notes view, its command, the "show release notes" setting, `lastSeenVersion`, the changelog parser and the `__CHANGELOG__` build define.
+   - Removed the dev-only styleguide gallery (about 1,030 lines, its build flag and its PR checklist item).
    - Removed unused imports, locals and parameters, the dead `filterArchived` helper and its test, and about 90 lines of saved-view CSS.
    - Removed non-working days: the `holidays` setting, per-project `nonWorkingDays`, the popover, the Gantt option and the weekend shading. The Gantt now always hides weekends.
    - Restored the collapsed-task remap in `migration.ts`. The saved-views removal had deleted it, so moving a project dropped its collapsed state. The migration test caught this.
@@ -80,7 +81,6 @@ Ordered by payoff for the effort. Each step is independent, and each is a user d
    - Import notes as tasks: drop it if tasks are created in the plugin from now on.
    - Automatic Markdown editor replacement: opening a task via the plugin remains. This also removes `monkey-around`.
    - Auto-archiver: replace with the manual archive command.
-   - Release notes view: replace with a link to the changelog.
    - Milestones, task dependencies or progress rollups: the model and Gantt both depend on these, so cut only after weighing Gantt's value.
    - Attachments: check whether this is still used anywhere.
 

@@ -11,8 +11,7 @@ export default defineConfig([
     files: ['src/**/*.ts', 'packages/*/src/**/*.ts'],
     languageOptions: {
       parser: tsparser,
-      parserOptions: { project: './tsconfig.json' },
-      globals: { __STYLEGUIDE__: 'readonly', __CHANGELOG__: 'readonly' }
+      parserOptions: { project: './tsconfig.json' }
     }
   },
   {

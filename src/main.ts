@@ -11,8 +11,6 @@ import {
   type Project,
   type Task,
   flattenTasks,
-  compareVersions,
-  releaseNotesSince,
   setDateFormat
 } from '@dotpm/core'
 import { ProjectStore, VaultIndex, type ProjectRef } from './store'
@@ -25,8 +23,6 @@ import { ProjectOverviewView, PM_PROJECT_OVERVIEW_VIEW_TYPE } from './views/Proj
 import { ProjectEditView, PM_PROJECT_EDIT_VIEW_TYPE } from './views/ProjectEditView'
 import { DashboardView, PM_DASHBOARD_VIEW_TYPE } from './views/DashboardView'
 import { TaskView, PM_TASK_VIEW_TYPE } from './views/TaskView'
-import { RELEASES, ReleaseNotesView, PM_RELEASE_NOTES_VIEW_TYPE } from './views/ReleaseNotesView'
-import { registerStyleguide } from './views/styleguide/StyleguideView'
 import { PMViewRouter } from './views/PMViewRouter'
 import {
   openTaskModal,
@@ -95,13 +91,10 @@ export default class PMPlugin extends Plugin {
     this.registerView(PM_PROJECT_EDIT_VIEW_TYPE, (leaf) => new ProjectEditView(leaf, this))
     this.registerView(PM_DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this))
     this.registerView(PM_TASK_VIEW_TYPE, (leaf) => new TaskView(leaf, this))
-    this.registerView(PM_RELEASE_NOTES_VIEW_TYPE, (leaf) => new ReleaseNotesView(leaf, this))
     this.registerNoteSwap()
-    if (__STYLEGUIDE__) registerStyleguide(this)
 
     this.app.workspace.onLayoutReady(
       safeAsync(async () => {
-        await this.openReleaseNotesAfterUpdate()
         this.index.build()
         await this.startupSweep()
       })
@@ -116,14 +109,6 @@ export default class PMPlugin extends Plugin {
       name: `Open projects pane`,
       callback: () => {
         void this.router.openDashboard()
-      }
-    })
-
-    this.addCommand({
-      id: 'show-release-notes',
-      name: `Show release notes`,
-      callback: () => {
-        void this.router.openReleaseNotes()
       }
     })
 
@@ -242,18 +227,6 @@ export default class PMPlugin extends Plugin {
     this.addSettingTab(new PMSettingTab(this.app, this))
     this.autoArchiver.start()
     this.idRepair.start()
-  }
-
-  /** Records the running version, and after an update opens the notes for every release since the last run. */
-  private async openReleaseNotesAfterUpdate(): Promise<void> {
-    const previous = this.settings.lastSeenVersion
-    const current = this.manifest.version
-    if (previous === current) return
-    this.settings.lastSeenVersion = current
-    await this.saveSettings()
-    if (!this.settings.showReleaseNotes || (previous && compareVersions(previous, current) > 0)) return
-    if (releaseNotesSince(RELEASES, current, previous).length === 0) return
-    await this.router.openReleaseNotes(previous)
   }
 
   /** Opens a note in Obsidian's own editor, in a new tab unless given a leaf, where the swap leaves it alone. */
@@ -398,12 +371,6 @@ export default class PMPlugin extends Plugin {
           entry.filter.conditions.push({ field: 'status', op: 'any', value: nonTerminal })
         }
       }
-      migrated = true
-    }
-
-    // A fresh install has no update to announce.
-    if (!saved) {
-      this.settings.lastSeenVersion = this.manifest.version
       migrated = true
     }
 
