@@ -19,7 +19,7 @@ Removed metadata (recurrence, time tracking, custom fields, assignees and simila
 | View state    | Field visibility and order, last-used filters and sorting. No saved or named views.                    | `packages/core/src/store/View*.ts`             |
 | Editing       | Task modal and editor, subtasks panel, context menu, note-link suggest, create task from selection    | `src/modals`, `src/ui`                         |
 | Import        | Convert existing Markdown notes into tasks                                                             | `ImportModal`                                  |
-| Automation    | Auto-archive completed tasks, ID repair, undo/redo of the last action                                  | `src/components`, `ProjectStore`               |
+| Automation    | Manual "archive completed tasks" command, ID repair, undo/redo of the last action                      | `src/components`, `ProjectStore`               |
 | Support       | Settings, migrations                                                                                    | `src/settings.ts`, `src/migration.ts`          |
 
 Workspace packages: `@dotpm/core` (model, YAML, filtering, dependency graph, view state) and `@dotpm/ui` (DOM primitives, composites, Gantt rendering). The Obsidian plugin in `src` ties them together.
@@ -55,6 +55,7 @@ Ordered by payoff for the effort. Each step is independent, and each is a user d
 
 1. **Dead-code sweep. Done.** The type check, unused-locals check (`tsc --noUnusedLocals --noUnusedParameters`), oxlint, oxfmt and all 483 tests pass.
    - Fixed the type errors that the saved-views removal left in `ProjectView.ts` and `DashboardView.ts`: dangling imports, `activeView()` calls and stray header code.
+   - Removed the auto-archiver: the hourly timer, the daily check, the `autoArchiveDays` setting and per-project override, and `lastAutoArchiveDate`. The "Archive completed tasks" command remains and archives every completed task. Old values are dropped from settings on load. A project note's `config.autoArchiveDays` is dropped the next time that project is saved.
    - Removed the automatic Markdown editor replacement and `monkey-around`. Project and task notes now open in Obsidian's editor. "Open current file as project" and the overview's buttons open the plugin views.
    - Removed the release notes view, its command, the "show release notes" setting, `lastSeenVersion`, the changelog parser and the `__CHANGELOG__` build define.
    - Removed the dev-only styleguide gallery (about 1,030 lines, its build flag and its PR checklist item).
@@ -79,7 +80,6 @@ Ordered by payoff for the effort. Each step is independent, and each is a user d
    - Undo/redo outside Gantt: keep Gantt undo only if the command set can shrink.
    - Project moving and task moving between projects: keep archive only.
    - Import notes as tasks: drop it if tasks are created in the plugin from now on.
-   - Auto-archiver: replace with the manual archive command.
    - Milestones, task dependencies or progress rollups: the model and Gantt both depend on these, so cut only after weighing Gantt's value.
    - Attachments: check whether this is still used anywhere.
 

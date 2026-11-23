@@ -31,7 +31,7 @@ import {
   openImportModal,
   confirmDialog
 } from './ui/ModalFactory'
-import { AutoArchiver } from './components/AutoArchiver'
+import { planArchive } from './components/ArchiveCompleted'
 import { IdRepair } from './components/IdRepair'
 import { migrateBoardCardConfig, migrateProjects, migrateProjectLayout, migrateTaskRefs } from './migration'
 
@@ -39,7 +39,6 @@ export default class PMPlugin extends Plugin {
   settings: PMSettings = { ...DEFAULT_SETTINGS }
   store!: ProjectStore
   index!: VaultIndex
-  autoArchiver!: AutoArchiver
   idRepair!: IdRepair
   router!: PMViewRouter
   private viewRefreshScheduled = false
@@ -80,7 +79,6 @@ export default class PMPlugin extends Plugin {
     })
     this.store = new ProjectStore(this.app, () => this.settings, this.index)
     this.store.registerVaultSync(this)
-    this.autoArchiver = new AutoArchiver(this)
     this.idRepair = new IdRepair(this)
     this.router = new PMViewRouter(this)
     this.registerView(PM_PROJECT_VIEW_TYPE, (leaf) => new ProjectView(leaf, this))
@@ -221,7 +219,6 @@ export default class PMPlugin extends Plugin {
     })
 
     this.addSettingTab(new PMSettingTab(this.app, this))
-    this.autoArchiver.start()
     this.idRepair.start()
   }
 
@@ -251,7 +248,9 @@ export default class PMPlugin extends Plugin {
       'autoSchedule',
       'pullForwardOnEarlyFinish',
       'scopeViews',
-      'projectListViews'
+      'projectListViews',
+      'autoArchiveDays',
+      'lastAutoArchiveDate'
     ]) {
       Reflect.deleteProperty(this.settings, key)
     }
@@ -365,10 +364,10 @@ export default class PMPlugin extends Plugin {
     await this.store.updateProject(project, { archived: archived || undefined })
   }
 
-  /** A project with no window of its own archives everything it has finished. */
+  /** Archives everything finished in the open project, or in every project when none is open. */
   private async archiveCompletedTasks(): Promise<void> {
     const scoped = this.app.workspace.getActiveViewOfType(ProjectView)?.projectScope?.projects.map((p) => p.filePath)
-    const plans = await this.autoArchiver.plan(scoped?.length ? scoped : this.index.projectPaths(), true)
+    const plans = await planArchive(this, scoped?.length ? scoped : this.index.projectPaths())
     const tasks = plans.reduce((sum, plan) => sum + plan.tasks, 0)
     if (!tasks) {
       return
@@ -381,10 +380,10 @@ export default class PMPlugin extends Plugin {
       `Archive`
     )
     if (!ok) return
-    await this.autoArchiver.apply(plans)
+    for (const plan of plans) await this.store.archiveTasks(plan.project, plan.rootIds)
   }
 
-  /** The startup work that reads the index: migration, pruning, and the archive sweep. */
+  /** The startup work that reads the index: migration and pruning. */
   private async startupSweep(): Promise<void> {
     await migrateProjects(this)
     await migrateProjectLayout(this)
@@ -392,7 +391,6 @@ export default class PMPlugin extends Plugin {
     await migrateBoardCardConfig(this)
     await this.idRepair.check()
     await this.cleanupStaleProjectFilters()
-    await this.autoArchiver.check()
   }
 
   async cleanupStaleProjectFilters(): Promise<void> {

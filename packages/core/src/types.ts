@@ -156,7 +156,6 @@ export interface StatusConfig {
 /** Overrides a project may set in its own file. An absent field falls back to the global settings. */
 export interface ProjectConfig {
   defaultView?: ViewMode
-  autoArchiveDays?: number
   showSubtreeConnections?: boolean
   lineBorders?: LineBorders
 }
@@ -170,7 +169,6 @@ export interface ResolvedProjectConfig {
   priorities: PriorityConfig[]
   priorityIcons: PriorityIconSet
   defaultView: ViewMode
-  autoArchiveDays: number
   showSubtreeConnections: boolean
   lineBorders: LineBorders
 }
@@ -205,10 +203,6 @@ export interface PMSettings {
   priorities: PriorityConfig[]
   /** Icons for priorities that don't carry their own. */
   priorityIcons: PriorityIconSet
-  /** Days after completion before a task moves to its project's archive. 0 turns it off. */
-  autoArchiveDays: number
-  /** The day the archive sweep last ran, so it runs at most once a day. */
-  lastAutoArchiveDate: string
   showSubtreeConnections: boolean
   lineBorders: LineBorders
   showTagColors: boolean
@@ -268,8 +262,6 @@ export const DEFAULT_SETTINGS: PMSettings = {
   lineBorders: 'none',
   showTagColors: true,
   dateFormat: '',
-  autoArchiveDays: 0,
-  lastAutoArchiveDate: '',
   saveTaskOnClose: true,
   taskEditorSurface: 'modal',
   editorSaveModifier: 'Shift',

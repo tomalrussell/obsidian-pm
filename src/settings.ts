@@ -163,35 +163,12 @@ export class PMSettingTab extends PluginSettingTab {
             }
           }
         ]
-      },
-      {
-        type: 'group',
-        heading: `Archive`,
-        items: [
-          {
-            name: `Auto-archive completed tasks`,
-            desc: `Move completed tasks to the project's archive after this many days. Set it to 0 to keep them in place.`,
-            aliases: ['archive', 'cleanup', 'done'],
-            control: {
-              type: 'slider',
-              key: 'autoArchiveDays',
-              min: 0,
-              max: 90,
-              step: 1
-            }
-          }
-        ]
       }
     ]
   }
 
   async setControlValue(key: string, value: unknown): Promise<void> {
     await super.setControlValue(key, value)
-    // Today's pass ran against the old window, so it has to run again to reflect the new one.
-    if (key === 'autoArchiveDays') {
-      this.plugin.settings.lastAutoArchiveDate = ''
-      await this.plugin.autoArchiver.check()
-    }
     if (key === 'dateFormat') setDateFormat(this.plugin.settings.dateFormat)
     this.plugin.refreshViews()
     this.refreshDomState()

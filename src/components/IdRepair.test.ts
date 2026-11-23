@@ -37,8 +37,7 @@ function projectRef(id: string, path: string): ProjectRef {
     icon: '',
     color: '',
     tags: [],
-    archived: false,
-    autoArchiveDays: null
+    archived: false
   }
 }
 

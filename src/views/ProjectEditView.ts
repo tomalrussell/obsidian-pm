@@ -97,8 +97,6 @@ export class ProjectEditView extends ItemView {
   private patchConfig<K extends keyof ProjectConfig>(key: K, value: ProjectConfig[K] | undefined): void {
     const entries = Object.entries({ ...this.project?.config, [key]: value }).filter(([, v]) => v !== undefined)
     this.save({ config: entries.length ? Object.fromEntries(entries) : undefined })
-    // Today's pass ran against the old window, so it has to run again.
-    if (key === 'autoArchiveDays') this.plugin.settings.lastAutoArchiveDate = ''
   }
 
   private section(title: string, hint = ''): HTMLElement {
@@ -238,13 +236,6 @@ export class ProjectEditView extends ItemView {
       { value: 'table', label: `Table` },
       { value: 'gantt', label: `Timeline` },
       { value: 'kanban', label: `Board` }
-    ])
-    row(`Auto-archive completed tasks`, 'autoArchiveDays', [
-      { value: 0, label: `Never` },
-      ...[7, 14, 30, 90].map((days) => ({
-        value: days,
-        label: days === 1 ? `After ${days} day` : `After ${days} days`
-      }))
     ])
     row(`Subtree connections in table`, 'showSubtreeConnections', [
       { value: true, label: `Show` },

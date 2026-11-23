@@ -210,9 +210,6 @@ function hydrateProjectConfig(raw: unknown): ProjectConfig | undefined {
   if (r.defaultView === 'table' || r.defaultView === 'gantt' || r.defaultView === 'kanban') {
     config.defaultView = r.defaultView
   }
-  if (typeof r.autoArchiveDays === 'number' && Number.isFinite(r.autoArchiveDays) && r.autoArchiveDays >= 0) {
-    config.autoArchiveDays = Math.floor(r.autoArchiveDays)
-  }
   if (typeof r.showSubtreeConnections === 'boolean') config.showSubtreeConnections = r.showSubtreeConnections
   if (
     r.lineBorders === 'none' ||

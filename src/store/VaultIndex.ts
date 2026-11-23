@@ -26,7 +26,6 @@ export interface ProjectRef {
   /** Whether this project is archived. */
   archived: boolean
   /** Days before a completed task is archived. Null inherits the global setting. */
-  autoArchiveDays: number | null
 }
 
 export interface TaskRef {
@@ -53,16 +52,6 @@ function insideTaskFolder(path: string): boolean {
   const parts = path.split('/')
   parts.pop()
   return parts.some((segment) => segment.endsWith('_tasks'))
-}
-
-function projectConfigOf(frontmatter: Record<string, unknown>): Record<string, unknown> | null {
-  const config = frontmatter.config
-  return config && typeof config === 'object' ? (config as Record<string, unknown>) : null
-}
-
-function ownAutoArchiveDays(frontmatter: Record<string, unknown>): number | null {
-  const days = projectConfigOf(frontmatter)?.autoArchiveDays
-  return typeof days === 'number' && Number.isFinite(days) && days >= 0 ? Math.floor(days) : null
 }
 
 /**
@@ -333,8 +322,7 @@ export class VaultIndex {
       tags: (typeof frontmatter.tags === 'string' ? frontmatter.tags.split(/[\s,]+/) : stringList(frontmatter.tags))
         .map((tag) => tag.replace(/^#/, ''))
         .filter(Boolean),
-      archived: frontmatter.archived === true,
-      autoArchiveDays: ownAutoArchiveDays(frontmatter)
+      archived: frontmatter.archived === true
     }
     this.projects.set(path, ref)
     this.projectPathById.set(ref.id, path)

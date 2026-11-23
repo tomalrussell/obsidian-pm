@@ -1241,7 +1241,7 @@ describe('per-project config', () => {
     const project = await store.createProject('Custom', 'Projects')
     project.config = {
       defaultView: 'kanban',
-      autoArchiveDays: 14
+      lineBorders: 'both'
     }
     await store.saveProject(project)
 
@@ -1251,7 +1251,7 @@ describe('per-project config', () => {
     const reloaded = expectDefined(await store2.loadProject(file))
     expect(reloaded.config).toEqual({
       defaultView: project.config?.defaultView,
-      autoArchiveDays: project.config?.autoArchiveDays
+      lineBorders: project.config?.lineBorders
     })
   })
 
