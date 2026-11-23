@@ -1,7 +1,7 @@
 import { type GanttWeekLabel, today } from '@dotpm/core'
 import { svgEl } from '#dom'
 import type { TimelineCfg } from './TimelineConfig'
-import { ROW_HEIGHT, HEADER_HEIGHT, dateToX, dayX, isHiddenDay } from './TimelineConfig'
+import { ROW_HEIGHT, HEADER_HEIGHT, dateToX, dayX } from './TimelineConfig'
 
 /** The two SVG surfaces a gantt draws on and the timeline they share. */
 export interface GanttCanvas {
@@ -15,27 +15,14 @@ export function renderGridLines(ctx: GanttCanvas, totalRows: number): void {
   const g = svgEl('g', { class: 'pm-gantt-grid' })
 
   const totalHeight = HEADER_HEIGHT + totalRows * ROW_HEIGHT
-  const { startDate, totalDays, dayWidth, granularity } = ctx.cfg
+  const { startDate, totalDays, granularity } = ctx.cfg
 
   for (let i = 0; i < totalDays; i++) {
     const d = startDate.add({ days: i })
     const x = dayX(ctx.cfg, i)
     // A hidden day keeps its gridline, drawn where the next shown day starts.
-    const isWeekend = (d.dayOfWeek === 6 || d.dayOfWeek === 7) && !isHiddenDay(ctx.cfg, i)
     const isMonday = d.dayOfWeek === 1
     const isFirst = d.day === 1
-
-    if (isWeekend && granularity === 'day') {
-      g.appendChild(
-        svgEl('rect', {
-          x,
-          y: HEADER_HEIGHT,
-          width: dayWidth,
-          height: totalHeight - HEADER_HEIGHT,
-          class: 'pm-gantt-weekend'
-        })
-      )
-    }
 
     const shouldDrawLine =
       (granularity === 'day' && isMonday) ||

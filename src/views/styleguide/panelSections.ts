@@ -1,6 +1,5 @@
 import {
   type FilterCondition,
-  type NonWorkingDays,
   type ProjectListFilter,
   type SortRule,
   type ViewFields,
@@ -15,7 +14,6 @@ import {
   Stepper,
   renderFieldsPanel,
   renderFilterPanel,
-  renderNonWorkingDaysPanel,
   renderProjectFieldsPanel,
   renderProjectFilterPanel,
   renderProjectSwitcherPanel,
@@ -30,7 +28,6 @@ export interface GalleryLayout {
 }
 
 const noop = (): void => undefined
-const noopAsync = (): Promise<void> => Promise.resolve()
 
 const TASKS = [
   makeTask({ id: 'a', status: 'capture', priority: 'high', tags: ['design'] }),
@@ -209,15 +206,6 @@ export function renderPanelSections({ section, row }: GalleryLayout): void {
     },
     noop
   )
-
-  const days = section('Non-working days panel', 'panel-days')
-  const hidden: NonWorkingDays = { weekends: true }
-  renderNonWorkingDaysPanel(frame(row(days, 'weekends hidden, two holidays'), 280), {
-    days: hidden,
-    holidays: ['2030-12-25', '2030-12-26'],
-    onChange: noop,
-    onHolidaysChange: noop
-  })
 
   const projects = section('Project list filter panel', 'panel-project-filter')
   const projectFilter: ProjectListFilter = { progress: ['in-progress'] }

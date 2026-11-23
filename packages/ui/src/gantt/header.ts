@@ -55,18 +55,6 @@ function renderDayHeader(g: SVGGElement, ctx: GanttCanvas): void {
     if (isHiddenDay(ctx.cfg, i)) continue
     const d = startDate.add({ days: i })
     const x = dayX(ctx.cfg, i)
-    const isWeekend = d.dayOfWeek === 6 || d.dayOfWeek === 7
-    if (isWeekend) {
-      g.appendChild(
-        svgEl('rect', {
-          x,
-          y: 24,
-          width: dayWidth,
-          height: HEADER_HEIGHT - 24,
-          class: 'pm-gantt-weekend-header'
-        })
-      )
-    }
     if (dayWidth >= 20) {
       const text = svgEl('text', {
         x: x + dayWidth / 2,

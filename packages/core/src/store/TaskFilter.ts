@@ -17,11 +17,11 @@ export function countActiveFilters(filter: FilterState): number {
 export function matchesQuery(task: Task, query: TaskQuery, ctx: FilterContext): boolean {
   if (task.archived && !query.filter.showArchived) return false
   if (!query.filter.conditions.every((condition) => matchesCondition(task, condition, ctx))) return false
-  return matchesSearch(task, query.text, ctx)
+  return matchesSearch(task, query.text)
 }
 
 /** Matches the task id, title and tags. */
-export function matchesSearch(task: Task, text: string, ctx: FilterContext): boolean {
+export function matchesSearch(task: Task, text: string): boolean {
   const q = text.trim().toLowerCase()
   if (!q) return true
   if (task.id.toLowerCase() === q) return true

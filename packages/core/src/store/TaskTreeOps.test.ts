@@ -4,7 +4,6 @@ import {
   addTaskToTree,
   collectAllTags,
   deleteTaskFromTree,
-  filterArchived,
   findTask,
   flattenTasks,
   moveTaskInTree,
@@ -149,24 +148,6 @@ describe('moveTaskInTree', () => {
   it('returns false when source and target are not siblings', () => {
     const tasks = [task({ id: 'a' }), task({ id: 'p', subtasks: [task({ id: 'x' })] })]
     expect(moveTaskInTree(tasks, 'a', 'x', 'before')).toBe(false)
-  })
-})
-
-describe('filterArchived', () => {
-  it('drops archived tasks at each level', () => {
-    const tasks = [
-      task({ id: 'a', archived: true }),
-      task({ id: 'b', subtasks: [task({ id: 'b1', archived: true }), task({ id: 'b2' })] })
-    ]
-    const filtered = filterArchived(tasks)
-    expect(filtered.map((t) => t.id)).toEqual(['b'])
-    expect(filtered[0].subtasks.map((t) => t.id)).toEqual(['b2'])
-  })
-
-  it('does not mutate the input tree', () => {
-    const original = [task({ id: 'a', archived: true })]
-    filterArchived(original)
-    expect(original.map((t) => t.id)).toEqual(['a'])
   })
 })
 

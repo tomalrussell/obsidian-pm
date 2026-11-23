@@ -13,7 +13,7 @@ Removed metadata (recurrence, time tracking, custom fields, assignees and simila
 | Persistence   | Notes as tasks, YAML frontmatter, wikilinks, rename handling, vault index, queued writes               | `src/store/ProjectStore.ts`, `VaultIndex.ts`   |
 | Task model    | Fixed statuses and priorities (`yesterday`, `high`, `medium`, `low`), subtasks, dependencies, milestones, dates, progress, tags | `packages/core/src/types.ts`                   |
 | Table         | Sortable, filterable task table with bulk actions, row editing and subtask tree                         | `src/views/table`, `packages/ui`               |
-| Gantt         | Task bars, milestones, drag move/resize with undo, dependency linking, cycle checks. Dates are manual.  | `src/views/gantt`, `packages/ui/src/gantt`     |
+| Gantt         | Task bars, milestones, drag move/resize with undo, dependency linking, cycle checks. Weekends are always hidden. Dates are manual. | `src/views/gantt`, `packages/ui/src/gantt`     |
 | Kanban        | Fixed status columns, with column visibility, order and hide-empty controls                            | `src/views/KanbanView.ts`, `packages/ui/src/views` |
 | Projects      | Independent projects (no hierarchy), multi-project scopes, overview, dashboard, archive, move, duplicate | `ProjectScope`, `ArchiveOps`, `ProjectOverviewView`, `DashboardView` |
 | View state    | Field visibility and order, last-used filters and sorting. No saved or named views.                    | `packages/core/src/store/View*.ts`             |
@@ -55,10 +55,14 @@ Manifest declarations alone don't prove a dependency is unused. Grep imports bef
 
 Ordered by payoff for the effort. Each step is independent, and each is a user decision.
 
-1. **Dead-code sweep (no user-facing change).** Do this first, because the earlier removals left debris.
-   - Run an unused-exports pass (`knip` or `ts-prune`) over `src` and `packages`.
-   - Check `ProjectView.ts`, `ProjectStore.ts`, `settings.ts`, `styles/` and `packages/ui/src/composites` for orphaned helpers, CSS classes, settings keys and tests.
-   - Check `migration.ts` for migrations that only served removed features. Keep any that still protect user data.
+1. **Dead-code sweep. Done.** The type check, unused-locals check (`tsc --noUnusedLocals --noUnusedParameters`), oxlint, oxfmt and all 483 tests pass.
+   - Fixed the type errors that the saved-views removal left in `ProjectView.ts` and `DashboardView.ts`: dangling imports, `activeView()` calls and stray header code.
+   - Removed unused imports, locals and parameters, the dead `filterArchived` helper and its test, and about 90 lines of saved-view CSS.
+   - Removed non-working days: the `holidays` setting, per-project `nonWorkingDays`, the popover, the Gantt option and the weekend shading. The Gantt now always hides weekends.
+   - Restored the collapsed-task remap in `migration.ts`. The saved-views removal had deleted it, so moving a project dropped its collapsed state. The migration test caught this.
+   - **Left for a decision:**
+     - Some CSS classes have no reference in the TypeScript: `pm-gantt-body`, `pm-gantt-controls`, `pm-gantt-resize-handle`, `pm-invisible`, `pm-kanban-card-field*`, `pm-kanban-hidden-rail`, `pm-modal-footer`, `pm-modal-section-header`, `pm-overview-child*`, `pm-prop-date`, `pm-prop-label*`, `pm-prop-text`, `pm-resize-active`, `pm-section-sublabel`, `pm-subtask-dot`, `pm-switcher-gap`, `pm-table-resize`, `pm-table-th-resizable`, `pm-task-modal`, `pm-vis-detail-input`. Some may be added dynamically, so check each in the running plugin before deleting.
+     - Props interfaces and helpers exported only for use inside their own file. This is noise, not dead code.
 
 2. **Split `ProjectStore`.** This is refactoring, not a feature cut. Move import, duplication, moves, archives and attachments out into modules like `ArchiveOps`. Leave persistence, queued writes and rename handling in the store. The remaining store should be about 600 lines, which makes later cuts cheaper.
 

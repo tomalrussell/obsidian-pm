@@ -138,18 +138,11 @@ export interface ProjectListState {
   fields?: ProjectListField[]
 }
 
-/** Days a timeline leaves out of its axis. Holidays are the dates in `PMSettings.holidays`. */
-export interface NonWorkingDays {
-  weekends?: boolean
-  holidays?: boolean
-}
-
 export interface PerProjectFilter {
   filter: FilterState
   sort: SortRule[]
   fields: ViewFields
   ganttGranularity: GanttGranularity
-  nonWorkingDays: NonWorkingDays
 }
 
 export interface StatusConfig {
@@ -208,8 +201,6 @@ export interface PMSettings {
   defaultView: ViewMode
   ganttGranularity: GanttGranularity
   ganttWeekLabel: GanttWeekLabel
-  /** `YYYY-MM-DD` dates a timeline can leave out, for the whole vault. */
-  holidays: string[]
   statuses: StatusConfig[]
   priorities: PriorityConfig[]
   /** Icons for priorities that don't carry their own. */
@@ -274,7 +265,6 @@ export const DEFAULT_SETTINGS: PMSettings = {
   defaultView: 'table',
   ganttGranularity: 'week',
   ganttWeekLabel: 'weekNumber',
-  holidays: [],
   statuses: DEFAULT_STATUSES,
   priorities: DEFAULT_PRIORITIES,
   priorityIcons: 'chevrons',

@@ -7,7 +7,6 @@ import {
   makeTask,
   type SortRule,
   type FilterState,
-  type NonWorkingDays,
   type ProjectListField,
   type ProjectListFilter,
   type ViewFields
@@ -20,7 +19,6 @@ import { renderBreadcrumb } from './Breadcrumb'
 import { FilterBar } from './FilterBar'
 import { openFieldsPopover } from './fieldsPopover'
 import { openFilterPopover, renderFilterPanel, type FilterSetup } from './filterPopover'
-import { openNonWorkingDaysPopover } from './nonWorkingDaysPopover'
 import { openProjectFieldsPopover } from './projectFieldsPopover'
 import { openProjectFilterPopover, renderProjectFilterPanel } from './projectFilterPopover'
 import { openProjectSwitcher, type ProjectSwitcherProps, type SwitcherProject } from './projectSwitcher'
@@ -408,38 +406,6 @@ describe('fields popover', () => {
     document.body.findAll('.pm-fields-tabs button')[2].click()
     expect(labels()).toEqual(['Task'])
     expect(document.body.find('.pm-vis-detail')).toBeNull()
-  })
-})
-
-describe('non-working days popover', () => {
-  it('toggles weekends and holidays and edits the holiday list', () => {
-    const days: NonWorkingDays = {}
-    const onChange = vi.fn<() => void>()
-    const onHolidaysChange = vi.fn<(holidays: string[]) => void>()
-    openNonWorkingDaysPopover(document.body.createEl('button'), {
-      days,
-      holidays: ['2026-12-25', '2026-12-24'],
-      onChange,
-      onHolidaysChange
-    })
-    const boxes = document.body.findAll('.pm-days-pop input[type=checkbox]') as HTMLInputElement[]
-    boxes[0].click()
-    expect(days).toEqual({ weekends: true })
-    boxes[0].click()
-    boxes[1].click()
-    expect(days).toEqual({ holidays: true })
-    expect(onChange).toHaveBeenCalledTimes(3)
-
-    expect(document.body.findAll('.pm-days-chip')).toHaveLength(2)
-    document.body.find('.pm-days-chip .pm-chip-rm')?.click()
-    expect(onHolidaysChange).toHaveBeenLastCalledWith(['2026-12-24'])
-
-    document.body.find('.pm-days-list .pm-prop-add')?.click()
-    const input = document.body.find('.pm-days-input') as HTMLInputElement
-    input.value = '2026-12-31'
-    input.dispatchEvent(new Event('change'))
-    expect(onHolidaysChange).toHaveBeenLastCalledWith(['2026-12-24', '2026-12-31'])
-    expect(document.body.findAll('.pm-days-chip')).toHaveLength(2)
   })
 })
 

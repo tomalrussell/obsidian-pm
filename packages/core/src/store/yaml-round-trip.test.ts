@@ -4,7 +4,6 @@ import {
   hydrateFields,
   hydrateFilter,
   hydrateSort,
-  hydrateNonWorkingDays,
   hydrateProjectFromFrontmatter,
   hydrateTaskFromFile
 } from './YamlHydrator'
@@ -222,7 +221,6 @@ describe('project round-trip', () => {
     expect(
       hydrateFields({ table: { visible: ['due', 3, 'title'], widths: { due: 88 } }, kanban: { visible: 'tags' } })
     ).toEqual({ table: { visible: ['due', 'title'] } })
-    expect(hydrateNonWorkingDays({ weekends: true, holidays: 'yes', fridays: true })).toEqual({ weekends: true })
   })
 
   it('preserves old named views without exposing them to the project model', () => {

@@ -2,7 +2,6 @@ import type { Scope } from 'obsidian'
 import type PMPlugin from '#main'
 import {
   type Task,
-  type NonWorkingDays,
   type ViewFields,
   shownFields,
   type GanttGranularity,
@@ -21,7 +20,7 @@ import {
   buildTimelineConfig,
   clampZoom,
   dateToX,
-  nonWorkingDay,
+  isWeekend,
   xToDate,
   HEADER_HEIGHT,
   ROW_HEIGHT,
@@ -70,7 +69,6 @@ export class GanttView implements SubView {
     private keyScope: Scope,
     private fields: ViewFields,
     private zoom: number,
-    private nonWorkingDays: NonWorkingDays,
     /** Ctrl+scroll changed the zoom. */
     private onZoom: (zoom: number) => void
   ) {}
@@ -138,7 +136,7 @@ export class GanttView implements SubView {
     this.flatTasks = flattenTasks(activeTasks, this.collapsedIds).filter((f) => f.visible || f.depth === 0)
     this.cfg = buildTimelineConfig(activeTasks, this.granularity, {
       zoom: this.zoom,
-      isHidden: nonWorkingDay(this.nonWorkingDays, this.plugin.settings.holidays),
+      isHidden: isWeekend,
       minWidth: this.container.clientWidth - LABEL_WIDTH
     })
 

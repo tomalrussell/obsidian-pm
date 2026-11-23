@@ -115,10 +115,10 @@ describe('date fields', () => {
 describe('search', () => {
   it('matches ids, titles and tags', () => {
     const t = task({ id: 'abc', title: 'Checkout copy', tags: ['Design'] })
-    expect(matchesSearch(t, 'ABC', ctx)).toBe(true)
-    expect(matchesSearch(t, 'checkout', ctx)).toBe(true)
-    expect(matchesSearch(t, 'design', ctx)).toBe(true)
-    expect(matchesSearch(t, 'missing', ctx)).toBe(false)
+    expect(matchesSearch(t, 'ABC')).toBe(true)
+    expect(matchesSearch(t, 'checkout')).toBe(true)
+    expect(matchesSearch(t, 'design')).toBe(true)
+    expect(matchesSearch(t, 'missing')).toBe(false)
   })
 })
 

@@ -385,10 +385,7 @@ export default class PMPlugin extends Plugin {
         filter: hydrateFilter(entry.filter),
         fields: hydrateFields(entry.fields ?? this.settings.defaultFields)
       }
-      if (
-        JSON.stringify(normalized) !==
-        JSON.stringify({ filter: entry.filter, fields: entry.fields })
-      ) {
+      if (JSON.stringify(normalized) !== JSON.stringify({ filter: entry.filter, fields: entry.fields })) {
         Object.assign(entry, normalized)
         migrated = true
       }
@@ -400,10 +397,6 @@ export default class PMPlugin extends Plugin {
       }
       if (!entry.ganttGranularity) {
         entry.ganttGranularity = this.settings.ganttGranularity
-        migrated = true
-      }
-      if (!entry.nonWorkingDays) {
-        entry.nonWorkingDays = {}
         migrated = true
       }
     }

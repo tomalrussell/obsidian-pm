@@ -1,4 +1,4 @@
-import type { FieldList, ViewFields, ViewMode } from '../types'
+import type { ViewFields, ViewMode } from '../types'
 
 /**
  * The built-in fields each presentation can show, in their default order: table columns,
@@ -82,7 +82,6 @@ export function columnWidth(id: string): number | undefined {
  */
 export function tidyFields(fields: ViewFields, catalog: FieldCatalog): void {
   for (const mode of Object.keys(fields) as ViewMode[]) {
-    const list = fields[mode] as FieldList
     const shown = shownFields(fields, mode, catalog)
     const defaults = shownFields({}, mode, catalog)
     const isDefault = shown.length === defaults.length && shown.every((id, i) => id === defaults[i])

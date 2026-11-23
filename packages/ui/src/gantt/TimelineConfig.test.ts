@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { makeTask, Temporal } from '@dotpm/core'
 import {
+  isWeekend,
   buildTimelineConfig,
   clampZoom,
   dateToX,
   getSnapPoints,
-  nonWorkingDay,
   stepZoom,
   xToDate,
   xToLastDate
@@ -26,8 +26,7 @@ describe('buildTimelineConfig', () => {
 
   it('runs on past the tasks until the shown days fill the minimum width', () => {
     const minWidth = 20000
-    const hideWeekends = nonWorkingDay({ weekends: true }, [])
-    const cfg = buildTimelineConfig(tasks, 'year', { zoom: 50, isHidden: hideWeekends, minWidth })
+    const cfg = buildTimelineConfig(tasks, 'year', { zoom: 50, isHidden: isWeekend, minWidth })
     expect(cfg.totalWidth).toBeGreaterThanOrEqual(minWidth)
     expect(cfg.totalWidth - cfg.dayWidth).toBeLessThan(minWidth)
     expect(cfg.endDate.since(cfg.startDate, { largestUnit: 'days' }).days).toBe(cfg.totalDays)
@@ -65,18 +64,15 @@ describe('zoom', () => {
   })
 })
 
-describe('non-working days', () => {
+describe('hidden weekends', () => {
   const week = [makeTask({ start: '2026-03-02', due: '2026-03-13' })]
-  const cfg = buildTimelineConfig(week, 'day', {
-    isHidden: nonWorkingDay({ weekends: true, holidays: true }, ['2026-03-10'])
-  })
+  const cfg = buildTimelineConfig(week, 'day', { isHidden: isWeekend })
   const date = (iso: string) => Temporal.PlainDate.from(iso)
 
   it('gives hidden days no width', () => {
     const friday = dateToX(cfg, date('2026-03-06'))
     expect(dateToX(cfg, date('2026-03-07'))).toBe(friday + cfg.dayWidth)
     expect(dateToX(cfg, date('2026-03-09'))).toBe(friday + cfg.dayWidth)
-    expect(dateToX(cfg, date('2026-03-11'))).toBe(dateToX(cfg, date('2026-03-10')))
     expect(cfg.totalWidth).toBeLessThan(cfg.totalDays * cfg.dayWidth)
   })
 
@@ -84,11 +80,5 @@ describe('non-working days', () => {
     const monday = dateToX(cfg, date('2026-03-09'))
     expect(xToDate(cfg, monday).toString()).toBe('2026-03-09')
     expect(xToLastDate(cfg, monday).toString()).toBe('2026-03-06')
-    expect(xToLastDate(cfg, dateToX(cfg, date('2026-03-11'))).toString()).toBe('2026-03-09')
-  })
-
-  it('leaves the axis alone when nothing is hidden', () => {
-    expect(nonWorkingDay({}, ['2026-03-10'])).toBeUndefined()
-    expect(nonWorkingDay({ holidays: true }, [])).toBeUndefined()
   })
 })

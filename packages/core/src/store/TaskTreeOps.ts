@@ -125,12 +125,6 @@ export function moveTaskInTree(tasks: Task[], taskId: string, targetId: string, 
   return false
 }
 
-export function filterArchived(tasks: Task[]): Task[] {
-  return tasks
-    .filter((t) => !t.archived)
-    .map((t) => (t.subtasks.length ? { ...t, subtasks: filterArchived(t.subtasks) } : t))
-}
-
 export function collectAllTags(tasks: Task[]): string[] {
   const set = new Set<string>()
   const walk = (list: Task[]) => {

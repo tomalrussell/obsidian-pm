@@ -78,7 +78,6 @@ export class KanbanView implements SubView {
         onDrop: (taskId, to) => this.handleDrop(taskId, to)
       })
     }
-
   }
 
   /** Descriptions load lazily from the note body, so previews fill in on a second render. */

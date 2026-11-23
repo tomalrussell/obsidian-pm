@@ -3,30 +3,22 @@ import type PMPlugin from '#main'
 import { addTabPageItems, refreshTabTitle } from '#ui/tab'
 import {
   type GanttGranularity,
-  type NonWorkingDays,
   type Project,
-  type SavedView,
   type ResolvedProjectConfig,
   type SortRule,
-  type GroupState,
   type TaskQuery,
   type ViewFields,
   type ViewMode,
   flattenTasks,
   shownFields,
-  withDefault,
-  tidyFields,
   GANTT_GRANULARITIES,
   bestConditionToDrop,
   countActiveFilters,
   filterFieldLabel,
   isQueryActive,
   makeDefaultFilter,
-  makeDefaultGroup,
   makeDefaultSort,
   sameValue,
-  viewDifferences,
-  makeId,
   matchesQuery
 } from '@dotpm/core'
 import {
@@ -39,27 +31,20 @@ import {
   selectionSpec
 } from '#store'
 import {
-  boardCandidates,
-  boardColumns,
   ChipButton,
   clampZoom,
   MAX_ZOOM,
   MIN_ZOOM,
-  openNonWorkingDaysPopover,
   Stepper,
   stepZoom,
   EmptyState,
   openFieldsPopover,
-  openGroupPopover,
-  type BoardColumn,
   FilterBar,
   openProjectSwitcher,
-  openSavedViewsPopover,
   openSearchPopover,
   openSortPopover,
   renderFieldsPanel,
   renderFilterPanel,
-  renderGroupPanel,
   renderSortPanel,
   renderBreadcrumb,
   ViewSwitcher,
@@ -70,7 +55,6 @@ import {
   ViewHeader,
   type FieldsPopoverProps,
   type FilterSetup,
-  type GroupPopoverProps,
   type PlatformMenu,
   type SearchBoxProps,
   type SheetTab,
@@ -80,7 +64,6 @@ import {
   type StepperProps,
   type SwitcherProject,
   type TuneItem,
-  SavedViewSlot,
   summarizeSort,
   syncSortButton,
   type SortSummary
@@ -123,7 +106,7 @@ const sortFields = (config?: ResolvedProjectConfig): SortField[] => [
 
 /** One of a mode's own controls, as the options slot, the Tune list and the More menu draw it. */
 interface ViewOption {
-  id: 'today' | 'scale' | 'days' | 'collapse'
+  id: 'today' | 'scale' | 'collapse'
   icon: string
   label: string
   /** The current value: the Tune list's faint state, and the chip's text when `chip` is `value`. */
@@ -151,7 +134,6 @@ export class ProjectView extends ItemView {
   query: TaskQuery = { filter: makeDefaultFilter(), text: '' }
   sort: SortRule[] = makeDefaultSort()
   fields: ViewFields = {}
-  nonWorkingDays: NonWorkingDays = {}
   /** Percent of the scale's day width. Kept per device, not in the view. */
   zoom = 100
   granularity: GanttGranularity
@@ -168,7 +150,6 @@ export class ProjectView extends ItemView {
   private sortButton: ChipButton | null = null
   private fieldsButton: ChipButton | null = null
   private zoomStepper: Stepper | null = null
-  private daysButton: ChipButton | null = null
   private keyScope: Scope
   private pendingRefresh: Promise<void> | null = null
   private initialized = false
@@ -354,13 +335,11 @@ export class ProjectView extends ItemView {
       this.sort = saved.sort
       this.fields = saved.fields
       this.granularity = saved.ganttGranularity
-      this.nonWorkingDays = saved.nonWorkingDays
       return
     }
     this.query.filter = makeDefaultFilter()
     this.sort = makeDefaultSort()
     this.fields = structuredClone(this.plugin.settings.defaultFields)
-    this.nonWorkingDays = {}
     this.granularity = this.plugin.settings.ganttGranularity
   }
 
@@ -370,8 +349,7 @@ export class ProjectView extends ItemView {
       filter: this.query.filter,
       sort: this.sort,
       fields: this.fields,
-      ganttGranularity: this.granularity,
-      nonWorkingDays: this.nonWorkingDays
+      ganttGranularity: this.granularity
     }
     await this.plugin.saveSettings()
   }
@@ -431,7 +409,6 @@ export class ProjectView extends ItemView {
         .setActive(this.fields[this.currentView] !== undefined)
     }
     this.zoomStepper?.setValue(`${this.zoom}%`, this.zoom <= MIN_ZOOM, this.zoom >= MAX_ZOOM)
-    this.daysButton?.setActive(!!this.nonWorkingDays.weekends || !!this.nonWorkingDays.holidays)
     if (this.sortButton) syncSortButton(this.sortButton, this.sortSummary())
     this.header?.fit()
   }
@@ -678,7 +655,7 @@ export class ProjectView extends ItemView {
       sort: this.sort,
       onChange: sorted,
       onReset: () => {
-        this.sort.splice(0, this.sort.length, ...structuredClone(this.activeView()?.sort ?? makeDefaultSort()))
+        this.sort.splice(0, this.sort.length, ...makeDefaultSort())
         sorted()
       }
     }
@@ -884,7 +861,6 @@ export class ProjectView extends ItemView {
 
   private renderOptionsSlot(parent: HTMLElement, scope: ProjectScope): void {
     this.zoomStepper = null
-    this.daysButton = null
     for (const option of this.viewOptions(scope)) {
       if (option === 'zoom') {
         this.zoomStepper = new Stepper(parent, this.zoomProps())
@@ -895,13 +871,11 @@ export class ProjectView extends ItemView {
       else chip.setIcon(option.icon).setLabel(option.chip === 'label' ? option.label : '')
       if (option.chip === 'icon') chip.setTooltip(option.label)
       chip.onClick(() => option.run(chip.el))
-      if (option.id === 'days') this.daysButton = chip
     }
   }
 
   /**
-   * The mode's own controls in their order: on the timeline Today, the scale, the zoom and the
-   * non-working days, then collapse on anything but the board. The options slot, the Tune list
+   * The mode's own controls in their order: on the timeline Today, the scale and the zoom, then collapse on anything but the board. The options slot, the Tune list
    * and the More menu all draw this list; `zoom` stands for the stepper, which each draws its own way.
    */
   private viewOptions(scope: ProjectScope): (ViewOption | 'zoom')[] {
@@ -923,14 +897,7 @@ export class ProjectView extends ItemView {
           chip: 'value',
           run: (anchor) => this.openScaleMenu(anchor)
         },
-        'zoom',
-        {
-          id: 'days',
-          icon: 'calendar-off',
-          label: `Non-working days`,
-          chip: 'icon',
-          run: (anchor) => this.openNonWorkingDays(anchor)
-        }
+        'zoom'
       )
     }
     if (this.currentView !== 'kanban') {
@@ -979,19 +946,6 @@ export class ProjectView extends ItemView {
     }
   }
 
-  private openNonWorkingDays(anchor: HTMLElement): void {
-    openNonWorkingDaysPopover(anchor, {
-      days: this.nonWorkingDays,
-      holidays: this.plugin.settings.holidays,
-      onChange: () => this.handleTimelineAxisChange(),
-      onHolidaysChange: safeAsync(async (holidays: string[]) => {
-        this.plugin.settings.holidays = holidays
-        await this.plugin.saveSettings()
-        if (this.nonWorkingDays.holidays) this.renderCurrentView()
-      })
-    })
-  }
-
   private toggleCollapseAll(scope: ProjectScope, anyCollapsed: boolean): void {
     setAllCollapsed(this.plugin.settings, scope.projects, !anyCollapsed)
     void this.plugin.saveSettings()
@@ -1014,12 +968,6 @@ export class ProjectView extends ItemView {
   private rememberZoom(): void {
     this.app.saveLocalStorage(this.zoomKey(), this.zoom === 100 ? null : this.zoom)
     this.syncHeader()
-  }
-
-  private handleTimelineAxisChange(): void {
-    this.syncHeader()
-    this.renderCurrentView()
-    void this.persistFilter()
   }
 
   private setGranularity(granularity: GanttGranularity): void {
@@ -1170,7 +1118,6 @@ export class ProjectView extends ItemView {
           this.keyScope,
           this.fields,
           this.zoom,
-          this.nonWorkingDays,
           (zoom) => {
             this.zoom = zoom
             this.rememberZoom()

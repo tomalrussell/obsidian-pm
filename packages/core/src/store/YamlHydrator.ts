@@ -4,7 +4,6 @@ import type {
   FilterOp,
   FilterState,
   FieldList,
-  NonWorkingDays,
   Project,
   ProjectConfig,
   SortRule,
@@ -125,14 +124,6 @@ export function hydrateFields(raw: unknown): ViewFields {
     fields[mode] = list
   }
   return fields
-}
-
-export function hydrateNonWorkingDays(raw: unknown): NonWorkingDays {
-  const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
-  const days: NonWorkingDays = {}
-  if (r.weekends === true) days.weekends = true
-  if (r.holidays === true) days.holidays = true
-  return days
 }
 
 export function mapRawToTask(r: Record<string, unknown>, overrides?: Partial<Task>): Task {

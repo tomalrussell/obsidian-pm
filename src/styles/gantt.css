@@ -199,13 +199,6 @@
   stroke-width: 1;
 }
 
-.pm-gantt-weekend-header {
-  fill: rgba(0, 0, 0, 0.04);
-}
-.theme-dark .pm-gantt-weekend-header {
-  fill: rgba(255, 255, 255, 0.04);
-}
-
 .pm-gantt-gridline-v {
   stroke: var(--background-modifier-border);
   stroke-width: 1;
@@ -214,12 +207,6 @@
 .pm-gantt-gridline-h {
   stroke: var(--background-modifier-border);
   stroke-width: 0.5;
-}
-.pm-gantt-weekend {
-  fill: rgba(0, 0, 0, 0.025);
-}
-.theme-dark .pm-gantt-weekend {
-  fill: rgba(255, 255, 255, 0.025);
 }
 
 .pm-gantt-row-hover {

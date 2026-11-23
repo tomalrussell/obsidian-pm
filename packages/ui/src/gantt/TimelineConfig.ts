@@ -1,12 +1,4 @@
-import {
-  type Task,
-  type GanttGranularity,
-  type NonWorkingDays,
-  flattenTasks,
-  Temporal,
-  today,
-  parsePlainDate
-} from '@dotpm/core'
+import { type Task, type GanttGranularity, flattenTasks, Temporal, today, parsePlainDate } from '@dotpm/core'
 
 export const ROW_HEIGHT = 28
 export const HEADER_HEIGHT = 56
@@ -49,14 +41,9 @@ export interface TimelineOptions {
   minWidth?: number
 }
 
-/** The days `days` leaves out: Saturdays and Sundays, and the listed holidays. */
-export function nonWorkingDay(
-  days: NonWorkingDays,
-  holidays: readonly string[]
-): ((date: Temporal.PlainDate) => boolean) | undefined {
-  if (!days.weekends && !(days.holidays && holidays.length)) return undefined
-  const off = new Set(days.holidays ? holidays : [])
-  return (date) => (!!days.weekends && date.dayOfWeek >= 6) || off.has(date.toString())
+/** Saturdays and Sundays, which the timeline leaves out of its axis. */
+export function isWeekend(date: Temporal.PlainDate): boolean {
+  return date.dayOfWeek >= 6
 }
 
 export function clampZoom(zoom: number): number {

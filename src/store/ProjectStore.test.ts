@@ -5,8 +5,6 @@ import { makeFakeApp, type FakeVault } from '#test/fakeVault'
 import {
   today,
   DEFAULT_SETTINGS,
-  makeDefaultFilter,
-  makeDefaultSort,
   makeTask,
   type PMSettings,
   type Project,

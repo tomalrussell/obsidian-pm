@@ -4,27 +4,22 @@ import {
   type ProjectGroupBy,
   type ProjectListField,
   type ProjectListItem,
-  type ProjectListView,
   type ProjectProgress,
   type ProjectSortKey,
   arrangeProjects,
   countProjectFilters,
   isProjectQueryActive,
   makeDefaultProjectList,
-  makeId,
   PROJECT_LIST_FIELDS,
   projectProgress,
   projectTagCounts,
-  sameValue,
-  tidyProjectFields,
-  withDefault
+  tidyProjectFields
 } from '@dotpm/core'
 import {
   ChipButton,
   EmptyState,
   openProjectFieldsPopover,
   openProjectFilterPopover,
-  openSavedViewsPopover,
   openSearchPopover,
   openSortPopover,
   renderOptionRow,
@@ -45,7 +40,6 @@ import {
   type TuneSheetProps,
   type SortField,
   type TuneItem,
-  SavedViewSlot,
   summarizeSort,
   syncSortButton
 } from '@dotpm/ui'
@@ -261,7 +255,7 @@ export class DashboardView extends ItemView {
       onChange: sorted,
       onReset: () => {
         const { sort } = this.state
-        sort.splice(0, sort.length, ...structuredClone(this.activeView()?.sort ?? []))
+        sort.splice(0, sort.length, ...makeDefaultProjectList().sort)
         sorted()
       }
     }
@@ -354,9 +348,6 @@ export class DashboardView extends ItemView {
   /** The query controls as the Tune button lists them in a narrow header. */
   private tuneItems(): TuneItem[][] {
     const { settings, index } = this.plugin
-    this.countEl?.setText(isProjectQueryActive(this.state.filter, this.text)
-      ? `${shown} of ${total}`
-      : total === 1 ? `${total} project` : `${total} projects`)
     const filters = countProjectFilters(this.state.filter)
     const sort = summarizeSort(sortFields(), this.state.sort)
     const items: TuneItem[] = [
@@ -463,9 +454,13 @@ export class DashboardView extends ItemView {
 
   private syncHeader(shown: number, total: number): void {
     const { settings, index } = this.plugin
-    this.countEl?.setText(isProjectQueryActive(this.state.filter, this.text)
-      ? `${shown} of ${total}`
-      : total === 1 ? `${total} project` : `${total} projects`)
+    this.countEl?.setText(
+      isProjectQueryActive(this.state.filter, this.text)
+        ? `${shown} of ${total}`
+        : total === 1
+          ? `${total} project`
+          : `${total} projects`
+    )
     const filters = countProjectFilters(this.state.filter)
     this.filterButton?.setBadge(filters).setActive(filters > 0)
     this.searchBox?.setValue(this.text)

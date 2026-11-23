@@ -2,13 +2,7 @@ import { TFile } from 'obsidian'
 import type PMPlugin from './main'
 import type { ScopeSpec } from './store'
 import { isRefLink } from './store/refs'
-import {
-  legacyBoardFields,
-  makeDefaultFilter,
-  makeDefaultSort,
-  parseFrontmatter,
-  isOldFormat
-} from '@dotpm/core'
+import { legacyBoardFields, makeDefaultFilter, makeDefaultSort, parseFrontmatter, isOldFormat } from '@dotpm/core'
 
 /** Rewrites projects whose tasks are embedded in frontmatter as one file per task. */
 export async function migrateProjects(plugin: PMPlugin): Promise<void> {
@@ -50,8 +44,7 @@ export async function migrateBoardCardConfig(plugin: PMPlugin): Promise<void> {
       filter: makeDefaultFilter(),
       sort: makeDefaultSort(),
       fields: structuredClone(plugin.settings.defaultFields),
-      ganttGranularity: plugin.settings.ganttGranularity,
-      nonWorkingDays: {}
+      ganttGranularity: plugin.settings.ganttGranularity
     })
     // A key the note leaves out inherited the global setting, which loadSettings has already moved here.
     const had = entry.fields.kanban?.visible ?? []
@@ -179,6 +172,11 @@ function remapProjectSettings(plugin: PMPlugin, moves: ProjectMove[]): void {
       Reflect.deleteProperty(projectFilters, oldKey)
     }
 
+    const collapsed = collapsedTasks[from]
+    if (collapsed) {
+      collapsedTasks[to] = collapsed
+      Reflect.deleteProperty(collapsedTasks, from)
+    }
   }
 }
 
